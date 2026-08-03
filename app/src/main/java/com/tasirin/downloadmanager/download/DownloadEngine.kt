@@ -13,10 +13,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.asStateFlow
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.BufferedOutputStream
 import java.io.FileOutputStream
@@ -48,7 +48,7 @@ class DownloadEngine(private val context: Context) {
             bytesDownloaded = 0,
             totalBytes = 0
         )
-        update(item)
+        update(_items.value + item)
         start(item)
     }
 
@@ -60,7 +60,7 @@ class DownloadEngine(private val context: Context) {
     fun resume(id: String) {
         val item = _items.value.find { it.id == id } ?: return
         if (item.state != DownloadState.PAUSED && item.state != DownloadState.FAILED) return
-        update(item.copy(state = DownloadState.PENDING))
+        updateItem(item.id) { it.copy(state = DownloadState.PENDING) }
         start(item.copy(state = DownloadState.PENDING))
     }
 
@@ -87,7 +87,7 @@ class DownloadEngine(private val context: Context) {
         if (jobs[item.id]?.isActive == true) return
         val job = scope.launch {
             try {
-                update(item.copy(state = DownloadState.DOWNLOADING))
+                updateItem(item.id) { it.copy(state = DownloadState.DOWNLOADING) }
                 runDownload(item)
             } catch (e: CancellationException) {
                 throw e
@@ -123,7 +123,7 @@ class DownloadEngine(private val context: Context) {
             } else if (downloaded > 0) {
                 // Server tidak mendukung resume; mulai dari awal.
                 downloaded = 0
-                partialFile.setLength(0)
+                partialFile.writeBytes(ByteArray(0))
             }
 
             val input = conn.inputStream
@@ -149,7 +149,7 @@ class DownloadEngine(private val context: Context) {
                     }
                 }
                 output.flush()
-                ensureActive()
+                coroutineContext.ensureActive()
             } finally {
                 runCatching { input.close() }
                 runCatching { output.close() }

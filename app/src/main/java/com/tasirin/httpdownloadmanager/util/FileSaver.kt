@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.StatFs
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.documentfile.provider.DocumentFile
@@ -51,6 +52,11 @@ class FileSaver(context: Context) {
             val result = publishToCustomFolder(partial, fileName, folderUri)
             if (result != null) return result
         }
+        val textFolder = StoragePrefs.getTextFolder(appContext)
+        if (textFolder != null) {
+            val result = publishToTextFolder(partial, fileName, textFolder)
+            if (result != null) return result
+        }
         return if (Build.VERSION.SDK_INT >= 29) {
             publishToMediaStore(partial, fileName)
         } else {
@@ -75,6 +81,76 @@ class FileSaver(context: Context) {
         partial.delete()
         PublishResult(contentUri = target.uri.toString())
     }.getOrNull()
+
+    private fun publishToTextFolder(
+        partial: File,
+        fileName: String,
+        folder: String
+    ): PublishResult? = runCatching {
+        val dir = File(folder)
+        if (!dir.isDirectory) return null
+        runCatching { dir.mkdirs() }
+        val target = File(dir, fileName)
+        target.outputStream().use { out -> partial.inputStream().use { it.copyTo(out) } }
+        partial.delete()
+        PublishResult(filePath = target.absolutePath)
+    }.getOrNull()
+
+    fun freeBytes(): Long = runCatching {
+        StatFs(downloadDir.absolutePath).availableBytes
+    }.getOrDefault(Long.MAX_VALUE)
+
+    fun openPublished(item: DownloadItem): java.io.InputStream? {
+        return when {
+            !item.contentUri.isNullOrEmpty() ->
+                runCatching {
+                    appContext.contentResolver.openInputStream(Uri.parse(item.contentUri))
+                }.getOrNull()
+            !item.filePath.isNullOrEmpty() ->
+                runCatching { File(item.filePath).inputStream() }.getOrNull()
+            else -> null
+        }
+    }
+
+    fun sidecarChecksum(item: DownloadItem): Pair<String, String>? {
+        val path = item.filePath ?: return null
+        val file = File(path)
+        val parent = file.parentFile ?: return null
+        val base = file.name
+        val algos = mapOf(".md5" to "MD5", ".sha1" to "SHA-1", ".sha256" to "SHA-256")
+        for ((ext, algo) in algos) {
+            val side = File(parent, base + ext)
+            if (side.exists()) {
+                val first = runCatching {
+                    side.readText().trim().split(Regex("\\s+")).firstOrNull().orEmpty()
+                }.getOrDefault("")
+                if (first.length >= 32) return algo to first.lowercase()
+            }
+        }
+        return null
+    }
+
+    fun cleanupOrphanPartials(items: List<DownloadItem>) {
+        runCatching {
+            val expected = buildSet {
+                items.forEach { item ->
+                    if (item.segments.isEmpty()) {
+                        add(partialFile(item.fileName).name)
+                    } else {
+                        item.segments.forEach { seg ->
+                            add(partialFile(item.fileName, seg.index).name)
+                        }
+                    }
+                }
+            }
+            downloadDir.listFiles()?.forEach { f ->
+                val name = f.name
+                if ((name.endsWith(".part") || name.contains(".part.")) && name !in expected) {
+                    runCatching { f.delete() }
+                }
+            }
+        }
+    }
 
     private fun publishToMediaStore(partial: File, fileName: String): PublishResult {
         val resolver = appContext.contentResolver

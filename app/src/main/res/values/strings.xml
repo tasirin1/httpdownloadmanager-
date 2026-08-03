@@ -41,6 +41,15 @@
     <string name="storage_picker_error">Gagal menggunakan folder: %1$s</string>
     <string name="storage_picker_unavailable">Tidak ada aplikasi untuk memilih folder di perangkat ini</string>
     <string name="storage_folder_selected">Folder dipilih: %1$s</string>
+    <string name="storage_text_folder">Ketik path folder</string>
+    <string name="storage_text_folder_hint">Path folder (contoh: /storage/emulated/0/Download)</string>
+    <string name="storage_text_folder_invalid">Path tidak valid atau bukan folder</string>
+    <string name="storage_text_folder_saved">Folder disimpan: %1$s</string>
+    <string name="storage_onboarding_title">Pilih lokasi penyimpanan</string>
+    <string name="storage_onboarding_message">Di mana file download akan disimpan?</string>
+    <string name="storage_onboarding_default">Folder Downloads (default)</string>
+    <string name="storage_onboarding_custom">Pilih folder…</string>
+    <string name="storage_onboarding_text">Ketik path folder…</string>
 
     <string name="action_remote">Remote (HTTP)</string>
     <string name="remote_start">Mulai server</string>
@@ -64,7 +73,28 @@
     <string name="settings_retry">Percobaan ulang saat gagal</string>
     <string name="settings_server_background">Jalankan server remote di latar belakang</string>
     <string name="settings_server_autostart">Auto start server saat boot</string>
+    <string name="settings_battery">Tanpa optimasi baterai (download tetap jalan di latar belakang)</string>
+    <string name="battery_request_failed">Gagal membuka pengaturan baterai</string>
     <string name="notification_server_active">Server remote aktif (HTTP) — bisa diakses dari perangkat lain</string>
+    <string name="server_status_running">Server: aktif</string>
+    <string name="server_status_stopped">Server: mati</string>
+    <string name="action_about">Tentang</string>
+    <string name="about_title">Tentang Download Manager</string>
+    <string name="about_version">Versi %1$s</string>
+    <string name="ok">OK</string>
+    <string name="about_changelog">Catatan perubahan:
+• Server remote full background + QR code
+• Batas kecepatan &amp; prioritas per-download
+• Streaming &amp; download file via browser remote
+• Splash screen &amp; ikon baru
+• Pilihan folder dengan path teks (Android 5–7)
+• Verifikasi checksum MD5/SHA1/SHA256
+• Deteksi penyimpanan penuh
+• Pembersihan file .part otomatis
+• Pintasan launcher "Tambah Download"
+• Crash logger (tombol "Log error" di halaman remote)</string>
+    <string name="checksum_hint_optional">Checksum opsional (md5:/sha1:/sha256:) — contoh md5:abcdef…</string>
+    <string name="shortcut_add_download">Tambah Download</string>
     <string name="speed_limit_per_label">Batas kecepatan (per download)</string>
     <string name="priority_label">Prioritas</string>
     <string name="action_limit_priority">Batas &amp; prioritas</string>

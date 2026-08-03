@@ -99,8 +99,12 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(PORT) {
         }
         val speed = params["speedLimitKbps"]?.toIntOrNull()?.coerceIn(0, 100_000) ?: 0
         val priority = params["priority"]?.toIntOrNull()?.coerceIn(-1, 1) ?: 0
+        val checksum = params["checksum"]?.trim().orEmpty()
         App.engine.addDownload(
-            url, params["name"], speedLimitKbps = speed, priority = priority
+            url, params["name"],
+            speedLimitKbps = speed,
+            priority = priority,
+            checksum = checksum
         )
         return jsonResponse(JSONObject().put("ok", true))
     }

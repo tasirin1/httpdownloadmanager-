@@ -62,6 +62,13 @@
         android:minLines="2"
         android:maxLines="4" />
 
+    <EditText
+        android:id="@+id/input_checksum"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="@string/checksum_hint_optional" />
+
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

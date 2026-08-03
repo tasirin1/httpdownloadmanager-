@@ -41,6 +41,15 @@
     <string name="storage_picker_error">Failed to use folder: %1$s</string>
     <string name="storage_picker_unavailable">No app available to pick a folder on this device</string>
     <string name="storage_folder_selected">Folder selected: %1$s</string>
+    <string name="storage_text_folder">Type folder path</string>
+    <string name="storage_text_folder_hint">Folder path (e.g. /storage/emulated/0/Download)</string>
+    <string name="storage_text_folder_invalid">Path is not valid or not a folder</string>
+    <string name="storage_text_folder_saved">Folder saved: %1$s</string>
+    <string name="storage_onboarding_title">Choose storage location</string>
+    <string name="storage_onboarding_message">Where should downloaded files be saved?</string>
+    <string name="storage_onboarding_default">Downloads folder (default)</string>
+    <string name="storage_onboarding_custom">Choose folder…</string>
+    <string name="storage_onboarding_text">Type folder path…</string>
 
     <string name="action_remote">Remote (HTTP)</string>
     <string name="remote_start">Start server</string>
@@ -64,7 +73,28 @@
     <string name="settings_retry">Retry attempts on failure</string>
     <string name="settings_server_background">Run remote server in background</string>
     <string name="settings_server_autostart">Auto start server on boot</string>
+    <string name="settings_battery">No battery optimization (keep downloads running in background)</string>
+    <string name="battery_request_failed">Failed to open battery settings</string>
     <string name="notification_server_active">Remote server active (HTTP) — reachable from other devices</string>
+    <string name="server_status_running">Server: active</string>
+    <string name="server_status_stopped">Server: off</string>
+    <string name="action_about">About</string>
+    <string name="about_title">About Download Manager</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="ok">OK</string>
+    <string name="about_changelog">Changelog:
+• Full-background remote server + QR code
+• Per-download speed limit &amp; priority
+• Stream &amp; download files via remote browser
+• Splash screen &amp; new icon
+• Text-path folder picker (Android 5–7)
+• MD5/SHA1/SHA256 checksum verification
+• Full storage detection
+• Automatic .part cleanup
+• Launcher shortcut "Add Download"
+• Crash logger ("Log error" button on remote page)</string>
+    <string name="checksum_hint_optional">Optional checksum (md5:/sha1:/sha256:) — e.g. md5:abcdef…</string>
+    <string name="shortcut_add_download">Add Download</string>
     <string name="speed_limit_per_label">Speed limit (per download)</string>
     <string name="priority_label">Priority</string>
     <string name="action_limit_priority">Limit &amp; priority</string>

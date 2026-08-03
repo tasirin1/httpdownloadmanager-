@@ -12,6 +12,9 @@ object StoragePrefs {
     private const val KEY_AUTOSTART = "auto_start_boot"
     private const val KEY_SERVER_BACKGROUND = "server_background"
     private const val KEY_SERVER_AUTOSTART = "server_autostart_boot"
+    private const val KEY_TEXT_FOLDER = "text_folder_path"
+    private const val KEY_BATTERY_EXEMPT = "battery_exempt"
+    private const val KEY_ONBOARDED = "storage_onboarded"
     private const val KEY_MAX_CONCURRENT = "max_concurrent"
     private const val KEY_SPEED_LIMIT = "speed_limit_kbps"
     private const val KEY_MAX_RETRIES = "max_retries"
@@ -61,6 +64,36 @@ object StoragePrefs {
     fun setServerBackgroundEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putBoolean(KEY_SERVER_BACKGROUND, enabled)
+            .apply()
+    }
+
+    fun getTextFolder(context: Context): String? =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_TEXT_FOLDER, null)?.takeIf { it.isNotBlank() }
+
+    fun setTextFolder(context: Context, path: String?) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_TEXT_FOLDER, path?.takeIf { it.isNotBlank() })
+            .apply()
+    }
+
+    fun isBatteryExemptEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_BATTERY_EXEMPT, true)
+
+    fun setBatteryExemptEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_BATTERY_EXEMPT, enabled)
+            .apply()
+    }
+
+    fun isStorageOnboarded(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_ONBOARDED, false)
+
+    fun setStorageOnboarded(context: Context, value: Boolean = true) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_ONBOARDED, value)
             .apply()
     }
 

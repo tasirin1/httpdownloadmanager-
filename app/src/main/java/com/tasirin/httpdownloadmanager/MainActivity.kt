@@ -1,6 +1,7 @@
 package com.tasirin.httpdownloadmanager
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -8,7 +9,11 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.os.PowerManager
 import android.provider.DocumentsContract
+import android.provider.Settings
+import android.text.InputType
 import android.text.TextUtils
 import android.view.Menu
 import android.view.MenuItem
@@ -131,7 +136,31 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         if (StoragePrefs.isServerBackgroundEnabled(this) && !App.httpServer.isAlive) {
             runCatching { App.httpServer.startServer() }
         }
+        runCatching { App.engine.cleanupOrphans() }
+        if (!StoragePrefs.isStorageOnboarded(this)) {
+            StoragePrefs.setStorageOnboarded(this)
+            showStorageOnboardingDialog()
+        }
+        if (StoragePrefs.isBatteryExemptEnabled(this)) {
+            requestBatteryExemption()
+        }
         handleIncomingIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateServerStatus()
+    }
+
+    private fun updateServerStatus() {
+        val tv = findViewById<TextView>(R.id.server_status) ?: return
+        val alive = App.httpServer.isAlive
+        tv.text = getString(
+            if (alive) R.string.server_status_running else R.string.server_status_stopped
+        )
+        tv.setTextColor(
+            ContextCompat.getColor(this, if (alive) R.color.status_on else R.color.status_off)
+        )
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -160,6 +189,10 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     }
 
     private fun handleIncomingIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_ADD_DOWNLOAD, false) == true) {
+            showAddDialog()
+            return
+        }
         if (intent == null) return
         val raw = when (intent.action) {
             Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)
@@ -179,6 +212,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val usernameInput = view.findViewById<EditText>(R.id.input_username)
         val passwordInput = view.findViewById<EditText>(R.id.input_password)
         val headersInput = view.findViewById<EditText>(R.id.input_headers)
+        val checksumInput = view.findViewById<EditText>(R.id.input_checksum)
         val speedPerOptions = resources.getStringArray(R.array.speed_limit_per_options)
         val speedKbps = intArrayOf(0, 128, 256, 512, 1024, 2048, 5120)
         val spinnerSpeedPer = view.findViewById<Spinner>(R.id.spinner_speed_limit_per)
@@ -234,6 +268,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                     val username = usernameInput.text?.toString()?.trim().orEmpty()
                     val password = passwordInput.text?.toString()?.trim().orEmpty()
                     val headers = headersInput.text?.toString()?.trim().orEmpty()
+                    val checksum = checksumInput.text?.toString()?.trim().orEmpty()
                     val perSpeed = speedKbps[spinnerSpeedPer.selectedItemPosition]
                     val priority = priorityValues[spinnerPriority.selectedItemPosition]
                     urls.forEachIndexed { index, url ->
@@ -244,7 +279,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                             password,
                             headers,
                             perSpeed,
-                            priority
+                            priority,
+                            if (index == 0) checksum else ""
                         )
                     }
                 }
@@ -279,6 +315,10 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             }
             R.id.action_settings -> {
                 showSettingsDialog()
+                true
+            }
+            R.id.action_about -> {
+                showAboutDialog()
                 true
             }
             R.id.action_autostart -> {
@@ -396,25 +436,125 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             requestPermissionsIfNeeded()
         }
         val currentName = StoragePrefs.getFolderName(this)
+            ?: StoragePrefs.getTextFolder(this)
             ?: getString(R.string.storage_default_folder)
-        val builder = MaterialAlertDialogBuilder(this)
+        val options = mutableListOf(
+            getString(R.string.storage_choose_folder),
+            getString(R.string.storage_text_folder)
+        )
+        if (StoragePrefs.getFolderUri(this) != null ||
+            StoragePrefs.getTextFolder(this) != null
+        ) {
+            options.add(getString(R.string.storage_use_default))
+        }
+        MaterialAlertDialogBuilder(this)
             .setTitle(R.string.action_storage)
             .setMessage(getString(R.string.storage_current, currentName))
+            .setItems(options.toTypedArray()) { _, which ->
+                when (which) {
+                    0 -> launchDocumentTree(folderPicker)
+                    1 -> showTextFolderDialog()
+                    else -> {
+                        StoragePrefs.saveFolder(this, null, null)
+                        StoragePrefs.setTextFolder(this, null)
+                        Snackbar.make(
+                            binding.root,
+                            R.string.storage_default_folder,
+                            Snackbar.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
             .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.storage_choose_folder) { _, _ ->
-                launchDocumentTree(folderPicker)
+            .show()
+    }
+
+    private fun showTextFolderDialog() {
+        val input = EditText(this)
+        input.hint = getString(R.string.storage_text_folder_hint)
+        input.inputType = InputType.TYPE_CLASS_TEXT
+        input.setText(StoragePrefs.getTextFolder(this) ?: defaultDownloadsPath())
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.storage_text_folder)
+            .setView(input)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.save) { _, _ ->
+                val path = input.text?.toString()?.trim().orEmpty()
+                val dir = File(path)
+                if (path.isNotEmpty() && dir.isDirectory) {
+                    StoragePrefs.setTextFolder(this, path)
+                    StoragePrefs.saveFolder(this, null, null)
+                    Snackbar.make(
+                        binding.root,
+                        getString(R.string.storage_text_folder_saved, path),
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                } else {
+                    Snackbar.make(
+                        binding.root,
+                        R.string.storage_text_folder_invalid,
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                }
             }
-        if (StoragePrefs.getFolderUri(this) != null) {
-            builder.setNeutralButton(R.string.storage_use_default) { _, _ ->
-                StoragePrefs.saveFolder(this, null, null)
-                Snackbar.make(
-                    binding.root,
-                    R.string.storage_default_folder,
-                    Snackbar.LENGTH_SHORT
-                ).show()
-            }
+            .show()
+    }
+
+    private fun defaultDownloadsPath(): String {
+        if (Build.VERSION.SDK_INT >= 29) return "/storage/emulated/0/Download"
+        return runCatching {
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                .absolutePath
+        }.getOrDefault("/storage/emulated/0/Download")
+    }
+
+    private fun showStorageOnboardingDialog() {
+        if (StoragePrefs.getFolderUri(this) != null ||
+            StoragePrefs.getTextFolder(this) != null
+        ) {
+            return
         }
-        builder.show()
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.storage_onboarding_title)
+            .setMessage(R.string.storage_onboarding_message)
+            .setItems(
+                arrayOf(
+                    getString(R.string.storage_onboarding_default),
+                    getString(R.string.storage_onboarding_custom),
+                    getString(R.string.storage_onboarding_text)
+                )
+            ) { _, which ->
+                when (which) {
+                    0 -> {
+                        StoragePrefs.saveFolder(this, null, null)
+                        StoragePrefs.setTextFolder(this, null)
+                    }
+                    1 -> launchDocumentTree(folderPicker)
+                    2 -> showTextFolderDialog()
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun requestBatteryExemption() {
+        if (Build.VERSION.SDK_INT < 23) return
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (pm.isIgnoringBatteryOptimizations(packageName)) return
+        runCatching {
+            startActivity(
+                Intent(
+                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    Uri.parse("package:$packageName")
+                )
+            )
+        }.onFailure {
+            Snackbar.make(
+                binding.root,
+                R.string.battery_request_failed,
+                Snackbar.LENGTH_LONG
+            ).show()
+        }
     }
 
     private fun showSettingsDialog() {
@@ -423,10 +563,12 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val checkAutoStart = view.findViewById<CheckBox>(R.id.check_autostart)
         val checkServerBackground = view.findViewById<CheckBox>(R.id.check_server_background)
         val checkServerAutostart = view.findViewById<CheckBox>(R.id.check_server_autostart)
+        val checkBattery = view.findViewById<CheckBox>(R.id.check_battery)
         checkBackground.isChecked = StoragePrefs.isBackgroundEnabled(this)
         checkAutoStart.isChecked = StoragePrefs.isAutoStartEnabled(this)
         checkServerBackground.isChecked = StoragePrefs.isServerBackgroundEnabled(this)
         checkServerAutostart.isChecked = StoragePrefs.isServerAutoStartEnabled(this)
+        checkBattery.isChecked = StoragePrefs.isBatteryExemptEnabled(this)
 
         val concurrentOptions = resources.getStringArray(R.array.concurrent_options)
         val spinnerConcurrent = view.findViewById<Spinner>(R.id.spinner_concurrent)
@@ -471,8 +613,12 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 StoragePrefs.setAutoStartEnabled(this, checkAutoStart.isChecked)
                 StoragePrefs.setServerBackgroundEnabled(this, checkServerBackground.isChecked)
                 StoragePrefs.setServerAutoStartEnabled(this, checkServerAutostart.isChecked)
+                StoragePrefs.setBatteryExemptEnabled(this, checkBattery.isChecked)
                 if (checkServerBackground.isChecked && !App.httpServer.isAlive) {
                     runCatching { App.httpServer.startServer() }
+                }
+                if (checkBattery.isChecked) {
+                    requestBatteryExemption()
                 }
                 StoragePrefs.setMaxConcurrent(this, spinnerConcurrent.selectedItemPosition + 1)
                 StoragePrefs.setSpeedLimitKbps(this, speedKbps[spinnerSpeed.selectedItemPosition])
@@ -509,6 +655,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         if (server.isAlive) {
             builder.setPositiveButton(R.string.remote_stop) { _, _ ->
                 server.stopServer()
+                updateServerStatus()
                 val anyActive = App.engine.items.value.any {
                     it.state == DownloadState.DOWNLOADING || it.state == DownloadState.PENDING
                 }
@@ -521,6 +668,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             builder.setPositiveButton(R.string.remote_start) { _, _ ->
                 runCatching { server.startServer() }
                     .onSuccess {
+                        updateServerStatus()
                         Snackbar.make(
                             binding.root,
                             getString(R.string.remote_started, server.listeningPort),
@@ -594,6 +742,20 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             .show()
     }
 
+    private fun showAboutDialog() {
+        val version = runCatching {
+            packageManager.getPackageInfo(packageName, 0).versionName
+        }.getOrDefault("1.0")
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.about_title)
+            .setMessage(
+                getString(R.string.about_version, version) + "\n\n" +
+                    getString(R.string.about_changelog)
+            )
+            .setPositiveButton(R.string.ok, null)
+            .show()
+    }
+
     private fun openDownload(item: DownloadItem) {
         if (item.state != DownloadState.COMPLETED) return
         val mime = MimeTypes.forFile(item.fileName)
@@ -618,5 +780,9 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 Snackbar.make(binding.root, R.string.no_app_to_open, Snackbar.LENGTH_SHORT).show()
             }
         }
+    }
+
+    companion object {
+        private const val EXTRA_ADD_DOWNLOAD = "com.tasirin.httpdownloadmanager.ADD_DOWNLOAD"
     }
 }

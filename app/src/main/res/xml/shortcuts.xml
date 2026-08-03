@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="add_download"
+        android:enabled="true"
+        android:icon="@drawable/ic_add"
+        android:shortcutShortLabel="@string/shortcut_add_download"
+        android:shortcutLongLabel="@string/shortcut_add_download">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="com.tasirin.httpdownloadmanager"
+            android:targetClass="com.tasirin.httpdownloadmanager.MainActivity">
+            <extra
+                android:name="com.tasirin.httpdownloadmanager.ADD_DOWNLOAD"
+                android:value="true" />
+        </intent>
+    </shortcut>
+</shortcuts>

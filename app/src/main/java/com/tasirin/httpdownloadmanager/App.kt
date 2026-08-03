@@ -14,6 +14,7 @@ class App : Application() {
         super.onCreate()
         installCrashLogger()
         engine = DownloadEngine(this)
+        runCatching { engine.cleanupOrphans() }
         httpServer = HttpControlServer(this)
     }
 

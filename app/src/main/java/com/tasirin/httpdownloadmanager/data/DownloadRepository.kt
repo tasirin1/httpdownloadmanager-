@@ -41,6 +41,8 @@ class DownloadRepository(context: Context) {
                             headers = o.optString("headers"),
                             speedLimitKbps = o.optInt("speedLimitKbps", 0),
                             priority = o.optInt("priority", 0),
+                            checksum = o.optString("checksum"),
+                            checksumVerified = o.optBoolean("checksumVerified", false),
                             segments = parseSegments(o)
                         )
                     )
@@ -70,6 +72,8 @@ class DownloadRepository(context: Context) {
             o.put("headers", item.headers)
             o.put("speedLimitKbps", item.speedLimitKbps)
             o.put("priority", item.priority)
+            o.put("checksum", item.checksum)
+            o.put("checksumVerified", item.checksumVerified)
             val segArr = JSONArray()
             item.segments.forEach { seg ->
                 val so = JSONObject()

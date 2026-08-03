@@ -29,6 +29,8 @@ data class DownloadItem(
     val headers: String = "",
     val speedLimitKbps: Int = 0,
     val priority: Int = 0,
+    val checksum: String = "",
+    val checksumVerified: Boolean = false,
     val segments: List<DownloadSegment> = emptyList(),
     val speedBps: Long = 0,
     val etaSeconds: Long = 0

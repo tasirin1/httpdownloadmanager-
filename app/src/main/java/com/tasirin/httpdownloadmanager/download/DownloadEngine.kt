@@ -31,6 +31,7 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLDecoder
+import java.security.MessageDigest
 import java.util.UUID
 
 class DownloadEngine(private val context: Context) {
@@ -56,7 +57,8 @@ class DownloadEngine(private val context: Context) {
         password: String = "",
         headers: String = "",
         speedLimitKbps: Int = 0,
-        priority: Int = 0
+        priority: Int = 0,
+        checksum: String = ""
     ) {
         val cleanUrl = url.trim()
         if (cleanUrl.isEmpty()) return
@@ -75,7 +77,8 @@ class DownloadEngine(private val context: Context) {
             password = password,
             headers = headers,
             speedLimitKbps = speedLimitKbps,
-            priority = priority
+            priority = priority,
+            checksum = checksum
         )
         update(_items.value + item)
         StoragePrefs.addRecentUrl(context, cleanUrl)
@@ -132,6 +135,10 @@ class DownloadEngine(private val context: Context) {
         completed.forEach { FileSaver(context).deleteFiles(it) }
         val ids = completed.map { it.id }.toSet()
         update(_items.value.filterNot { ids.contains(it.id) })
+    }
+
+    fun cleanupOrphans() {
+        FileSaver(context).cleanupOrphanPartials(_items.value)
     }
 
     fun rename(id: String, newName: String) {
@@ -237,6 +244,12 @@ class DownloadEngine(private val context: Context) {
 
     private suspend fun runDownload(item: DownloadItem) {
         val saver = FileSaver(context)
+        val freeNow = saver.freeBytes()
+        if (freeNow < MIN_FREE_BYTES) {
+            throw IOException(
+                "Penyimpanan hampir penuh (sisa ${formatBytes(freeNow)})"
+            )
+        }
         val globalLimit = StoragePrefs.speedLimitKbps(context)
         val limit = if (item.speedLimitKbps > 0) item.speedLimitKbps else globalLimit
         val throttle = SpeedThrottle(limit)
@@ -329,6 +342,12 @@ class DownloadEngine(private val context: Context) {
             downloaded = 0
             partialFile.writeBytes(ByteArray(0))
         }
+        if (total > 0 && saver.freeBytes() < total) {
+            throw IOException(
+                "Penyimpanan tidak cukup: butuh ${formatBytes(total)}, " +
+                    "tersedia ${formatBytes(saver.freeBytes())}"
+            )
+        }
 
         throttle.reset(downloaded)
         val input = conn.inputStream
@@ -367,6 +386,9 @@ class DownloadEngine(private val context: Context) {
         verifySize(item.id, downloaded, total)
 
         val published = saver.publish(partialFile, fileName)
+        verifyChecksum(item.id, fileName, published, saver)?.let {
+            throw IOException(it)
+        }
         speedTracker.reset(item.id)
         updateItem(item.id) {
             it.copy(
@@ -396,6 +418,12 @@ class DownloadEngine(private val context: Context) {
             val resolvedName = resolveFinalName(item, headers)
             fileName = resolvedName
             segments = createSegments(total)
+            if (total > 0 && saver.freeBytes() < total) {
+                throw IOException(
+                    "Penyimpanan tidak cukup: butuh ${formatBytes(total)}, " +
+                        "tersedia ${formatBytes(saver.freeBytes())}"
+                )
+            }
             updateItem(item.id) {
                 it.copy(
                     fileName = fileName,
@@ -422,6 +450,9 @@ class DownloadEngine(private val context: Context) {
 
         val merged = saver.mergeSegments(fileName, segments.size)
         val published = saver.publish(merged, fileName)
+        verifyChecksum(item.id, fileName, published, saver)?.let {
+            throw IOException(it)
+        }
         speedTracker.reset(item.id)
         updateItem(item.id) {
             it.copy(
@@ -545,6 +576,75 @@ class DownloadEngine(private val context: Context) {
         }
     }
 
+    private fun parseChecksum(raw: String): Pair<String, String>? {
+        val clean = raw.trim()
+        if (clean.isEmpty()) return null
+        val (algo, rest) = when {
+            clean.startsWith("md5:", ignoreCase = true) -> "MD5" to clean.substring(4)
+            clean.startsWith("sha1:", ignoreCase = true) -> "SHA-1" to clean.substring(5)
+            clean.startsWith("sha256:", ignoreCase = true) -> "SHA-256" to clean.substring(7)
+            else -> "MD5" to clean
+        }
+        val value = rest.trim().lowercase()
+        if (value.length < 16) return null
+        return algo to value
+    }
+
+    private fun verifyChecksum(
+        itemId: String,
+        fileName: String,
+        published: FileSaver.PublishResult,
+        saver: FileSaver
+    ): String? {
+        val current = _items.value.find { it.id == itemId } ?: return null
+        val expected = parseChecksum(current.checksum) ?: saver.sidecarChecksum(
+            current.copy(
+                contentUri = published.contentUri ?: current.contentUri,
+                filePath = published.filePath ?: current.filePath
+            )
+        ) ?: return null
+        val (algo, hex) = expected
+        val digest = computeDigest(published, algo, saver)
+            ?: return "Tidak dapat membaca file untuk verifikasi checksum"
+        if (!digest.equals(hex, ignoreCase = true)) {
+            return "Checksum $algo tidak cocok (diharapkan $hex, didapat $digest)"
+        }
+        updateItem(itemId) { it.copy(checksumVerified = true) }
+        return null
+    }
+
+    private fun computeDigest(
+        published: FileSaver.PublishResult,
+        algo: String,
+        saver: FileSaver
+    ): String? = runCatching {
+        val input = when {
+            !published.filePath.isNullOrEmpty() -> File(published.filePath).inputStream()
+            !published.contentUri.isNullOrEmpty() ->
+                context.contentResolver.openInputStream(Uri.parse(published.contentUri))
+            else -> null
+        } ?: return null
+        input.use { stream ->
+            val md = MessageDigest.getInstance(algo)
+            val buf = ByteArray(BUFFER_SIZE)
+            while (true) {
+                val read = stream.read(buf)
+                if (read == -1) break
+                md.update(buf, 0, read)
+            }
+            md.digest().joinToString("") { "%02x".format(it) }
+        }
+    }.getOrNull()
+
+    private fun formatBytes(bytes: Long): String {
+        if (bytes < 1024) return "$bytes B"
+        val kb = bytes / 1024.0
+        if (kb < 1024) return "%.1f KB".format(kb)
+        val mb = kb / 1024.0
+        if (mb < 1024) return "%.1f MB".format(mb)
+        return "%.2f GB".format(mb / 1024.0)
+    }
+
     private fun contentLength(conn: HttpURLConnection): Long {
         return conn.getHeaderField("Content-Length")?.trim()?.toLongOrNull() ?: -1L
     }
@@ -634,6 +734,7 @@ class DownloadEngine(private val context: Context) {
         private const val SEGMENT_MIN_BYTES = 5L * 1024 * 1024
         private const val SEGMENT_COUNT = 4
         private const val RETRY_DELAY_MS = 5_000L
+        private const val MIN_FREE_BYTES = 2L * 1024 * 1024
     }
 }
 

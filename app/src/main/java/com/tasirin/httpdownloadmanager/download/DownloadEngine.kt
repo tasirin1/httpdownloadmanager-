@@ -593,12 +593,16 @@ class DownloadEngine(private val context: Context) {
     }
 
     private fun ensureServiceRunning() {
-        val intent = Intent(context, DownloadService::class.java)
-        if (Build.VERSION.SDK_INT >= 26) {
-            context.startForegroundService(intent)
-        } else {
-            context.startService(intent)
+        runCatching {
+            val intent = Intent(context, DownloadService::class.java)
+            if (Build.VERSION.SDK_INT >= 26) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
         }
+        // Jika foreground service gagal dimulai (mis. pembatasan Android 12+ saat
+        // di latar belakang), download tetap dijalankan di proses aplikasi.
     }
 
     @Synchronized

@@ -15,11 +15,13 @@ class BootReceiver : BroadcastReceiver() {
         val downloadAutostart = StoragePrefs.isAutoStartEnabled(context)
         val serverAutostart = StoragePrefs.isServerAutoStartEnabled(context)
         if (!downloadAutostart && !serverAutostart) return
-        val serviceIntent = Intent(context, DownloadService::class.java)
-        if (Build.VERSION.SDK_INT >= 26) {
-            context.startForegroundService(serviceIntent)
-        } else {
-            context.startService(serviceIntent)
+        runCatching {
+            val serviceIntent = Intent(context, DownloadService::class.java)
+            if (Build.VERSION.SDK_INT >= 26) {
+                context.startForegroundService(serviceIntent)
+            } else {
+                context.startService(serviceIntent)
+            }
         }
     }
 }

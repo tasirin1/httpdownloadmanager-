@@ -2,6 +2,7 @@ package com.tasirin.httpdownloadmanager.remote
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import com.tasirin.httpdownloadmanager.App
 import com.tasirin.httpdownloadmanager.data.DownloadState
 import com.tasirin.httpdownloadmanager.util.MimeTypes
@@ -13,6 +14,9 @@ import java.io.FileInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.net.Inet4Address
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.net.NetworkInterface
 import java.net.URLDecoder
 
@@ -30,6 +34,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(PORT) {
                 session.method == Method.POST && session.uri == "/api/add" -> addDownload(session)
                 session.method == Method.POST && session.uri == "/api/action" -> runAction(session)
                 session.method == Method.GET && session.uri.startsWith("/file/") -> serveFile(session)
+                session.method == Method.GET && session.uri == "/api/log" -> crashLog()
                 else -> newFixedLengthResponse(
                     Response.Status.NOT_FOUND,
                     "text/plain; charset=utf-8",
@@ -37,6 +42,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(PORT) {
                 )
             }
         } catch (e: Exception) {
+            logError(e)
             newFixedLengthResponse(
                 Response.Status.INTERNAL_ERROR,
                 "text/plain; charset=utf-8",
@@ -218,7 +224,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(PORT) {
     private fun readForm(session: IHTTPSession): Map<String, String> {
         val map = mutableMapOf<String, String>()
         session.parms.forEach { (k, v) -> map[k] = v }
-        val length = session.headers["content-length"]?.toIntOrNull() ?: 0
+        val length = (session.headers["content-length"]?.toLongOrNull() ?: 0L)
+            .coerceIn(0L, MAX_BODY_SIZE).toInt()
         if (length > 0) {
             val bytes = ByteArray(length)
             var offset = 0
@@ -240,6 +247,28 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(PORT) {
         return map
     }
 
+    private fun crashLog(): Response {
+        val text = runCatching {
+            val file = File(context.filesDir, App.CRASH_LOG_FILE)
+            if (file.exists()) file.readText() else "Belum ada log error."
+        }.getOrDefault("Tidak dapat membaca log.")
+        return newFixedLengthResponse(Response.Status.OK, "text/plain; charset=utf-8", text)
+    }
+
+    private fun logError(e: Exception) {
+        runCatching {
+            val file = File(context.filesDir, App.CRASH_LOG_FILE)
+            val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
+            val text = buildString {
+                appendLine("=== $stamp [serve] ===")
+                appendLine(Log.getStackTraceString(e))
+                appendLine()
+            }
+            val existing = if (file.exists()) file.readText() else ""
+            file.writeText((existing + text).takeLast(100_000))
+        }
+    }
+
     private fun jsonResponse(obj: JSONObject): Response {
         return newFixedLengthResponse(
             Response.Status.OK,
@@ -250,6 +279,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(PORT) {
 
     companion object {
         const val PORT = 8080
+        private const val MAX_BODY_SIZE = 1_048_576L
 
         fun ipv4Addresses(): List<String> = runCatching {
             NetworkInterface.getNetworkInterfaces().toList().flatMap { ni ->

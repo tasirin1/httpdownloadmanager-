@@ -31,13 +31,21 @@
   a.stream { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
   a.dl { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
   select { font-size: 15px; padding: 10px; border-radius: 8px; border: 1px solid #cbd2dd; background: #fff; }
+  #logBox { background: #fff; border-radius: 10px; padding: 12px; margin-bottom: 14px; }
+  #logBox pre { background: #f6f7f9; border-radius: 8px; padding: 10px; font-size: 12px; max-height: 300px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+  #logBox button { margin-top: 8px; }
   .actions button { padding: 6px 12px; font-size: 13px; background: #eef1f6; color: #1c1c1c; border: 1px solid #cbd2dd; }
 </style>
 </head>
 <body>
 <div class="header">
   <h1>&#11015; Download Manager</h1>
+  <button id="logBtn" class="btn-ghost" type="button">Log error</button>
   <button id="newBtn" class="new-btn" type="button">+ New Download</button>
+</div>
+<div id="logBox" class="hidden">
+  <pre id="logText"></pre>
+  <button id="logClose" type="button" class="btn-ghost">Tutup</button>
 </div>
 <form id="addForm" class="hidden">
   <input id="url" type="url" placeholder="URL file (https://…)" required>
@@ -80,6 +88,22 @@ function toggleAddForm(show) {
 
 newBtn.addEventListener('click', function () {
   toggleAddForm(addForm.classList.contains('hidden'));
+});
+
+const logBtn = document.getElementById('logBtn');
+const logBox = document.getElementById('logBox');
+const logText = document.getElementById('logText');
+logBtn.addEventListener('click', async function () {
+  try {
+    const res = await fetch(API + '/api/log');
+    logText.textContent = await res.text();
+  } catch (e) {
+    logText.textContent = 'Gagal mengambil log: ' + e;
+  }
+  logBox.classList.remove('hidden');
+});
+document.getElementById('logClose').addEventListener('click', function () {
+  logBox.classList.add('hidden');
 });
 document.getElementById('cancelAdd').addEventListener('click', function () {
   toggleAddForm(false);

@@ -26,7 +26,7 @@ class DownloadService : Service() {
     override fun onCreate() {
         super.onCreate()
         NotificationHelper.createChannel(this)
-        startForegroundCompat()
+        runCatching { startForegroundCompat() }
         if (StoragePrefs.isBackgroundEnabled(this)) {
             App.engine.resumeInterrupted()
         }
@@ -35,19 +35,21 @@ class DownloadService : Service() {
         }
         scope.launch {
             App.engine.items.collect { items ->
-                val active = items.any {
-                    it.state == DownloadState.DOWNLOADING || it.state == DownloadState.PENDING
-                }
-                val serverActive = StoragePrefs.isServerBackgroundEnabled(this@DownloadService) &&
-                    App.httpServer.isAlive
-                NotificationHelper.updateNotification(this@DownloadService, items, serverActive)
-                DownloadWidgetProvider.update(this@DownloadService, items)
-                if (!active && !serverActive) {
-                    ServiceCompat.stopForeground(
-                        this@DownloadService,
-                        ServiceCompat.STOP_FOREGROUND_REMOVE
-                    )
-                    stopSelf()
+                runCatching {
+                    val active = items.any {
+                        it.state == DownloadState.DOWNLOADING || it.state == DownloadState.PENDING
+                    }
+                    val serverActive = StoragePrefs.isServerBackgroundEnabled(this@DownloadService) &&
+                        App.httpServer.isAlive
+                    NotificationHelper.updateNotification(this@DownloadService, items, serverActive)
+                    DownloadWidgetProvider.update(this@DownloadService, items)
+                    if (!active && !serverActive) {
+                        ServiceCompat.stopForeground(
+                            this@DownloadService,
+                            ServiceCompat.STOP_FOREGROUND_REMOVE
+                        )
+                        stopSelf()
+                    }
                 }
             }
         }

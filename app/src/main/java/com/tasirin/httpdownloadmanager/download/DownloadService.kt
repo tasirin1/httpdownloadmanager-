@@ -9,6 +9,7 @@ import androidx.core.app.ServiceCompat
 import com.tasirin.httpdownloadmanager.App
 import com.tasirin.httpdownloadmanager.data.DownloadState
 import com.tasirin.httpdownloadmanager.util.NotificationHelper
+import com.tasirin.httpdownloadmanager.util.StoragePrefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,6 +26,9 @@ class DownloadService : Service() {
         super.onCreate()
         NotificationHelper.createChannel(this)
         startForegroundCompat()
+        if (StoragePrefs.isBackgroundEnabled(this)) {
+            App.engine.resumeInterrupted()
+        }
         scope.launch {
             App.engine.items.collect { items ->
                 val active = items.any {
@@ -42,7 +46,7 @@ class DownloadService : Service() {
         }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_NOT_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
 
     private fun startForegroundCompat() {
         val notification = NotificationHelper.foregroundNotification(this)

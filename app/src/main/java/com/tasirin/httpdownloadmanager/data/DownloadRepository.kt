@@ -34,7 +34,8 @@ class DownloadRepository(context: Context) {
                             contentUri = o.optString("contentUri").ifEmpty { null },
                             filePath = o.optString("filePath").ifEmpty { null },
                             addedAt = o.optLong("addedAt", 0),
-                            nameIsCustom = o.optBoolean("nameIsCustom", false)
+                            nameIsCustom = o.optBoolean("nameIsCustom", false),
+                            autoResume = o.optBoolean("autoResume", false)
                         )
                     )
                 }
@@ -57,6 +58,7 @@ class DownloadRepository(context: Context) {
             item.filePath?.let { o.put("filePath", it) }
             o.put("addedAt", item.addedAt)
             o.put("nameIsCustom", item.nameIsCustom)
+            o.put("autoResume", item.autoResume)
             arr.put(o)
         }
         prefs.edit().putString(KEY_ITEMS, arr.toString()).apply()

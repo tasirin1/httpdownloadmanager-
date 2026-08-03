@@ -12,6 +12,7 @@ Aplikasi download manager sederhana untuk **Android 5.0 (API 21) ke atas**, diba
 - Buka file selesai dengan aplikasi lain
 - Nama file otomatis menyesuaikan server (header Content-Disposition/Content-Type) jika tidak diisi manual
 - Remote control dari browser di perangkat lain via HTTP server bawaan (LAN)
+- Berjalan di latar belakang (foreground service) + resume otomatis download yang terputus setelah restart/boot
 - Pilihan lokasi penyimpanan: Folder Downloads (default) atau folder kustom (internal/SD card via Storage Access Framework)
 - File tersimpan di folder Downloads publik (Android < 10) / MediaStore Downloads (Android 10+) jika folder kustom tidak dipilih
 - Tombol "Bersihkan yang selesai" dan "Penyimpanan" di menu toolbar
@@ -32,6 +33,15 @@ Untuk memilih lokasi lain (misalnya folder di SD card):
 4. Untuk kembali ke default, buka **Penyimpanan** lagi lalu tekan **Pakai default**
 
 Izin akses folder bersifat persisten (bertahan setelah aplikasi ditutup/di-restart).
+
+## Latar Belakang & Auto Start
+
+- Download berjalan di **foreground service**, tetap berjalan saat aplikasi ditutup / layar terkunci
+- Jika proses dihentikan sistem, download yang sedang berjalan otomatis dilanjutkan saat aplikasi/perangkat aktif kembali
+- **Mulai otomatis saat boot**: setelah perangkat dinyalakan, aplikasi langsung melanjutkan download yang tertunda
+- Pengaturan di menu **⋮ → Pengaturan**: toggle *"Lanjutkan download yang terputus otomatis"* dan *"Mulai otomatis saat perangkat boot"*
+- Download yang Anda jeda manual tidak akan dilanjutkan otomatis
+- Catatan: beberapa vendor (MIUI, dll.) punya pembatasan baterai ketat — aktifkan *auto-start* di pengaturan sistem agar service tidak dimatikan
 
 ## Remote dari Browser (HTTP Server)
 
@@ -103,6 +113,7 @@ app/src/main/java/com/tasirin/httpdownloadmanager/
 ├── download/
 │   ├── DownloadEngine.kt    # Logika unduh, resume (Range), jeda, batal
 │   └── DownloadService.kt   # Foreground service + notifikasi
+├── receiver/BootReceiver.kt  # Mulai otomatis saat boot
 ├── remote/HttpControlServer.kt # HTTP server untuk remote via browser
 ├── ui/DownloadAdapter.kt    # RecyclerView adapter
 └── util/

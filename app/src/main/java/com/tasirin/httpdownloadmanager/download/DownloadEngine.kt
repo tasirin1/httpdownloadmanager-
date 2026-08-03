@@ -34,6 +34,9 @@ class DownloadEngine(private val context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val jobs = mutableMapOf<String, Job>()
 
+    @Volatile
+    private var interruptedResumed = false
+
     private val _items = MutableStateFlow<List<DownloadItem>>(
         repository.load().sortedByDescending { it.addedAt }
     )
@@ -51,7 +54,8 @@ class DownloadEngine(private val context: Context) {
             state = DownloadState.PENDING,
             bytesDownloaded = 0,
             totalBytes = 0,
-            nameIsCustom = customName.isNotEmpty()
+            nameIsCustom = customName.isNotEmpty(),
+            autoResume = true
         )
         update(_items.value + item)
         start(item)
@@ -59,14 +63,28 @@ class DownloadEngine(private val context: Context) {
 
     fun pause(id: String) {
         jobs.remove(id)?.cancel()
-        updateItem(id) { it.copy(state = DownloadState.PAUSED) }
+        updateItem(id) { it.copy(state = DownloadState.PAUSED, autoResume = false) }
     }
 
     fun resume(id: String) {
         val item = _items.value.find { it.id == id } ?: return
         if (item.state != DownloadState.PAUSED && item.state != DownloadState.FAILED) return
-        updateItem(item.id) { it.copy(state = DownloadState.PENDING) }
-        start(item.copy(state = DownloadState.PENDING))
+        updateItem(item.id) { it.copy(state = DownloadState.PENDING, autoResume = true) }
+        start(item.copy(state = DownloadState.PENDING, autoResume = true))
+    }
+
+    fun resumeInterrupted() {
+        if (interruptedResumed) return
+        interruptedResumed = true
+        _items.value.filter {
+            it.autoResume && (it.state == DownloadState.PAUSED || it.state == DownloadState.PENDING)
+        }.forEach { item ->
+            if (item.state == DownloadState.PAUSED) {
+                resume(item.id)
+            } else {
+                start(item)
+            }
+        }
     }
 
     fun cancel(id: String) {
@@ -97,7 +115,9 @@ class DownloadEngine(private val context: Context) {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                updateItem(item.id) { it.copy(state = DownloadState.FAILED, error = e.message) }
+                updateItem(item.id) {
+                    it.copy(state = DownloadState.FAILED, error = e.message, autoResume = false)
+                }
             }
         }
         jobs[item.id] = job
@@ -182,7 +202,8 @@ class DownloadEngine(private val context: Context) {
                     bytesDownloaded = downloaded,
                     totalBytes = if (total > 0) total else downloaded,
                     contentUri = published.contentUri,
-                    filePath = published.filePath
+                    filePath = published.filePath,
+                    autoResume = false
                 )
             }
         } finally {

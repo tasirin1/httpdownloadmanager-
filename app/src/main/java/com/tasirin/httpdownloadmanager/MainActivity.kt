@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.CheckBox
 import android.widget.EditText
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -79,6 +80,9 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         }
 
         requestPermissionsIfNeeded()
+        if (StoragePrefs.isBackgroundEnabled(this)) {
+            App.engine.resumeInterrupted()
+        }
     }
 
     private fun requestPermissionsIfNeeded() {
@@ -138,6 +142,10 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 showRemoteDialog()
                 true
             }
+            R.id.action_settings -> {
+                showSettingsDialog()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -173,6 +181,23 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             }
         }
         builder.show()
+    }
+
+    private fun showSettingsDialog() {
+        val view = layoutInflater.inflate(R.layout.dialog_settings, null)
+        val checkBackground = view.findViewById<CheckBox>(R.id.check_background)
+        val checkAutoStart = view.findViewById<CheckBox>(R.id.check_autostart)
+        checkBackground.isChecked = StoragePrefs.isBackgroundEnabled(this)
+        checkAutoStart.isChecked = StoragePrefs.isAutoStartEnabled(this)
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.action_settings)
+            .setView(view)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.save) { _, _ ->
+                StoragePrefs.setBackgroundEnabled(this, checkBackground.isChecked)
+                StoragePrefs.setAutoStartEnabled(this, checkAutoStart.isChecked)
+            }
+            .show()
     }
 
     private fun showRemoteDialog() {

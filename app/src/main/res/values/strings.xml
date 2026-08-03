@@ -29,6 +29,10 @@
     <string name="remote_message">Status: %1$s\n\nBuka dari browser di perangkat lain:\n%2$s</string>
     <string name="remote_started">Server aktif di port %1$d</string>
     <string name="remote_start_failed">Gagal memulai server: %1$s</string>
+    <string name="action_settings">Pengaturan</string>
+    <string name="settings_background">Lanjutkan download yang terputus otomatis (latar belakang)</string>
+    <string name="settings_autostart">Mulai otomatis saat perangkat boot</string>
+    <string name="save">Simpan</string>
     <string name="empty_hint">Belum ada download.\nKetuk tombol + untuk menambah URL.</string>
     <string name="no_app_to_open">Tidak ada aplikasi untuk membuka file ini</string>
 

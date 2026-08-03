@@ -8,6 +8,8 @@ object StoragePrefs {
     private const val PREFS = "storage_settings"
     private const val KEY_FOLDER_URI = "folder_uri"
     private const val KEY_FOLDER_NAME = "folder_name"
+    private const val KEY_BACKGROUND = "background_download"
+    private const val KEY_AUTOSTART = "auto_start_boot"
 
     fun getFolderUri(context: Context): Uri? {
         val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -23,6 +25,26 @@ object StoragePrefs {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_FOLDER_URI, uri?.toString())
             .putString(KEY_FOLDER_NAME, name)
+            .apply()
+    }
+
+    fun isBackgroundEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_BACKGROUND, true)
+
+    fun setBackgroundEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_BACKGROUND, enabled)
+            .apply()
+    }
+
+    fun isAutoStartEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_AUTOSTART, true)
+
+    fun setAutoStartEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_AUTOSTART, enabled)
             .apply()
     }
 }

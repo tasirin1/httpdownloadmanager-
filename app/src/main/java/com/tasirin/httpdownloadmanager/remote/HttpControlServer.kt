@@ -6,6 +6,7 @@ import android.util.Log
 import com.tasirin.httpdownloadmanager.App
 import com.tasirin.httpdownloadmanager.data.DownloadState
 import com.tasirin.httpdownloadmanager.util.MimeTypes
+import com.tasirin.httpdownloadmanager.util.StoragePrefs
 import fi.iki.elonen.NanoHTTPD
 import org.json.JSONArray
 import org.json.JSONObject
@@ -14,6 +15,7 @@ import java.io.FileInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.net.Inet4Address
+import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -29,17 +31,22 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(PORT) {
     override fun serve(session: IHTTPSession): Response {
         return try {
             when {
-                session.method == Method.GET && session.uri == "/" -> htmlPage()
-                session.method == Method.GET && session.uri == "/api/downloads" -> downloadsJson()
-                session.method == Method.POST && session.uri == "/api/add" -> addDownload(session)
-                session.method == Method.POST && session.uri == "/api/action" -> runAction(session)
-                session.method == Method.GET && session.uri.startsWith("/file/") -> serveFile(session)
-                session.method == Method.GET && session.uri == "/api/log" -> crashLog()
-                else -> newFixedLengthResponse(
-                    Response.Status.NOT_FOUND,
-                    "text/plain; charset=utf-8",
-                    "Not found"
-                )
+                session.method == Method.POST && session.uri == "/api/login" -> login(session)
+                pinOk(session) -> when {
+                    session.method == Method.GET && session.uri == "/" -> htmlPage()
+                    session.method == Method.GET && session.uri == "/api/downloads" -> downloadsJson()
+                    session.method == Method.POST && session.uri == "/api/add" -> addDownload(session)
+                    session.method == Method.POST && session.uri == "/api/action" -> runAction(session)
+                    session.method == Method.GET && session.uri.startsWith("/file/") -> serveFile(session)
+                    session.method == Method.GET && session.uri == "/api/log" -> crashLog()
+                    else -> newFixedLengthResponse(
+                        Response.Status.NOT_FOUND,
+                        "text/plain; charset=utf-8",
+                        "Not found"
+                    )
+                }
+                session.method == Method.GET && session.uri == "/" -> loginPage("")
+                else -> unauthorized()
             }
         } catch (e: Exception) {
             logError(e)
@@ -64,6 +71,83 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(PORT) {
     fun stopServer() {
         super.stop()
     }
+
+    private fun pinEnabled(): Boolean =
+        !StoragePrefs.getServerPin(context).isNullOrEmpty()
+
+    private fun pinOk(session: IHTTPSession): Boolean {
+        if (!pinEnabled()) return true
+        val expected = sha256(StoragePrefs.getServerPin(context).orEmpty())
+        val cookie = session.headers["cookie"] ?: return false
+        return cookie.split(";").any {
+            it.trim().startsWith("dm_pin=$expected")
+        }
+    }
+
+    private fun sha256(value: String): String = runCatching {
+        val md = MessageDigest.getInstance("SHA-256")
+        md.digest(value.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+    }.getOrDefault("")
+
+    private fun login(session: IHTTPSession): Response {
+        val params = readForm(session)
+        val pin = params["pin"].orEmpty()
+        val stored = StoragePrefs.getServerPin(context).orEmpty()
+        return if (stored.isNotEmpty() && pin == stored) {
+            val r = newFixedLengthResponse(
+                Response.Status.REDIRECT,
+                "text/html",
+                "<html><body>OK</body></html>"
+            )
+            r.addHeader("Set-Cookie", "dm_pin=${sha256(stored)}; Max-Age=2592000; Path=/")
+            r.addHeader("Location", "/")
+            r
+        } else {
+            loginPage("PIN salah, coba lagi.")
+        }
+    }
+
+    private fun loginPage(error: String): Response {
+        val html = """<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PIN Diperlukan</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f2f4f8; margin: 0; padding: 24px; color: #1c1c1c; }
+  .box { background: #fff; border-radius: 12px; padding: 24px; max-width: 360px; margin: 40px auto; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  p { margin: 4px 0 12px; font-size: 14px; color: #555; }
+  input, button { font-size: 16px; padding: 12px; border-radius: 8px; border: 1px solid #cbd2dd; width: 100%; margin-bottom: 10px; }
+  button { background: #0D47A1; color: #fff; border: none; cursor: pointer; }
+  .err { color: #b00020; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>&#11015; Download Manager</h1>
+  <p>Masukkan PIN untuk mengakses server remote.</p>
+  <form method="POST" action="/api/login">
+    <input type="password" name="pin" placeholder="PIN" autofocus>
+    <button type="submit">Masuk</button>
+  </form>
+  <div class="err">$error</div>
+</div>
+</body>
+</html>"""
+        return newFixedLengthResponse(
+            Response.Status.OK, "text/html; charset=utf-8", html
+        )
+    }
+
+    private fun unauthorized(): Response = newFixedLengthResponse(
+        Response.Status.UNAUTHORIZED,
+        "application/json; charset=utf-8",
+        JSONObject().put("ok", false).put("error", "PIN diperlukan").toString()
+    )
 
     private fun htmlPage(): Response {
         val html = runCatching {

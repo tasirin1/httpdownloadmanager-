@@ -6,4 +6,5 @@
     <color name="ic_launcher_background">#0D47A1</color>
     <color name="status_on">#2E7D32</color>
     <color name="status_off">#B00020</color>
+    <color name="text_secondary">#757575</color>
 </resources>

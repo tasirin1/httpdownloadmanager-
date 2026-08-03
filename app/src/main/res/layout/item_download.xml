@@ -10,6 +10,8 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="@drawable/item_focus_bg"
+        android:focusable="true"
         android:orientation="vertical"
         android:padding="16dp">
 
@@ -55,6 +57,25 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:textAppearance="?attr/textAppearanceBodySmall"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/text_checksum_ok"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="@string/checksum_ok"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="@color/status_on"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/text_location"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="@color/text_secondary"
             android:visibility="gone" />
 
         <LinearLayout

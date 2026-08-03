@@ -13,8 +13,10 @@ import android.os.Environment
 import android.os.PowerManager
 import android.provider.DocumentsContract
 import android.provider.Settings
+import android.text.Editable
 import android.text.InputType
 import android.text.TextUtils
+import android.text.TextWatcher
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -120,12 +122,15 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         lifecycleScope.launch {
             App.engine.items.collect { items ->
                 runCatching {
-                    adapter.submitList(items)
+                    val filtered = applyFilter(items)
+                    adapter.submitList(filtered)
                     binding.emptyView.visibility =
-                        if (items.isEmpty()) View.VISIBLE else View.GONE
+                        if (filtered.isEmpty()) View.VISIBLE else View.GONE
                 }
             }
         }
+
+        setupFilterViews()
 
         requestPermissionsIfNeeded()
         runCatching {
@@ -150,6 +155,24 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     override fun onResume() {
         super.onResume()
         updateServerStatus()
+        updateStorageInfo()
+    }
+
+    private fun updateStorageInfo() {
+        val tv = findViewById<TextView>(R.id.storage_info) ?: return
+        tv.text = getString(
+            R.string.storage_remaining,
+            formatBytes(App.engine.freeSpaceBytes())
+        )
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        if (bytes < 1024) return "$bytes B"
+        val kb = bytes / 1024.0
+        if (kb < 1024) return "%.1f KB".format(kb)
+        val mb = kb / 1024.0
+        if (mb < 1024) return "%.1f MB".format(mb)
+        return "%.2f GB".format(mb / 1024.0)
     }
 
     private fun updateServerStatus() {
@@ -564,11 +587,13 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val checkServerBackground = view.findViewById<CheckBox>(R.id.check_server_background)
         val checkServerAutostart = view.findViewById<CheckBox>(R.id.check_server_autostart)
         val checkBattery = view.findViewById<CheckBox>(R.id.check_battery)
+        val pinInput = view.findViewById<EditText>(R.id.input_pin)
         checkBackground.isChecked = StoragePrefs.isBackgroundEnabled(this)
         checkAutoStart.isChecked = StoragePrefs.isAutoStartEnabled(this)
         checkServerBackground.isChecked = StoragePrefs.isServerBackgroundEnabled(this)
         checkServerAutostart.isChecked = StoragePrefs.isServerAutoStartEnabled(this)
         checkBattery.isChecked = StoragePrefs.isBatteryExemptEnabled(this)
+        pinInput.setText(StoragePrefs.getServerPin(this).orEmpty())
 
         val concurrentOptions = resources.getStringArray(R.array.concurrent_options)
         val spinnerConcurrent = view.findViewById<Spinner>(R.id.spinner_concurrent)
@@ -614,6 +639,10 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 StoragePrefs.setServerBackgroundEnabled(this, checkServerBackground.isChecked)
                 StoragePrefs.setServerAutoStartEnabled(this, checkServerAutostart.isChecked)
                 StoragePrefs.setBatteryExemptEnabled(this, checkBattery.isChecked)
+                StoragePrefs.setServerPin(
+                    this,
+                    pinInput.text?.toString()?.trim().orEmpty()
+                )
                 if (checkServerBackground.isChecked && !App.httpServer.isAlive) {
                     runCatching { App.httpServer.startServer() }
                 }
@@ -740,6 +769,88 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 )
             }
             .show()
+    }
+
+    private enum class DownloadFilter { ALL, ACTIVE, COMPLETED, FAILED }
+
+    private var currentFilter = DownloadFilter.ALL
+    private var searchQuery = ""
+
+    private fun setupFilterViews() {
+        val map = listOf(
+            R.id.filter_all to DownloadFilter.ALL,
+            R.id.filter_active to DownloadFilter.ACTIVE,
+            R.id.filter_completed to DownloadFilter.COMPLETED,
+            R.id.filter_failed to DownloadFilter.FAILED
+        )
+        map.forEach { (id, filter) ->
+            findViewById<TextView>(id)?.setOnClickListener {
+                currentFilter = filter
+                updateFilterColors()
+                refreshList()
+            }
+        }
+        updateFilterColors()
+        findViewById<EditText>(R.id.input_search)?.addTextChangedListener(
+            object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {
+                    searchQuery = s?.toString().orEmpty()
+                    refreshList()
+                }
+                override fun afterTextChanged(s: Editable?) {}
+            }
+        )
+    }
+
+    private fun updateFilterColors() {
+        val map = listOf(
+            R.id.filter_all to DownloadFilter.ALL,
+            R.id.filter_active to DownloadFilter.ACTIVE,
+            R.id.filter_completed to DownloadFilter.COMPLETED,
+            R.id.filter_failed to DownloadFilter.FAILED
+        )
+        map.forEach { (id, filter) ->
+            val tv = findViewById<TextView>(id) ?: return@forEach
+            val selected = filter == currentFilter
+            tv.setTextColor(
+                ContextCompat.getColor(
+                    this,
+                    if (selected) R.color.primary else R.color.text_secondary
+                )
+            )
+            tv.typeface = if (selected) android.graphics.Typeface.DEFAULT_BOLD else null
+        }
+    }
+
+    private fun refreshList() {
+        runCatching {
+            val filtered = applyFilter(App.engine.items.value)
+            adapter.submitList(filtered)
+            binding.emptyView.visibility =
+                if (filtered.isEmpty()) View.VISIBLE else View.GONE
+        }
+    }
+
+    private fun applyFilter(items: List<DownloadItem>): List<DownloadItem> {
+        val filtered = when (currentFilter) {
+            DownloadFilter.ALL -> items
+            DownloadFilter.ACTIVE -> items.filter {
+                it.state == DownloadState.DOWNLOADING || it.state == DownloadState.PENDING
+            }
+            DownloadFilter.COMPLETED -> items.filter { it.state == DownloadState.COMPLETED }
+            DownloadFilter.FAILED -> items.filter {
+                it.state == DownloadState.FAILED || it.state == DownloadState.CANCELLED
+            }
+        }
+        val q = searchQuery.trim().lowercase()
+        return if (q.isEmpty()) {
+            filtered
+        } else {
+            filtered.filter {
+                it.fileName.lowercase().contains(q) || it.url.lowercase().contains(q)
+            }
+        }
     }
 
     private fun showAboutDialog() {

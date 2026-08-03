@@ -10,6 +10,7 @@ import com.tasirin.httpdownloadmanager.R
 import com.tasirin.httpdownloadmanager.data.DownloadItem
 import com.tasirin.httpdownloadmanager.data.DownloadState
 import com.tasirin.httpdownloadmanager.databinding.ItemDownloadBinding
+import java.io.File
 import java.util.Locale
 
 class DownloadAdapter(private val listener: Listener) :
@@ -56,6 +57,28 @@ class DownloadAdapter(private val listener: Listener) :
                 formatSpeed(item.speedBps),
                 formatEta(item.etaSeconds)
             )
+        }
+
+        b.textChecksumOk.visibility =
+            if (item.state == DownloadState.COMPLETED && item.checksumVerified) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+        if (item.state == DownloadState.COMPLETED) {
+            val context = b.root.context
+            val location = when {
+                !item.filePath.isNullOrEmpty() -> {
+                    File(item.filePath).parent ?: item.filePath
+                }
+                !item.contentUri.isNullOrEmpty() ->
+                    context.getString(R.string.location_media_store)
+                else -> context.getString(R.string.location_internal)
+            }
+            b.textLocation.text = context.getString(R.string.location_label, location)
+            b.textLocation.visibility = View.VISIBLE
+        } else {
+            b.textLocation.visibility = View.GONE
         }
 
         b.buttonPause.visibility =

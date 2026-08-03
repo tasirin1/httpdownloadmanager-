@@ -113,6 +113,10 @@ document.getElementById('cancelAdd').addEventListener('click', function () {
 async function refresh() {
   try {
     const res = await fetch(API + '/api/downloads');
+    if (res.status === 401) {
+      document.getElementById('status').textContent = 'PIN diperlukan. Muat ulang halaman untuk login.';
+      return;
+    }
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     failCount = 0;

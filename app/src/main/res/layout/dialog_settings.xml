@@ -44,6 +44,21 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
+        android:text="@string/settings_pin_label"
+        android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+    <EditText
+        android:id="@+id/input_pin"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/settings_pin_hint"
+        android:inputType="numberPassword"
+        android:maxLength="10" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
         android:text="@string/settings_concurrent"
         android:textAppearance="?attr/textAppearanceBodyMedium" />
 

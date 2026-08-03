@@ -15,6 +15,7 @@ object StoragePrefs {
     private const val KEY_TEXT_FOLDER = "text_folder_path"
     private const val KEY_BATTERY_EXEMPT = "battery_exempt"
     private const val KEY_ONBOARDED = "storage_onboarded"
+    private const val KEY_SERVER_PIN = "server_pin"
     private const val KEY_MAX_CONCURRENT = "max_concurrent"
     private const val KEY_SPEED_LIMIT = "speed_limit_kbps"
     private const val KEY_MAX_RETRIES = "max_retries"
@@ -84,6 +85,16 @@ object StoragePrefs {
     fun setBatteryExemptEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putBoolean(KEY_BATTERY_EXEMPT, enabled)
+            .apply()
+    }
+
+    fun getServerPin(context: Context): String? =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_SERVER_PIN, null)?.takeIf { it.isNotBlank() }
+
+    fun setServerPin(context: Context, pin: String?) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_SERVER_PIN, pin?.trim()?.takeIf { it.isNotEmpty() })
             .apply()
     }
 

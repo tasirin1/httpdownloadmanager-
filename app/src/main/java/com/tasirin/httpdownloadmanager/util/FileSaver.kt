@@ -100,6 +100,19 @@ class FileSaver(context: Context) {
         StatFs(downloadDir.absolutePath).availableBytes
     }.getOrDefault(Long.MAX_VALUE)
 
+    fun destinationFreeBytes(): Long {
+        val textFolder = StoragePrefs.getTextFolder(appContext)
+        if (textFolder != null) {
+            val dir = File(textFolder)
+            if (dir.isDirectory) {
+                return runCatching {
+                    StatFs(dir.absolutePath).availableBytes
+                }.getOrDefault(freeBytes())
+            }
+        }
+        return freeBytes()
+    }
+
     fun openPublished(item: DownloadItem): java.io.InputStream? {
         return when {
             !item.contentUri.isNullOrEmpty() ->

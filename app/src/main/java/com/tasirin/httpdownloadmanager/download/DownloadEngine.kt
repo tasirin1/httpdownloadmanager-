@@ -142,6 +142,8 @@ class DownloadEngine(private val context: Context) {
         FileSaver(context).cleanupOrphanPartials(_items.value)
     }
 
+    fun freeSpaceBytes(): Long = FileSaver(context).destinationFreeBytes()
+
     fun rename(id: String, newName: String) {
         val item = _items.value.find { it.id == id } ?: return
         if (item.state != DownloadState.COMPLETED) return

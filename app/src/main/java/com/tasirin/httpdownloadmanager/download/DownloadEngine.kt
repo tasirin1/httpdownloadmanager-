@@ -560,7 +560,7 @@ class DownloadEngine(private val context: Context) {
 
     private fun contentDispositionName(header: String?): String? {
         if (header.isNullOrBlank()) return null
-        val star = Regex("filename\*=([^;]+)").find(header)
+        val star = Regex("filename\\*=([^;]+)").find(header)
         if (star != null) {
             val value = star.groupValues[1].trim()
             val idx = value.indexOf("''")
@@ -571,7 +571,7 @@ class DownloadEngine(private val context: Context) {
                 if (!decoded.isNullOrBlank()) return decoded
             }
         }
-        val plain = Regex("filename="?([^";]+)"?").find(header)
+        val plain = Regex("filename=\"?([^\";]+)\"?").find(header)
         return plain?.groupValues?.get(1)?.trim()?.takeIf { it.isNotEmpty() }
     }
 

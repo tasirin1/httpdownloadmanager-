@@ -7,6 +7,7 @@ import android.os.Build
 import android.util.Log
 import com.tasirin.httpdownloadmanager.download.DownloadEngine
 import com.tasirin.httpdownloadmanager.remote.HttpControlServer
+import com.tasirin.httpdownloadmanager.util.StoragePrefs
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date

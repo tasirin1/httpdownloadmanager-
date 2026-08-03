@@ -10,13 +10,26 @@ Aplikasi download manager sederhana untuk **Android 5.0 (API 21) ke atas**, diba
 - Notifikasi foreground dengan progress agregat
 - Daftar download tersimpan otomatis (bertahan setelah app ditutup)
 - Buka file selesai dengan aplikasi lain
-- File tersimpan di folder Downloads publik (Android < 10) / MediaStore Downloads (Android 10+)
-- Tombol "Bersihkan yang selesai" di menu toolbar
+- Pilihan lokasi penyimpanan: Folder Downloads (default) atau folder kustom (internal/SD card via Storage Access Framework)
+- File tersimpan di folder Downloads publik (Android < 10) / MediaStore Downloads (Android 10+) jika folder kustom tidak dipilih
+- Tombol "Bersihkan yang selesai" dan "Penyimpanan" di menu toolbar
 
 ## Persyaratan
 
 - Android 5.0+ (minSdk 21), target SDK 34
 - Java 17 dan Android SDK untuk build lokal
+
+## Penyimpanan
+
+Default file disimpan ke **Folder Downloads** (MediaStore di Android 10+, folder Downloads publik di bawahnya).
+Untuk memilih lokasi lain (misalnya folder di SD card):
+
+1. Ketuk menu **⋮ → Penyimpanan**
+2. Pilih **Pilih folder…** dan tentukan folder tujuan di sistem
+3. Pilihan tersimpan otomatis; setiap download berikutnya masuk ke folder itu
+4. Untuk kembali ke default, buka **Penyimpanan** lagi lalu tekan **Pakai default**
+
+Izin akses folder bersifat persisten (bertahan setelah aplikasi ditutup/di-restart).
 
 ## Build Lokal
 

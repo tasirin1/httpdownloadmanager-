@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.documentfile.provider.DocumentFile
 import com.tasirin.downloadmanager.data.DownloadItem
 import java.io.File
 
@@ -13,18 +14,42 @@ class FileSaver(context: Context) {
 
     private val appContext = context.applicationContext
     private val downloadDir = File(appContext.filesDir, "downloads").apply { mkdirs() }
+    private val customFolderUri = StoragePrefs.getFolderUri(appContext)
 
     data class PublishResult(val contentUri: String? = null, val filePath: String? = null)
 
     fun partialFile(fileName: String): File = File(downloadDir, "$fileName.part")
 
     fun publish(partial: File, fileName: String): PublishResult {
+        val folderUri = customFolderUri
+        if (folderUri != null) {
+            val result = publishToCustomFolder(partial, fileName, folderUri)
+            if (result != null) return result
+        }
         return if (Build.VERSION.SDK_INT >= 29) {
             publishToMediaStore(partial, fileName)
         } else {
             publishToPublicDir(partial, fileName)
         }
     }
+
+    private fun publishToCustomFolder(
+        partial: File,
+        fileName: String,
+        folderUri: Uri
+    ): PublishResult? = runCatching {
+        val tree = DocumentFile.fromTreeUri(appContext, folderUri) ?: return null
+        val target = tree.findFile(fileName)
+            ?: tree.createFile(MimeTypes.forFile(fileName), fileName)
+            ?: return null
+        val output = appContext.contentResolver.openOutputStream(target.uri, "wt")
+            ?: return null
+        output.use { out ->
+            partial.inputStream().use { input -> input.copyTo(out) }
+        }
+        partial.delete()
+        PublishResult(contentUri = target.uri.toString())
+    }.getOrNull()
 
     private fun publishToMediaStore(partial: File, fileName: String): PublishResult {
         val resolver = appContext.contentResolver

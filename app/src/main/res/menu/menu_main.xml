@@ -5,4 +5,8 @@
         android:id="@+id/action_clear_completed"
         android:title="@string/clear_completed"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/action_storage"
+        android:title="@string/action_storage"
+        app:showAsAction="never" />
 </menu>

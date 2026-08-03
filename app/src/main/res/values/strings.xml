@@ -13,6 +13,13 @@
     <string name="open">Buka</string>
     <string name="delete">Hapus</string>
     <string name="clear_completed">Bersihkan yang selesai</string>
+    <string name="action_storage">Penyimpanan</string>
+    <string name="storage_current">Lokasi saat ini: %1$s</string>
+    <string name="storage_default_folder">Folder Downloads (default)</string>
+    <string name="storage_custom_folder">Folder kustom</string>
+    <string name="storage_choose_folder">Pilih folder…</string>
+    <string name="storage_use_default">Pakai default</string>
+    <string name="storage_folder_selected">Folder dipilih: %1$s</string>
     <string name="empty_hint">Belum ada download.\nKetuk tombol + untuk menambah URL.</string>
     <string name="no_app_to_open">Tidak ada aplikasi untuk membuka file ini</string>
 

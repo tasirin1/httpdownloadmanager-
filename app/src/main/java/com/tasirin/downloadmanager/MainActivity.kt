@@ -13,6 +13,7 @@ import android.widget.EditText
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -22,6 +23,7 @@ import com.tasirin.downloadmanager.data.DownloadState
 import com.tasirin.downloadmanager.databinding.ActivityMainBinding
 import com.tasirin.downloadmanager.ui.DownloadAdapter
 import com.tasirin.downloadmanager.util.MimeTypes
+import com.tasirin.downloadmanager.util.StoragePrefs
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -33,6 +35,27 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { /* hasil izin tidak wajib untuk fungsi inti */ }
+
+    private val folderPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+            }
+            val name = DocumentFile.fromTreeUri(this, uri)?.name
+            StoragePrefs.saveFolder(this, uri, name)
+            val label = name ?: getString(R.string.storage_custom_folder)
+            Snackbar.make(
+                binding.root,
+                getString(R.string.storage_folder_selected, label),
+                Snackbar.LENGTH_SHORT
+            ).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -106,6 +129,10 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 App.engine.clearCompleted()
                 true
             }
+            R.id.action_storage -> {
+                showStorageDialog()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -118,6 +145,29 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             DownloadAdapter.Action.DELETE -> App.engine.remove(item.id)
             DownloadAdapter.Action.OPEN -> openDownload(item)
         }
+    }
+
+    private fun showStorageDialog() {
+        val currentName = StoragePrefs.getFolderName(this)
+            ?: getString(R.string.storage_default_folder)
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.action_storage)
+            .setMessage(getString(R.string.storage_current, currentName))
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.storage_choose_folder) { _, _ ->
+                folderPicker.launch(null)
+            }
+        if (StoragePrefs.getFolderUri(this) != null) {
+            builder.setNeutralButton(R.string.storage_use_default) { _, _ ->
+                StoragePrefs.saveFolder(this, null, null)
+                Snackbar.make(
+                    binding.root,
+                    R.string.storage_default_folder,
+                    Snackbar.LENGTH_SHORT
+                ).show()
+            }
+        }
+        builder.show()
     }
 
     private fun openDownload(item: DownloadItem) {

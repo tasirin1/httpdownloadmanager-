@@ -65,7 +65,9 @@ Menu **⋮ → Pengaturan**:
 
 ## Remote (HTTP) & Streaming
 
-1. Buka **⋮ → Remote (HTTP)** lalu **Mulai server**
+Server remote bisa berjalan **penuh di latar belakang**: otomatis menyala saat boot dan tetap hidup (via foreground service) meski aplikasi ditutup. Atur lewat **⋮ → Pengaturan** → "Jalankan server remote di latar belakang" dan "Auto start server saat boot" (keduanya aktif secara default).
+
+1. Buka **⋮ → Remote (HTTP)** lalu **Mulai server** (jika belum otomatis menyala)
 2. Scan **QR code** di dialog tersebut dengan kamera ponsel lain, atau ketik alamat `http://<ip-ponsel>:8080/` di browser perangkat lain (harus satu jaringan Wi-Fi)
 3. Dari halaman remote Anda bisa: menambah download (termasuk batas kecepatan & prioritas), menjeda/melanjutkan/membatalkan, serta **Stream** (putar/pratinjau) atau **Download** file yang sudah selesai
 4. File besar didukung **HTTP Range** sehingga video/audio bisa di-seek saat streaming

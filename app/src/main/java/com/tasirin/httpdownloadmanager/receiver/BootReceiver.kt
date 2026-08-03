@@ -12,7 +12,9 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         val action = intent?.action ?: return
         if (action != Intent.ACTION_BOOT_COMPLETED && action != Intent.ACTION_MY_PACKAGE_REPLACED) return
-        if (!StoragePrefs.isAutoStartEnabled(context)) return
+        val downloadAutostart = StoragePrefs.isAutoStartEnabled(context)
+        val serverAutostart = StoragePrefs.isServerAutoStartEnabled(context)
+        if (!downloadAutostart && !serverAutostart) return
         val serviceIntent = Intent(context, DownloadService::class.java)
         if (Build.VERSION.SDK_INT >= 26) {
             context.startForegroundService(serviceIntent)

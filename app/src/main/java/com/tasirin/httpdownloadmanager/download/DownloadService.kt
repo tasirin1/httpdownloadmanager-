@@ -30,14 +30,19 @@ class DownloadService : Service() {
         if (StoragePrefs.isBackgroundEnabled(this)) {
             App.engine.resumeInterrupted()
         }
+        if (StoragePrefs.isServerBackgroundEnabled(this) && !App.httpServer.isAlive) {
+            runCatching { App.httpServer.startServer() }
+        }
         scope.launch {
             App.engine.items.collect { items ->
                 val active = items.any {
                     it.state == DownloadState.DOWNLOADING || it.state == DownloadState.PENDING
                 }
-                NotificationHelper.updateNotification(this@DownloadService, items)
+                val serverActive = StoragePrefs.isServerBackgroundEnabled(this@DownloadService) &&
+                    App.httpServer.isAlive
+                NotificationHelper.updateNotification(this@DownloadService, items, serverActive)
                 DownloadWidgetProvider.update(this@DownloadService, items)
-                if (!active) {
+                if (!active && !serverActive) {
                     ServiceCompat.stopForeground(
                         this@DownloadService,
                         ServiceCompat.STOP_FOREGROUND_REMOVE

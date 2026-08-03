@@ -35,6 +35,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.tasirin.httpdownloadmanager.data.DownloadItem
+import com.tasirin.httpdownloadmanager.download.DownloadService
 import com.tasirin.httpdownloadmanager.data.DownloadState
 import com.tasirin.httpdownloadmanager.databinding.ActivityMainBinding
 import com.tasirin.httpdownloadmanager.remote.HttpControlServer
@@ -121,6 +122,9 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         requestPermissionsIfNeeded()
         if (StoragePrefs.isBackgroundEnabled(this)) {
             App.engine.resumeInterrupted()
+        }
+        if (StoragePrefs.isServerBackgroundEnabled(this) && !App.httpServer.isAlive) {
+            runCatching { App.httpServer.startServer() }
         }
         handleIncomingIntent(intent)
     }
@@ -412,8 +416,12 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val view = layoutInflater.inflate(R.layout.dialog_settings, null)
         val checkBackground = view.findViewById<CheckBox>(R.id.check_background)
         val checkAutoStart = view.findViewById<CheckBox>(R.id.check_autostart)
+        val checkServerBackground = view.findViewById<CheckBox>(R.id.check_server_background)
+        val checkServerAutostart = view.findViewById<CheckBox>(R.id.check_server_autostart)
         checkBackground.isChecked = StoragePrefs.isBackgroundEnabled(this)
         checkAutoStart.isChecked = StoragePrefs.isAutoStartEnabled(this)
+        checkServerBackground.isChecked = StoragePrefs.isServerBackgroundEnabled(this)
+        checkServerAutostart.isChecked = StoragePrefs.isServerAutoStartEnabled(this)
 
         val concurrentOptions = resources.getStringArray(R.array.concurrent_options)
         val spinnerConcurrent = view.findViewById<Spinner>(R.id.spinner_concurrent)
@@ -456,6 +464,11 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             .setPositiveButton(R.string.save) { _, _ ->
                 StoragePrefs.setBackgroundEnabled(this, checkBackground.isChecked)
                 StoragePrefs.setAutoStartEnabled(this, checkAutoStart.isChecked)
+                StoragePrefs.setServerBackgroundEnabled(this, checkServerBackground.isChecked)
+                StoragePrefs.setServerAutoStartEnabled(this, checkServerAutostart.isChecked)
+                if (checkServerBackground.isChecked && !App.httpServer.isAlive) {
+                    runCatching { App.httpServer.startServer() }
+                }
                 StoragePrefs.setMaxConcurrent(this, spinnerConcurrent.selectedItemPosition + 1)
                 StoragePrefs.setSpeedLimitKbps(this, speedKbps[spinnerSpeed.selectedItemPosition])
                 StoragePrefs.setMaxRetries(this, spinnerRetry.selectedItemPosition)
@@ -491,6 +504,12 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         if (server.isAlive) {
             builder.setPositiveButton(R.string.remote_stop) { _, _ ->
                 server.stopServer()
+                val anyActive = App.engine.items.value.any {
+                    it.state == DownloadState.DOWNLOADING || it.state == DownloadState.PENDING
+                }
+                if (!anyActive) {
+                    runCatching { stopService(Intent(this, DownloadService::class.java)) }
+                }
                 Snackbar.make(binding.root, R.string.remote_stopped, Snackbar.LENGTH_SHORT).show()
             }
         } else {

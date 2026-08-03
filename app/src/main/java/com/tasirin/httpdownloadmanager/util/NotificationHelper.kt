@@ -35,7 +35,11 @@ object NotificationHelper {
 
     fun foregroundNotification(context: Context): Notification = buildNotification(context, emptyList())
 
-    fun updateNotification(context: Context, items: List<DownloadItem>) {
+    fun updateNotification(
+        context: Context,
+        items: List<DownloadItem>,
+        serverActive: Boolean = false
+    ) {
         if (Build.VERSION.SDK_INT >= 33 &&
             ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
@@ -43,10 +47,14 @@ object NotificationHelper {
             return
         }
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(NOTIFICATION_ID, buildNotification(context, items))
+        manager.notify(NOTIFICATION_ID, buildNotification(context, items, serverActive))
     }
 
-    private fun buildNotification(context: Context, items: List<DownloadItem>): Notification {
+    private fun buildNotification(
+        context: Context,
+        items: List<DownloadItem>,
+        serverActive: Boolean = false
+    ): Notification {
         val active = items.filter {
             it.state == DownloadState.DOWNLOADING || it.state == DownloadState.PENDING
         }
@@ -59,7 +67,7 @@ object NotificationHelper {
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.notification_title))
-            .setOngoing(active.isNotEmpty())
+            .setOngoing(active.isNotEmpty() || serverActive)
             .setOnlyAlertOnce(true)
             .setContentIntent(pending)
 
@@ -72,6 +80,9 @@ object NotificationHelper {
             } else {
                 builder.setProgress(0, 0, true)
             }
+        } else if (serverActive) {
+            builder.setContentText(context.getString(R.string.notification_server_active))
+                .setProgress(0, 0, false)
         } else {
             val completed = items.count { it.state == DownloadState.COMPLETED }
             builder.setContentText(context.getString(R.string.notification_done, completed))

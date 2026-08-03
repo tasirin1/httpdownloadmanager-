@@ -62,6 +62,9 @@
     <string name="settings_concurrent">Concurrent downloads (queue)</string>
     <string name="settings_speed_limit">Speed limit</string>
     <string name="settings_retry">Retry attempts on failure</string>
+    <string name="settings_server_background">Run remote server in background</string>
+    <string name="settings_server_autostart">Auto start server on boot</string>
+    <string name="notification_server_active">Remote server active (HTTP) — reachable from other devices</string>
     <string name="speed_limit_per_label">Speed limit (per download)</string>
     <string name="priority_label">Priority</string>
     <string name="action_limit_priority">Limit &amp; priority</string>

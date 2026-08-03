@@ -62,6 +62,9 @@
     <string name="settings_concurrent">Unduhan bersamaan (antrean)</string>
     <string name="settings_speed_limit">Batas kecepatan</string>
     <string name="settings_retry">Percobaan ulang saat gagal</string>
+    <string name="settings_server_background">Jalankan server remote di latar belakang</string>
+    <string name="settings_server_autostart">Auto start server saat boot</string>
+    <string name="notification_server_active">Server remote aktif (HTTP) — bisa diakses dari perangkat lain</string>
     <string name="speed_limit_per_label">Batas kecepatan (per download)</string>
     <string name="priority_label">Prioritas</string>
     <string name="action_limit_priority">Batas &amp; prioritas</string>

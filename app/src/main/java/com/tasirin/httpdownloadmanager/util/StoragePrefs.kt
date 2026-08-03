@@ -10,6 +10,8 @@ object StoragePrefs {
     private const val KEY_FOLDER_NAME = "folder_name"
     private const val KEY_BACKGROUND = "background_download"
     private const val KEY_AUTOSTART = "auto_start_boot"
+    private const val KEY_SERVER_BACKGROUND = "server_background"
+    private const val KEY_SERVER_AUTOSTART = "server_autostart_boot"
     private const val KEY_MAX_CONCURRENT = "max_concurrent"
     private const val KEY_SPEED_LIMIT = "speed_limit_kbps"
     private const val KEY_MAX_RETRIES = "max_retries"
@@ -49,6 +51,26 @@ object StoragePrefs {
     fun setAutoStartEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putBoolean(KEY_AUTOSTART, enabled)
+            .apply()
+    }
+
+    fun isServerBackgroundEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_SERVER_BACKGROUND, true)
+
+    fun setServerBackgroundEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_SERVER_BACKGROUND, enabled)
+            .apply()
+    }
+
+    fun isServerAutoStartEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_SERVER_AUTOSTART, true)
+
+    fun setServerAutoStartEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_SERVER_AUTOSTART, enabled)
             .apply()
     }
 

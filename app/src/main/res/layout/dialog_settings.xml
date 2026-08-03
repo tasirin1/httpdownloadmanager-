@@ -19,6 +19,20 @@
         android:layout_marginTop="8dp"
         android:text="@string/settings_autostart" />
 
+    <CheckBox
+        android:id="@+id/check_server_background"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/settings_server_background" />
+
+    <CheckBox
+        android:id="@+id/check_server_autostart"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/settings_server_autostart" />
+
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

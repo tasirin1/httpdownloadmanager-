@@ -116,7 +116,6 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginHorizontal="2dp"
-            android:minHeight="0dp"
             android:paddingVertical="6dp"
             android:text="@string/pause_all"
             android:textSize="12sp" />
@@ -127,7 +126,6 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginHorizontal="2dp"
-            android:minHeight="0dp"
             android:paddingVertical="6dp"
             android:text="@string/resume_all"
             android:textSize="12sp" />
@@ -138,7 +136,6 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginHorizontal="2dp"
-            android:minHeight="0dp"
             android:paddingVertical="6dp"
             android:text="@string/retry_failed"
             android:textSize="12sp" />

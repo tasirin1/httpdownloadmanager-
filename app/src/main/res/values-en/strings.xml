@@ -122,6 +122,12 @@
     <string name="settings_port_hint">Port (1024–65535)</string>
     <string name="settings_segments">Parallel segments per download</string>
 
+    <string name="previous_crash_title">Error log from previous launch</string>
+    <string name="clear_log">Clear log</string>
+    <string name="close">Close</string>
+    <string name="fatal_error_title">Error opening app</string>
+    <string name="fatal_error_message">An error occurred while opening the app. Copy the message below for reporting:</string>
+
     <string name="speed_limit_per_label">Speed limit (per download)</string>
     <string name="priority_label">Priority</string>
     <string name="action_limit_priority">Limit &amp; priority</string>

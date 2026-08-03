@@ -17,6 +17,7 @@ import android.text.Editable
 import android.text.InputType
 import android.text.TextUtils
 import android.text.TextWatcher
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -108,6 +109,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        showPreviousCrashIfAny()
+        try {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -163,6 +166,43 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             requestBatteryExemption()
         }
         handleIncomingIntent(intent)
+        } catch (t: Throwable) {
+            showFatalError(t)
+        }
+    }
+
+    private fun showPreviousCrashIfAny() {
+        runCatching {
+            val file = File(filesDir, App.CRASH_LOG_FILE)
+            if (!file.exists()) return@runCatching
+            val text = file.readText().trim()
+            if (text.isEmpty()) return@runCatching
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.previous_crash_title)
+                .setMessage(text.take(3000))
+                .setPositiveButton(R.string.clear_log) { _, _ -> file.delete() }
+                .setNegativeButton(R.string.close, null)
+                .show()
+        }
+    }
+
+    private fun showFatalError(t: Throwable) {
+        App.appendCrash(this, "onCreate", t)
+        val stack = Log.getStackTraceString(t)
+        runCatching {
+            val tv = TextView(this)
+            tv.setTextIsSelectable(true)
+            tv.text = getString(R.string.fatal_error_message) + "\n\n" + stack
+            tv.setPadding(24, 24, 24, 24)
+            setContentView(tv)
+        }
+        runCatching {
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.fatal_error_title)
+                .setMessage(stack)
+                .setPositiveButton(R.string.ok, null)
+                .show()
+        }
     }
 
     override fun onResume() {

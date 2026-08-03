@@ -122,6 +122,12 @@
     <string name="settings_port_hint">Port (1024–65535)</string>
     <string name="settings_segments">Segmen paralel per download</string>
 
+    <string name="previous_crash_title">Log error dari peluncuran sebelumnya</string>
+    <string name="clear_log">Hapus log</string>
+    <string name="close">Tutup</string>
+    <string name="fatal_error_title">Error saat membuka aplikasi</string>
+    <string name="fatal_error_message">Terjadi error saat membuka aplikasi. Salin pesan di bawah ini untuk laporan:</string>
+
     <string name="speed_limit_per_label">Batas kecepatan (per download)</string>
     <string name="priority_label">Prioritas</string>
     <string name="action_limit_priority">Batas &amp; prioritas</string>

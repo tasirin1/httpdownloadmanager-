@@ -40,5 +40,19 @@ class App : Application() {
         const val CRASH_LOG_FILE = "crash.log"
         lateinit var engine: DownloadEngine
         lateinit var httpServer: HttpControlServer
+
+        fun appendCrash(context: android.content.Context, tag: String, t: Throwable) {
+            runCatching {
+                val file = File(context.filesDir, CRASH_LOG_FILE)
+                val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
+                val text = buildString {
+                    appendLine("=== $stamp [$tag] ===")
+                    appendLine(Log.getStackTraceString(t))
+                    appendLine()
+                }
+                val existing = if (file.exists()) file.readText() else ""
+                file.writeText((existing + text).takeLast(100_000))
+            }
+        }
     }
 }

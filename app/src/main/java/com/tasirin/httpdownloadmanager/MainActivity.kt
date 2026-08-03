@@ -850,9 +850,12 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
     private var currentFilter = DownloadFilter.ALL
     private var searchQuery = ""
-    private var sortMode = StoragePrefs.sortMode(this)
+    private var sortMode = 0
 
     private fun setupFilterViews() {
+        // Diinisialisasi di sini, bukan di properti, karena getSharedPreferences
+        // belum tersedia saat field Activity dibuat (force close di Android).
+        sortMode = StoragePrefs.sortMode(this)
         findViewById<TextView>(R.id.sort_button)?.setOnClickListener { showSortDialog() }
         updateSortButton()
 

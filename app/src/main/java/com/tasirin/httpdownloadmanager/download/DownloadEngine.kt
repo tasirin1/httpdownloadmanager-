@@ -194,7 +194,9 @@ class DownloadEngine(private val context: Context) {
                 runDownload(item)
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
+                // Error runtime (mis. NoSuchMethodError) diubah jadi status FAILED,
+                // bukan force close.
                 handleFailure(item.id, e.message)
             }
         }
@@ -258,7 +260,7 @@ class DownloadEngine(private val context: Context) {
             val code = probe.responseCode
             if (code in 200..299) {
                 probeHeaders = headersOf(probe)
-                val total = probe.getHeaderFieldLong("Content-Length", -1L)
+                val total = contentLength(probe)
                 val ranges = probe.getHeaderField("Accept-Ranges") == "bytes"
                 if (ranges && total >= SEGMENT_MIN_BYTES) {
                     useSegments = true
@@ -318,7 +320,7 @@ class DownloadEngine(private val context: Context) {
             }
         }
 
-        val lengthHeader = conn.getHeaderFieldLong("Content-Length", -1L)
+        val lengthHeader = contentLength(conn)
         var total = if (lengthHeader > 0) lengthHeader else 0L
         if (code == 206) {
             total += downloaded
@@ -541,6 +543,10 @@ class DownloadEngine(private val context: Context) {
             val end = if (i == count - 1) total - 1 else start + size - 1
             DownloadSegment(index = i, start = start, end = end, downloaded = 0)
         }
+    }
+
+    private fun contentLength(conn: HttpURLConnection): Long {
+        return conn.getHeaderField("Content-Length")?.trim()?.toLongOrNull() ?: -1L
     }
 
     private fun headersOf(conn: HttpURLConnection): ServerHeaders {

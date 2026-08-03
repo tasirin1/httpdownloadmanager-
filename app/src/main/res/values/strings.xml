@@ -1,0 +1,30 @@
+<resources>
+    <string name="app_name">Download Manager</string>
+
+    <string name="add_download">Tambah Download</string>
+    <string name="url_hint">URL file (https://…)</string>
+    <string name="name_hint_optional">Nama file (opsional)</string>
+    <string name="download">Unduh</string>
+    <string name="cancel">Batal</string>
+    <string name="invalid_url">URL tidak boleh kosong</string>
+
+    <string name="pause">Jeda</string>
+    <string name="resume">Lanjut</string>
+    <string name="open">Buka</string>
+    <string name="delete">Hapus</string>
+    <string name="clear_completed">Bersihkan yang selesai</string>
+    <string name="empty_hint">Belum ada download.\nKetuk tombol + untuk menambah URL.</string>
+    <string name="no_app_to_open">Tidak ada aplikasi untuk membuka file ini</string>
+
+    <string name="status_pending">Menunggu…</string>
+    <string name="status_downloading">Mendownload…</string>
+    <string name="status_paused">Dijeda</string>
+    <string name="status_completed">Selesai</string>
+    <string name="status_cancelled">Dibatalkan</string>
+    <string name="status_failed">Gagal</string>
+
+    <string name="notification_channel">Progress download</string>
+    <string name="notification_title">Download Manager</string>
+    <string name="notification_active_files">Mendownload %d file…</string>
+    <string name="notification_done">%d download selesai</string>
+</resources>

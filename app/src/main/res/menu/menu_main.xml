@@ -9,4 +9,8 @@
         android:id="@+id/action_storage"
         android:title="@string/action_storage"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/action_remote"
+        android:title="@string/action_remote"
+        app:showAsAction="never" />
 </menu>

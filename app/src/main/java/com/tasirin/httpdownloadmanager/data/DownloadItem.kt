@@ -14,7 +14,8 @@ data class DownloadItem(
     val error: String? = null,
     val contentUri: String? = null,
     val filePath: String? = null,
-    val addedAt: Long = System.currentTimeMillis()
+    val addedAt: Long = System.currentTimeMillis(),
+    val nameIsCustom: Boolean = false
 ) {
     val progressPercent: Int
         get() = if (totalBytes > 0) ((bytesDownloaded * 100) / totalBytes).toInt() else 0

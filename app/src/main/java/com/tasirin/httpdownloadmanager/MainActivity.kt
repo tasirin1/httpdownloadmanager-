@@ -23,6 +23,7 @@ import com.tasirin.httpdownloadmanager.data.DownloadState
 import com.tasirin.httpdownloadmanager.databinding.ActivityMainBinding
 import com.tasirin.httpdownloadmanager.ui.DownloadAdapter
 import com.tasirin.httpdownloadmanager.util.MimeTypes
+import com.tasirin.httpdownloadmanager.remote.HttpControlServer
 import com.tasirin.httpdownloadmanager.util.StoragePrefs
 import kotlinx.coroutines.launch
 import java.io.File
@@ -133,6 +134,10 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 showStorageDialog()
                 true
             }
+            R.id.action_remote -> {
+                showRemoteDialog()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -165,6 +170,51 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                     R.string.storage_default_folder,
                     Snackbar.LENGTH_SHORT
                 ).show()
+            }
+        }
+        builder.show()
+    }
+
+    private fun showRemoteDialog() {
+        val server = App.httpServer
+        val status = if (server.isAlive) {
+            getString(R.string.remote_running)
+        } else {
+            getString(R.string.remote_stopped)
+        }
+        val urls = if (server.isAlive) {
+            HttpControlServer.ipv4Addresses()
+                .joinToString("\n") { "http://$it:${server.listeningPort}/" }
+                .ifEmpty { getString(R.string.remote_no_url) }
+        } else {
+            getString(R.string.remote_no_url)
+        }
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.action_remote)
+            .setMessage(getString(R.string.remote_message, status, urls))
+            .setNegativeButton(R.string.cancel, null)
+        if (server.isAlive) {
+            builder.setPositiveButton(R.string.remote_stop) { _, _ ->
+                server.stopServer()
+                Snackbar.make(binding.root, R.string.remote_stopped, Snackbar.LENGTH_SHORT).show()
+            }
+        } else {
+            builder.setPositiveButton(R.string.remote_start) { _, _ ->
+                runCatching { server.startServer() }
+                    .onSuccess {
+                        Snackbar.make(
+                            binding.root,
+                            getString(R.string.remote_started, server.listeningPort),
+                            Snackbar.LENGTH_SHORT
+                        ).show()
+                    }
+                    .onFailure {
+                        Snackbar.make(
+                            binding.root,
+                            getString(R.string.remote_start_failed, it.message ?: "?"),
+                            Snackbar.LENGTH_LONG
+                        ).show()
+                    }
             }
         }
         builder.show()

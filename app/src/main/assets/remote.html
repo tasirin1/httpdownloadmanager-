@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Download Manager Remote</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f2f4f8; margin: 0; padding: 16px; color: #1c1c1c; }
+  h1 { font-size: 20px; margin: 0 0 12px; }
+  form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  input, button { font-size: 15px; padding: 10px; border-radius: 8px; border: 1px solid #cbd2dd; }
+  button { background: #0D47A1; color: #fff; border: none; cursor: pointer; }
+  button:active { opacity: .8; }
+  #status { color: #b00020; margin-bottom: 8px; font-size: 13px; }
+  ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  li { background: #fff; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .name { font-weight: 600; word-break: break-all; }
+  .state { font-size: 13px; color: #555; margin: 4px 0 8px; }
+  .err { color: #b00020; margin-top: 4px; }
+  .bar { height: 8px; background: #e4e8ef; border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
+  .fill { height: 100%; background: #FF6F00; width: 0; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .actions button { padding: 6px 12px; font-size: 13px; background: #eef1f6; color: #1c1c1c; border: 1px solid #cbd2dd; }
+</style>
+</head>
+<body>
+<h1>&#11015; Download Manager</h1>
+<form id="addForm">
+  <input id="url" type="url" placeholder="URL file (https://…)" required>
+  <input id="name" type="text" placeholder="Nama file (opsional)">
+  <button type="submit">Tambah Download</button>
+</form>
+<div id="status"></div>
+<ul id="list"></ul>
+<script>
+const API = '';
+let failCount = 0;
+
+async function refresh() {
+  try {
+    const res = await fetch(API + '/api/downloads');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    failCount = 0;
+    document.getElementById('status').textContent = '';
+    render(data.items);
+  } catch (e) {
+    failCount++;
+    if (failCount > 2) {
+      document.getElementById('status').textContent = 'Tidak dapat terhubung ke server. Cek server di aplikasi.';
+    }
+  }
+}
+
+function fmt(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  const kb = bytes / 1024;
+  if (kb < 1024) return kb.toFixed(1) + ' KB';
+  const mb = kb / 1024;
+  if (mb < 1024) return mb.toFixed(1) + ' MB';
+  return (mb / 1024).toFixed(2) + ' GB';
+}
+
+function stateLabel(s) {
+  return {PENDING:'Menunggu', DOWNLOADING:'Mendownload', PAUSED:'Dijeda', COMPLETED:'Selesai', FAILED:'Gagal', CANCELLED:'Dibatalkan'}[s] || s;
+}
+
+function render(items) {
+  const list = document.getElementById('list');
+  list.innerHTML = '';
+  if (!items.length) {
+    list.innerHTML = '<li>Belum ada download.</li>';
+    return;
+  }
+  for (const it of items) {
+    const li = document.createElement('li');
+    const prog = it.totalBytes > 0 ? Math.round(it.bytesDownloaded * 100 / it.totalBytes) : 0;
+    const meta = it.totalBytes > 0
+      ? prog + '% &#183; ' + fmt(it.bytesDownloaded) + ' / ' + fmt(it.totalBytes)
+      : fmt(it.bytesDownloaded);
+    const err = it.error ? '<div class="err">' + escapeHtml(it.error) + '</div>' : '';
+    li.innerHTML =
+      '<div class="name">' + escapeHtml(it.fileName) + '</div>' +
+      '<div class="state">' + stateLabel(it.state) + ' &#183; ' + meta + err + '</div>' +
+      '<div class="bar"><div class="fill" style="width:' + prog + '%"></div></div>' +
+      '<div class="actions">' + actionButtons(it) + '</div>';
+    li.querySelectorAll('[data-action]').forEach(b =>
+      b.addEventListener('click', () => doAction(it.id, b.dataset.action))
+    );
+    list.appendChild(li);
+  }
+}
+
+function actionButtons(it) {
+  let s = '';
+  if (it.state === 'DOWNLOADING') s += '<button data-action="pause">Jeda</button>';
+  if (it.state === 'PAUSED' || it.state === 'FAILED') s += '<button data-action="resume">Lanjut</button>';
+  if (it.state === 'DOWNLOADING' || it.state === 'PENDING' || it.state === 'PAUSED') s += '<button data-action="cancel">Batal</button>';
+  if (it.state === 'COMPLETED' || it.state === 'FAILED' || it.state === 'CANCELLED') s += '<button data-action="delete">Hapus</button>';
+  return s;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function doAction(id, action) {
+  const body = new URLSearchParams({id: id, action: action});
+  await fetch(API + '/api/action', {method: 'POST', body});
+  refresh();
+}
+
+document.getElementById('addForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const url = document.getElementById('url').value.trim();
+  if (!url) return;
+  const body = new URLSearchParams({url: url});
+  const name = document.getElementById('name').value.trim();
+  if (name) body.append('name', name);
+  await fetch(API + '/api/add', {method: 'POST', body});
+  document.getElementById('url').value = '';
+  document.getElementById('name').value = '';
+  refresh();
+});
+
+refresh();
+setInterval(refresh, 1500);
+</script>
+</body>
+</html>

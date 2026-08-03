@@ -18,4 +18,31 @@ object MimeTypes {
             else -> "application/octet-stream"
         }
     }
+
+    fun extensionFor(contentType: String?): String? {
+        val mime = contentType?.substringBefore(';')?.trim()?.lowercase().orEmpty()
+        return when (mime) {
+            "application/pdf" -> ".pdf"
+            "application/zip" -> ".zip"
+            "application/x-rar-compressed" -> ".rar"
+            "application/x-7z-compressed" -> ".7z"
+            "application/json" -> ".json"
+            "application/xml", "text/xml" -> ".xml"
+            "application/vnd.android.package-archive" -> ".apk"
+            "image/jpeg" -> ".jpg"
+            "image/png" -> ".png"
+            "image/gif" -> ".gif"
+            "image/webp" -> ".webp"
+            "audio/mpeg", "audio/mp3" -> ".mp3"
+            "audio/mp4" -> ".m4a"
+            "audio/ogg", "audio/opus" -> ".ogg"
+            "video/mp4" -> ".mp4"
+            "video/x-matroska" -> ".mkv"
+            "video/webm" -> ".webm"
+            "text/plain" -> ".txt"
+            "text/html" -> ".html"
+            "text/csv" -> ".csv"
+            else -> null
+        }
+    }
 }

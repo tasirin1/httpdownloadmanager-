@@ -20,6 +20,15 @@
     <string name="storage_choose_folder">Pilih folder…</string>
     <string name="storage_use_default">Pakai default</string>
     <string name="storage_folder_selected">Folder dipilih: %1$s</string>
+    <string name="action_remote">Remote (HTTP)</string>
+    <string name="remote_start">Mulai server</string>
+    <string name="remote_stop">Hentikan server</string>
+    <string name="remote_running">Berjalan</string>
+    <string name="remote_stopped">Berhenti</string>
+    <string name="remote_no_url">Tidak ada alamat jaringan tersedia</string>
+    <string name="remote_message">Status: %1$s\n\nBuka dari browser di perangkat lain:\n%2$s</string>
+    <string name="remote_started">Server aktif di port %1$d</string>
+    <string name="remote_start_failed">Gagal memulai server: %1$s</string>
     <string name="empty_hint">Belum ada download.\nKetuk tombol + untuk menambah URL.</string>
     <string name="no_app_to_open">Tidak ada aplikasi untuk membuka file ini</string>
 

@@ -8,6 +8,7 @@ import com.tasirin.httpdownloadmanager.data.DownloadItem
 import com.tasirin.httpdownloadmanager.data.DownloadRepository
 import com.tasirin.httpdownloadmanager.data.DownloadState
 import com.tasirin.httpdownloadmanager.util.FileSaver
+import com.tasirin.httpdownloadmanager.util.MimeTypes
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +25,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLDecoder
 import java.util.UUID
 
 class DownloadEngine(private val context: Context) {
@@ -40,14 +42,16 @@ class DownloadEngine(private val context: Context) {
     fun addDownload(url: String, fileName: String?) {
         val cleanUrl = url.trim()
         if (cleanUrl.isEmpty()) return
-        val name = fileName?.trim()?.takeIf { it.isNotEmpty() } ?: guessFileName(cleanUrl)
+        val customName = fileName?.trim().orEmpty()
+        val name = customName.ifEmpty { guessFileName(cleanUrl) }
         val item = DownloadItem(
             id = UUID.randomUUID().toString(),
             url = cleanUrl,
             fileName = name,
             state = DownloadState.PENDING,
             bytesDownloaded = 0,
-            totalBytes = 0
+            totalBytes = 0,
+            nameIsCustom = customName.isNotEmpty()
         )
         update(_items.value + item)
         start(item)
@@ -102,8 +106,9 @@ class DownloadEngine(private val context: Context) {
 
     private suspend fun runDownload(item: DownloadItem) {
         val saver = FileSaver(context)
-        val partialFile = saver.partialFile(item.fileName)
         var downloaded = item.bytesDownloaded
+        var fileName = item.fileName
+        var partialFile = saver.partialFile(fileName)
         val conn = URL(item.url).openConnection() as HttpURLConnection
         try {
             conn.requestMethod = "GET"
@@ -116,6 +121,19 @@ class DownloadEngine(private val context: Context) {
 
             val code = conn.responseCode
             if (code !in 200..299) throw IOException("HTTP $code")
+
+            val resolvedName = resolveFinalName(item, conn)
+            if (resolvedName != fileName) {
+                val newPartial = saver.partialFile(resolvedName)
+                val keepOld = downloaded > 0 && partialFile.exists()
+                val renamed = keepOld && partialFile.renameTo(newPartial)
+                if (renamed || !keepOld) {
+                    if (!keepOld) partialFile.delete()
+                    partialFile = newPartial
+                    fileName = resolvedName
+                    updateItem(item.id) { it.copy(fileName = fileName) }
+                }
+            }
 
             val lengthHeader = conn.getHeaderFieldLong("Content-Length", -1L)
             var total = if (lengthHeader > 0) lengthHeader else 0L
@@ -156,10 +174,11 @@ class DownloadEngine(private val context: Context) {
                 runCatching { output.close() }
             }
 
-            val published = saver.publish(partialFile, item.fileName)
+            val published = saver.publish(partialFile, fileName)
             updateItem(item.id) {
                 it.copy(
                     state = DownloadState.COMPLETED,
+                    fileName = fileName,
                     bytesDownloaded = downloaded,
                     totalBytes = if (total > 0) total else downloaded,
                     contentUri = published.contentUri,
@@ -169,6 +188,49 @@ class DownloadEngine(private val context: Context) {
         } finally {
             conn.disconnect()
         }
+    }
+
+    private fun resolveFinalName(item: DownloadItem, conn: HttpURLConnection): String {
+        var name = item.fileName
+        if (!item.nameIsCustom) {
+            val dispositionName = contentDispositionName(conn.getHeaderField("Content-Disposition"))
+            if (!dispositionName.isNullOrBlank()) {
+                name = sanitizeFileName(dispositionName)
+            }
+            if (name.isBlank()) {
+                name = guessFileName(item.url)
+            }
+            val contentType = conn.getHeaderField("Content-Type")
+                ?.substringBefore(';')?.trim().orEmpty()
+            val ext = MimeTypes.extensionFor(contentType)
+            if (ext != null && name.substringAfterLast('.', "").isEmpty() && !name.endsWith('.')) {
+                name += ext
+            }
+            name = sanitizeFileName(name)
+        }
+        return name.takeIf { it.isNotBlank() } ?: item.fileName
+    }
+
+    private fun contentDispositionName(header: String?): String? {
+        if (header.isNullOrBlank()) return null
+        val star = Regex("filename\\*=([^;]+)").find(header)
+        if (star != null) {
+            val value = star.groupValues[1].trim()
+            val idx = value.indexOf("''")
+            if (idx >= 0) {
+                val decoded = runCatching {
+                    URLDecoder.decode(value.substring(idx + 2), "UTF-8")
+                }.getOrNull()
+                if (!decoded.isNullOrBlank()) return decoded
+            }
+        }
+        val plain = Regex("filename=\"?([^\";]+)\"?").find(header)
+        return plain?.groupValues?.get(1)?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
+    private fun sanitizeFileName(name: String): String {
+        val clean = name.replace(Regex("[/\\\\]"), "_").trim()
+        return clean.ifEmpty { "download" }
     }
 
     private fun ensureServiceRunning() {

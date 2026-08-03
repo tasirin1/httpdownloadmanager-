@@ -10,6 +10,8 @@ Aplikasi download manager sederhana untuk **Android 5.0 (API 21) ke atas**, diba
 - Notifikasi foreground dengan progress agregat
 - Daftar download tersimpan otomatis (bertahan setelah app ditutup)
 - Buka file selesai dengan aplikasi lain
+- Nama file otomatis menyesuaikan server (header Content-Disposition/Content-Type) jika tidak diisi manual
+- Remote control dari browser di perangkat lain via HTTP server bawaan (LAN)
 - Pilihan lokasi penyimpanan: Folder Downloads (default) atau folder kustom (internal/SD card via Storage Access Framework)
 - File tersimpan di folder Downloads publik (Android < 10) / MediaStore Downloads (Android 10+) jika folder kustom tidak dipilih
 - Tombol "Bersihkan yang selesai" dan "Penyimpanan" di menu toolbar
@@ -30,6 +32,18 @@ Untuk memilih lokasi lain (misalnya folder di SD card):
 4. Untuk kembali ke default, buka **Penyimpanan** lagi lalu tekan **Pakai default**
 
 Izin akses folder bersifat persisten (bertahan setelah aplikasi ditutup/di-restart).
+
+## Remote dari Browser (HTTP Server)
+
+Aplikasi punya HTTP server bawaan untuk kontrol dari perangkat lain dalam satu jaringan Wi-Fi:
+
+1. Pastikan HP dan perangkat lain terhubung ke Wi-Fi yang sama
+2. Di aplikasi, buka menu **⋮ → Remote (HTTP)** → **Mulai server**
+3. Catat alamat yang ditampilkan (misalnya `http://192.168.1.5:8080/`)
+4. Buka alamat tersebut di browser perangkat lain — halaman kontrol muncul
+
+Halaman remote mendukung: tambah URL download, pantau progress, jeda/lanjut/batalkan/hapus.
+Server berjalan selama aplikasi aktif dan berhenti manual lewat menu yang sama.
 
 ## Build Lokal
 
@@ -89,6 +103,7 @@ app/src/main/java/com/tasirin/httpdownloadmanager/
 ├── download/
 │   ├── DownloadEngine.kt    # Logika unduh, resume (Range), jeda, batal
 │   └── DownloadService.kt   # Foreground service + notifikasi
+├── remote/HttpControlServer.kt # HTTP server untuk remote via browser
 ├── ui/DownloadAdapter.kt    # RecyclerView adapter
 └── util/
     ├── FileSaver.kt         # Simpan file (MediaStore / folder Downloads)

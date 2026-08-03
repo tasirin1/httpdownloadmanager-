@@ -5,6 +5,8 @@ import android.net.Uri
 
 object StoragePrefs {
 
+    const val DEFAULT_PORT = 8080
+
     private const val PREFS = "storage_settings"
     private const val KEY_FOLDER_URI = "folder_uri"
     private const val KEY_FOLDER_NAME = "folder_name"
@@ -20,6 +22,9 @@ object StoragePrefs {
     private const val KEY_SPEED_LIMIT = "speed_limit_kbps"
     private const val KEY_MAX_RETRIES = "max_retries"
     private const val KEY_RECENT_URLS = "recent_urls"
+    private const val KEY_SERVER_PORT = "server_port"
+    private const val KEY_SEGMENTS = "segments"
+    private const val KEY_SORT_MODE = "sort_mode"
 
     fun getFolderUri(context: Context): Uri? {
         val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -163,6 +168,42 @@ object StoragePrefs {
         val updated = (listOf(clean) + current).take(20)
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_RECENT_URLS, updated.joinToString("\n"))
+            .apply()
+    }
+
+    fun serverPort(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getInt(KEY_SERVER_PORT, DEFAULT_PORT).coerceIn(1024, 65535)
+
+    fun setServerPort(context: Context, value: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putInt(KEY_SERVER_PORT, value.coerceIn(1024, 65535))
+            .apply()
+    }
+
+    fun segmentCount(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getInt(KEY_SEGMENTS, 4).coerceIn(1, 8)
+
+    fun setSegmentCount(context: Context, value: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putInt(KEY_SEGMENTS, value.coerceIn(1, 8))
+            .apply()
+    }
+
+    fun sortMode(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getInt(KEY_SORT_MODE, 0).coerceIn(0, 6)
+
+    fun setSortMode(context: Context, value: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putInt(KEY_SORT_MODE, value.coerceIn(0, 6))
+            .apply()
+    }
+
+    fun clearRecentUrls(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_RECENT_URLS, "")
             .apply()
     }
 }

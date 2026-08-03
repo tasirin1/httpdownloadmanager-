@@ -84,14 +84,18 @@
     <string name="ok">OK</string>
     <string name="about_changelog">Catatan perubahan:
 • Server remote full background + QR code
+• PIN server remote + halaman login
+• Pilih port server remote
+• Tombol Jeda semua / Lanjut semua / Ulangi gagal
+• Retry otomatis dengan jeda bertahap (5s → 30s → 2m)
+• Urutkan daftar (tanggal, nama, ukuran, status)
+• Download multi-segmen paralel (jumlah segmen bisa diatur)
+• Status baterai &amp; penyimpanan di halaman remote
+• Riwayat URL dengan pencarian cepat
 • Batas kecepatan &amp; prioritas per-download
 • Streaming &amp; download file via browser remote
-• Splash screen &amp; ikon baru
-• Pilihan folder dengan path teks (Android 5–7)
 • Verifikasi checksum MD5/SHA1/SHA256
-• Deteksi penyimpanan penuh
-• Pembersihan file .part otomatis
-• Pintasan launcher "Tambah Download"
+• Deteksi penyimpanan penuh + pembersihan .part otomatis
 • Crash logger (tombol "Log error" di halaman remote)</string>
     <string name="checksum_hint_optional">Checksum opsional (md5:/sha1:/sha256:) — contoh md5:abcdef…</string>
     <string name="shortcut_add_download">Tambah Download</string>
@@ -107,6 +111,17 @@
     <string name="location_internal">Penyimpanan internal aplikasi</string>
     <string name="settings_pin_label">PIN server remote (opsional)</string>
     <string name="settings_pin_hint">PIN — kosongkan untuk menonaktifkan</string>
+    <string name="pause_all">Jeda semua</string>
+    <string name="resume_all">Lanjut semua</string>
+    <string name="retry_failed">Ulangi gagal</string>
+
+    <string name="sort_by">Urutkan</string>
+    <string name="recent_search_hint">Cari URL riwayat…</string>
+    <string name="clear_history">Hapus riwayat</string>
+    <string name="settings_port_label">Port server remote</string>
+    <string name="settings_port_hint">Port (1024–65535)</string>
+    <string name="settings_segments">Segmen paralel per download</string>
+
     <string name="speed_limit_per_label">Batas kecepatan (per download)</string>
     <string name="priority_label">Prioritas</string>
     <string name="action_limit_priority">Batas &amp; prioritas</string>
@@ -159,4 +174,22 @@
 
     <string name="widget_active">%1$d download aktif</string>
     <string name="widget_idle">Tidak ada download aktif</string>
+
+    <string-array name="sort_options">
+        <item>Tanggal (terbaru)</item>
+        <item>Tanggal (terlama)</item>
+        <item>Nama (A–Z)</item>
+        <item>Nama (Z–A)</item>
+        <item>Ukuran (terbesar)</item>
+        <item>Ukuran (terkecil)</item>
+        <item>Status</item>
+    </string-array>
+
+    <string-array name="segment_options">
+        <item>1 (tanpa paralel)</item>
+        <item>2</item>
+        <item>4</item>
+        <item>6</item>
+        <item>8</item>
+    </string-array>
 </resources>

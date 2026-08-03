@@ -84,14 +84,18 @@
     <string name="ok">OK</string>
     <string name="about_changelog">Changelog:
 • Full-background remote server + QR code
+• Remote server PIN + login page
+• Configurable remote server port
+• Pause all / Resume all / Retry failed buttons
+• Auto retry with backoff (5s → 30s → 2m)
+• Sort list (date, name, size, status)
+• Parallel multi-segment downloads (configurable)
+• Battery &amp; storage status on remote page
+• URL history with quick search
 • Per-download speed limit &amp; priority
 • Stream &amp; download files via remote browser
-• Splash screen &amp; new icon
-• Text-path folder picker (Android 5–7)
 • MD5/SHA1/SHA256 checksum verification
-• Full storage detection
-• Automatic .part cleanup
-• Launcher shortcut "Add Download"
+• Full storage detection + .part cleanup
 • Crash logger ("Log error" button on remote page)</string>
     <string name="checksum_hint_optional">Optional checksum (md5:/sha1:/sha256:) — e.g. md5:abcdef…</string>
     <string name="shortcut_add_download">Add Download</string>
@@ -107,6 +111,17 @@
     <string name="location_internal">App internal storage</string>
     <string name="settings_pin_label">Remote server PIN (optional)</string>
     <string name="settings_pin_hint">PIN — leave empty to disable</string>
+    <string name="pause_all">Pause all</string>
+    <string name="resume_all">Resume all</string>
+    <string name="retry_failed">Retry failed</string>
+
+    <string name="sort_by">Sort</string>
+    <string name="recent_search_hint">Search history URLs…</string>
+    <string name="clear_history">Clear history</string>
+    <string name="settings_port_label">Remote server port</string>
+    <string name="settings_port_hint">Port (1024–65535)</string>
+    <string name="settings_segments">Parallel segments per download</string>
+
     <string name="speed_limit_per_label">Speed limit (per download)</string>
     <string name="priority_label">Priority</string>
     <string name="action_limit_priority">Limit &amp; priority</string>
@@ -159,4 +174,22 @@
 
     <string name="widget_active">%1$d active download(s)</string>
     <string name="widget_idle">No active downloads</string>
+
+    <string-array name="sort_options">
+        <item>Date (newest)</item>
+        <item>Date (oldest)</item>
+        <item>Name (A–Z)</item>
+        <item>Name (Z–A)</item>
+        <item>Size (largest)</item>
+        <item>Size (smallest)</item>
+        <item>Status</item>
+    </string-array>
+
+    <string-array name="segment_options">
+        <item>1 (no parallel)</item>
+        <item>2</item>
+        <item>4</item>
+        <item>6</item>
+        <item>8</item>
+    </string-array>
 </resources>

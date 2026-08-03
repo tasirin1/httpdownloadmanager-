@@ -119,6 +119,19 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
         binding.fabAdd.setOnClickListener { showAddDialog() }
 
+        binding.btnPauseAll.setOnClickListener {
+            App.engine.pauseAll()
+            Snackbar.make(binding.root, R.string.pause_all, Snackbar.LENGTH_SHORT).show()
+        }
+        binding.btnResumeAll.setOnClickListener {
+            App.engine.resumeAll()
+            Snackbar.make(binding.root, R.string.resume_all, Snackbar.LENGTH_SHORT).show()
+        }
+        binding.btnRetryFailed.setOnClickListener {
+            App.engine.retryFailed()
+            Snackbar.make(binding.root, R.string.retry_failed, Snackbar.LENGTH_SHORT).show()
+        }
+
         lifecycleScope.launch {
             App.engine.items.collect { items ->
                 runCatching {
@@ -254,25 +267,59 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         }
         spinnerPriority.setSelection(1)
         val recentTitle = view.findViewById<TextView>(R.id.recent_title)
+        val recentScroll = view.findViewById<View>(R.id.recent_scroll)
+        val recentSearch = view.findViewById<EditText>(R.id.input_recent_search)
         val recentContainer = view.findViewById<LinearLayout>(R.id.recent_container)
+        val clearHistory = view.findViewById<TextView>(R.id.clear_history)
 
         if (!prefillUrl.isNullOrBlank()) {
             urlInput.setText(prefillUrl)
         }
 
-        val recents = StoragePrefs.recentUrls(this)
-        if (recents.isNotEmpty()) {
-            recentTitle.visibility = View.VISIBLE
+        fun renderRecents(query: String) {
+            recentContainer.removeAllViews()
             val density = resources.displayMetrics.density
-            recents.take(5).forEach { u ->
+            val q = query.trim().lowercase()
+            val recents = StoragePrefs.recentUrls(this)
+                .filter { q.isEmpty() || it.lowercase().contains(q) }
+                .take(10)
+            recents.forEach { u ->
                 val tv = TextView(this)
                 tv.text = u
                 tv.maxLines = 1
                 tv.ellipsize = TextUtils.TruncateAt.MIDDLE
                 tv.setTextColor(ContextCompat.getColor(this, R.color.primary))
                 tv.setPadding(0, (6 * density).toInt(), 0, (6 * density).toInt())
-                tv.setOnClickListener { urlInput.setText(u) }
+                tv.setOnClickListener {
+                    urlInput.setText(u)
+                    urlInput.setSelection(urlInput.text?.length ?: 0)
+                }
                 recentContainer.addView(tv)
+            }
+        }
+
+        if (StoragePrefs.recentUrls(this).isNotEmpty()) {
+            recentTitle.visibility = View.VISIBLE
+            recentScroll.visibility = View.VISIBLE
+            recentSearch.visibility = View.VISIBLE
+            clearHistory.visibility = View.VISIBLE
+            renderRecents("")
+            recentSearch.addTextChangedListener(
+                object : TextWatcher {
+                    override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+                    override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {
+                        renderRecents(s?.toString().orEmpty())
+                    }
+                    override fun afterTextChanged(s: Editable?) {}
+                }
+            )
+            clearHistory.setOnClickListener {
+                StoragePrefs.clearRecentUrls(this)
+                recentTitle.visibility = View.GONE
+                recentScroll.visibility = View.GONE
+                recentSearch.visibility = View.GONE
+                clearHistory.visibility = View.GONE
+                recentContainer.removeAllViews()
             }
         }
 
@@ -629,6 +676,21 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             StoragePrefs.maxRetries(this).coerceIn(0, retryOptions.size - 1)
         )
 
+        val portInput = view.findViewById<EditText>(R.id.input_port)
+        portInput.setText(StoragePrefs.serverPort(this).toString())
+
+        val segmentOptions = resources.getStringArray(R.array.segment_options)
+        val segmentValues = intArrayOf(1, 2, 4, 6, 8)
+        val spinnerSegments = view.findViewById<Spinner>(R.id.spinner_segments)
+        spinnerSegments.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_item, segmentOptions
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        spinnerSegments.setSelection(
+            segmentValues.indexOf(StoragePrefs.segmentCount(this)).coerceAtLeast(0)
+        )
+
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.action_settings)
             .setView(view)
@@ -652,6 +714,19 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 StoragePrefs.setMaxConcurrent(this, spinnerConcurrent.selectedItemPosition + 1)
                 StoragePrefs.setSpeedLimitKbps(this, speedKbps[spinnerSpeed.selectedItemPosition])
                 StoragePrefs.setMaxRetries(this, spinnerRetry.selectedItemPosition)
+                StoragePrefs.setSegmentCount(
+                    this,
+                    segmentValues[spinnerSegments.selectedItemPosition]
+                )
+                val oldPort = App.httpServer.listeningPort
+                val newPort = portInput.text?.toString()?.trim()?.toIntOrNull()
+                    ?: StoragePrefs.DEFAULT_PORT
+                StoragePrefs.setServerPort(this, newPort)
+                if (App.httpServer.isAlive && newPort != oldPort) {
+                    runCatching { App.httpServer.stopServer() }
+                    runCatching { App.httpServer.startServer() }
+                    updateServerStatus()
+                }
             }
             .show()
     }
@@ -775,8 +850,12 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
     private var currentFilter = DownloadFilter.ALL
     private var searchQuery = ""
+    private var sortMode = StoragePrefs.sortMode(this)
 
     private fun setupFilterViews() {
+        findViewById<TextView>(R.id.sort_button)?.setOnClickListener { showSortDialog() }
+        updateSortButton()
+
         val map = listOf(
             R.id.filter_all to DownloadFilter.ALL,
             R.id.filter_active to DownloadFilter.ACTIVE,
@@ -844,13 +923,54 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             }
         }
         val q = searchQuery.trim().lowercase()
-        return if (q.isEmpty()) {
+        val searched = if (q.isEmpty()) {
             filtered
         } else {
             filtered.filter {
                 it.fileName.lowercase().contains(q) || it.url.lowercase().contains(q)
             }
         }
+        val stateRank = mapOf(
+            DownloadState.PENDING to 0,
+            DownloadState.DOWNLOADING to 1,
+            DownloadState.PAUSED to 2,
+            DownloadState.COMPLETED to 3,
+            DownloadState.FAILED to 4,
+            DownloadState.CANCELLED to 5
+        )
+        return when (sortMode) {
+            0 -> searched.sortedByDescending { it.addedAt }
+            1 -> searched.sortedBy { it.addedAt }
+            2 -> searched.sortedBy { it.fileName.lowercase() }
+            3 -> searched.sortedByDescending { it.fileName.lowercase() }
+            4 -> searched.sortedByDescending { it.totalBytes }
+            5 -> searched.sortedBy { it.totalBytes }
+            else -> searched.sortedWith(
+                compareBy<DownloadItem> { stateRank[it.state] ?: 0 }
+                    .thenBy { it.fileName.lowercase() }
+            )
+        }
+    }
+
+    private fun showSortDialog() {
+        val options = resources.getStringArray(R.array.sort_options)
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.sort_by)
+            .setSingleChoiceItems(options, sortMode) { _, which ->
+                sortMode = which
+                StoragePrefs.setSortMode(this, which)
+                updateSortButton()
+                refreshList()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun updateSortButton() {
+        val tv = findViewById<TextView>(R.id.sort_button) ?: return
+        val options = resources.getStringArray(R.array.sort_options)
+        val label = options.getOrElse(sortMode) { options[0] }
+        tv.text = getString(R.string.sort_by) + ": " + label
     }
 
     private fun showAboutDialog() {

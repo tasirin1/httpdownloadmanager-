@@ -31,6 +31,9 @@
   a.stream { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
   a.dl { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
   select { font-size: 15px; padding: 10px; border-radius: 8px; border: 1px solid #cbd2dd; background: #fff; }
+  #deviceStatus { background: #e8eaf6; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #283593; margin-bottom: 10px; }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tools button { padding: 6px 12px; font-size: 13px; background: #eef1f6; color: #1c1c1c; border: 1px solid #cbd2dd; }
   #logBox { background: #fff; border-radius: 10px; padding: 12px; margin-bottom: 14px; }
   #logBox pre { background: #f6f7f9; border-radius: 8px; padding: 10px; font-size: 12px; max-height: 300px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
   #logBox button { margin-top: 8px; }
@@ -42,6 +45,13 @@
   <h1>&#11015; Download Manager</h1>
   <button id="logBtn" class="btn-ghost" type="button">Log error</button>
   <button id="newBtn" class="new-btn" type="button">+ New Download</button>
+</div>
+<div id="deviceStatus"></div>
+<div class="tools">
+  <button id="pauseAllBtn" type="button">Jeda semua</button>
+  <button id="resumeAllBtn" type="button">Lanjut semua</button>
+  <button id="retryFailedBtn" type="button">Ulangi gagal</button>
+  <button id="clearCompletedBtn" type="button">Bersihkan selesai</button>
 </div>
 <div id="logBox" class="hidden">
   <pre id="logText"></pre>
@@ -109,6 +119,29 @@ document.getElementById('logClose').addEventListener('click', function () {
 document.getElementById('cancelAdd').addEventListener('click', function () {
   toggleAddForm(false);
 });
+
+async function refreshStatus() {
+  try {
+    const res = await fetch(API + '/api/status');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const st = await res.json();
+    const el = document.getElementById('deviceStatus');
+    let text = '';
+    if (st.batteryPercent >= 0) {
+      text += '\ud83d\udd0b ' + st.batteryPercent + '%';
+      text += st.batteryCharging ? ' (mengisi)' : '';
+    } else {
+      text += '\ud83d\udd0b ?';
+    }
+    if (typeof st.storageFree === 'number') {
+      text += ' \u00b7 \ud83d\udcbe Sisa ' + fmt(st.storageFree);
+    }
+    text += ' \u00b7 Port ' + st.port;
+    el.textContent = text;
+  } catch (e) {
+    /* server off: biarkan kosong */
+  }
+}
 
 async function refresh() {
   try {
@@ -215,6 +248,23 @@ async function doAction(id, action) {
   refresh();
 }
 
+function globalAction(action) {
+  doAction('', action);
+}
+
+document.getElementById('pauseAllBtn').addEventListener('click', function () {
+  globalAction('pause_all');
+});
+document.getElementById('resumeAllBtn').addEventListener('click', function () {
+  globalAction('resume_all');
+});
+document.getElementById('retryFailedBtn').addEventListener('click', function () {
+  globalAction('retry_failed');
+});
+document.getElementById('clearCompletedBtn').addEventListener('click', function () {
+  globalAction('clear_completed');
+});
+
 document.getElementById('addForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const url = document.getElementById('url').value.trim();
@@ -234,7 +284,9 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
 });
 
 refresh();
+refreshStatus();
 setInterval(refresh, 1500);
+setInterval(refreshStatus, 5000);
 </script>
 </body>
 </html>

@@ -1,7 +1,10 @@
 package com.tasirin.httpdownloadmanager.remote
 
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
+import android.os.BatteryManager
 import android.util.Log
 import com.tasirin.httpdownloadmanager.App
 import com.tasirin.httpdownloadmanager.data.DownloadState
@@ -22,7 +25,7 @@ import java.util.Locale
 import java.net.NetworkInterface
 import java.net.URLDecoder
 
-class HttpControlServer(private val context: Context) : NanoHTTPD(PORT) {
+class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.serverPort(context)) {
 
     @Volatile
     var lastError: String? = null
@@ -35,6 +38,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(PORT) {
                 pinOk(session) -> when {
                     session.method == Method.GET && session.uri == "/" -> htmlPage()
                     session.method == Method.GET && session.uri == "/api/downloads" -> downloadsJson()
+                    session.method == Method.GET && session.uri == "/api/status" -> statusJson()
                     session.method == Method.POST && session.uri == "/api/add" -> addDownload(session)
                     session.method == Method.POST && session.uri == "/api/action" -> runAction(session)
                     session.method == Method.GET && session.uri.startsWith("/file/") -> serveFile(session)
@@ -196,12 +200,27 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(PORT) {
     private fun runAction(session: IHTTPSession): Response {
         val params = readForm(session)
         val id = params["id"].orEmpty()
-        if (id.isEmpty()) return jsonResponse(JSONObject().put("ok", false))
         when (params["action"]) {
-            "pause" -> App.engine.pause(id)
-            "resume" -> App.engine.resume(id)
-            "cancel" -> App.engine.cancel(id)
-            "delete" -> App.engine.remove(id)
+            "pause" -> {
+                if (id.isEmpty()) return jsonResponse(JSONObject().put("ok", false))
+                App.engine.pause(id)
+            }
+            "resume" -> {
+                if (id.isEmpty()) return jsonResponse(JSONObject().put("ok", false))
+                App.engine.resume(id)
+            }
+            "cancel" -> {
+                if (id.isEmpty()) return jsonResponse(JSONObject().put("ok", false))
+                App.engine.cancel(id)
+            }
+            "delete" -> {
+                if (id.isEmpty()) return jsonResponse(JSONObject().put("ok", false))
+                App.engine.remove(id)
+            }
+            "pause_all" -> App.engine.pauseAll()
+            "resume_all" -> App.engine.resumeAll()
+            "retry_failed" -> App.engine.retryFailed()
+            "clear_completed" -> App.engine.clearCompleted()
             else -> return jsonResponse(
                 JSONObject().put("ok", false).put("error", "aksi tidak dikenal")
             )
@@ -335,6 +354,29 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(PORT) {
         return map
     }
 
+    private fun statusJson(): Response {
+        val obj = JSONObject()
+        val (level, charging) = batteryStatus()
+        obj.put("batteryPercent", level)
+        obj.put("batteryCharging", charging)
+        obj.put("storageFree", App.engine.freeSpaceBytes())
+        obj.put("port", listeningPort)
+        return jsonResponse(obj)
+    }
+
+    private fun batteryStatus(): Pair<Int, Boolean> = runCatching {
+        val intent = context.registerReceiver(
+            null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        )
+        val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100
+        val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val pct = if (level >= 0 && scale > 0) (level * 100 / scale) else -1
+        val charging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+            status == BatteryManager.BATTERY_STATUS_FULL
+        pct to charging
+    }.getOrDefault(-1 to false)
+
     private fun crashLog(): Response {
         val text = runCatching {
             val file = File(context.filesDir, App.CRASH_LOG_FILE)
@@ -366,7 +408,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(PORT) {
     }
 
     companion object {
-        const val PORT = 8080
+        const val DEFAULT_PORT = StoragePrefs.DEFAULT_PORT
         private const val MAX_BODY_SIZE = 1_048_576L
 
         fun ipv4Addresses(): List<String> = runCatching {

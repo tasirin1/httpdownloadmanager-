@@ -138,6 +138,32 @@ class DownloadEngine(private val context: Context) {
         update(_items.value.filterNot { ids.contains(it.id) })
     }
 
+
+    fun pauseAll() {
+        val ids = _items.value.filter {
+            it.state == DownloadState.DOWNLOADING || it.state == DownloadState.PENDING
+        }.map { it.id }
+        ids.forEach { pause(it) }
+    }
+
+    fun resumeAll() {
+        val ids = _items.value.filter {
+            it.state == DownloadState.PAUSED || it.state == DownloadState.FAILED
+        }.map { it.id }
+        ids.forEach { resume(it) }
+    }
+
+    fun retryFailed() {
+        val ids = _items.value.filter { it.state == DownloadState.FAILED }.map { it.id }
+        ids.forEach { id ->
+            retryAttempts.remove(id)
+            updateItem(id) {
+                it.copy(state = DownloadState.PENDING, autoResume = true, error = null)
+            }
+        }
+        startQueued()
+    }
+
     fun cleanupOrphans() {
         FileSaver(context).cleanupOrphanPartials(_items.value)
     }
@@ -226,7 +252,12 @@ class DownloadEngine(private val context: Context) {
             retryAttempts[id] = attempts
             updateItem(id) { it.copy(state = DownloadState.PENDING, error = null) }
             scope.launch {
-                delay(RETRY_DELAY_MS * attempts)
+                val backoff = when (attempts) {
+                    1 -> RETRY_DELAY_1_MS
+                    2 -> RETRY_DELAY_2_MS
+                    else -> RETRY_DELAY_3_MS
+                }
+                delay(backoff)
                 if (_items.value.find { it.id == id }?.state == DownloadState.PENDING) {
                     attemptStart(id)
                 }
@@ -278,7 +309,9 @@ class DownloadEngine(private val context: Context) {
                 probeHeaders = headersOf(probe)
                 val total = contentLength(probe)
                 val ranges = probe.getHeaderField("Accept-Ranges") == "bytes"
-                if (ranges && total >= SEGMENT_MIN_BYTES) {
+                if (ranges && total >= SEGMENT_MIN_BYTES &&
+                    StoragePrefs.segmentCount(context) > 1
+                ) {
                     useSegments = true
                     segmentedTotal = total
                 }
@@ -570,7 +603,7 @@ class DownloadEngine(private val context: Context) {
     }
 
     private fun createSegments(total: Long): List<DownloadSegment> {
-        val count = SEGMENT_COUNT
+        val count = StoragePrefs.segmentCount(context).coerceAtLeast(2)
         val size = total / count
         return (0 until count).map { i ->
             val start = i * size
@@ -735,8 +768,9 @@ class DownloadEngine(private val context: Context) {
     companion object {
         private const val BUFFER_SIZE = 64 * 1024
         private const val SEGMENT_MIN_BYTES = 5L * 1024 * 1024
-        private const val SEGMENT_COUNT = 4
-        private const val RETRY_DELAY_MS = 5_000L
+        private const val RETRY_DELAY_1_MS = 5_000L
+        private const val RETRY_DELAY_2_MS = 30_000L
+        private const val RETRY_DELAY_3_MS = 120_000L
         private const val MIN_FREE_BYTES = 2L * 1024 * 1024
     }
 }

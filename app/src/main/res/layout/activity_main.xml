@@ -22,14 +22,32 @@
             android:textSize="12sp" />
     </com.google.android.material.appbar.MaterialToolbar>
 
-    <TextView
-        android:id="@+id/storage_info"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
         android:paddingHorizontal="16dp"
-        android:paddingTop="8dp"
-        android:textColor="@color/text_secondary"
-        android:textSize="12sp" />
+        android:paddingTop="8dp">
+
+        <TextView
+            android:id="@+id/storage_info"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/btn_change_storage_home"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="4dp"
+            android:text="@string/change_storage_short"
+            android:textSize="12sp" />
+    </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"

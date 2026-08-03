@@ -134,6 +134,8 @@
     <string name="gallery_open_error">No app found to open this file</string>
     <string name="settings_storage_label">Storage (destination folder)</string>
     <string name="change_storage">Change storage…</string>
+    <string name="change_storage_short">Change</string>
+    <string name="storage_home_info">%1$s · Free %2$s</string>
 
     <string name="speed_limit_per_label">Speed limit (per download)</string>
     <string name="priority_label">Priority</string>

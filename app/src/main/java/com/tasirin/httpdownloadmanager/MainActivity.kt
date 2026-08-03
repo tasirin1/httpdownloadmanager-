@@ -123,6 +123,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
         binding.fabAdd.setOnClickListener { showAddDialog() }
 
+        binding.btnChangeStorageHome.setOnClickListener { showStorageDialog() }
+
         binding.btnPauseAll.setOnClickListener {
             App.engine.pauseAll()
             Snackbar.make(binding.root, R.string.pause_all, Snackbar.LENGTH_SHORT).show()
@@ -214,8 +216,12 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
     private fun updateStorageInfo() {
         val tv = findViewById<TextView>(R.id.storage_info) ?: return
+        val folder = StoragePrefs.getFolderName(this)
+            ?: StoragePrefs.getTextFolder(this)
+            ?: getString(R.string.storage_default_folder)
         tv.text = getString(
-            R.string.storage_remaining,
+            R.string.storage_home_info,
+            folder,
             formatBytes(App.engine.freeSpaceBytes())
         )
     }

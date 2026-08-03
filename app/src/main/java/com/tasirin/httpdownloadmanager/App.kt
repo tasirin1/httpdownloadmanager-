@@ -1,6 +1,9 @@
 package com.tasirin.httpdownloadmanager
 
 import android.app.Application
+import android.content.ContentValues
+import android.provider.MediaStore
+import android.os.Build
 import android.util.Log
 import com.tasirin.httpdownloadmanager.download.DownloadEngine
 import com.tasirin.httpdownloadmanager.remote.HttpControlServer
@@ -13,25 +16,20 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         installCrashLogger()
+        httpServer = HttpControlServer(this)
         engine = DownloadEngine(this)
         runCatching { engine.cleanupOrphans() }
-        httpServer = HttpControlServer(this)
+        // Server dinyalakan langsung dari Application supaya tetap jalan
+        // walau halaman utama gagal terbuka (mis. crash di Activity).
+        if (StoragePrefs.isServerBackgroundEnabled(this)) {
+            runCatching { httpServer.startServer() }
+        }
     }
 
     private fun installCrashLogger() {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            runCatching {
-                val file = File(filesDir, CRASH_LOG_FILE)
-                val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
-                val text = buildString {
-                    appendLine("=== $stamp [${thread.name}] ===")
-                    appendLine(Log.getStackTraceString(throwable))
-                    appendLine()
-                }
-                val existing = if (file.exists()) file.readText() else ""
-                file.writeText((existing + text).takeLast(100_000))
-            }
+            appendCrash(this, thread.name, throwable)
             previous?.uncaughtException(thread, throwable)
         }
     }
@@ -51,7 +49,37 @@ class App : Application() {
                     appendLine()
                 }
                 val existing = if (file.exists()) file.readText() else ""
-                file.writeText((existing + text).takeLast(100_000))
+                val merged = (existing + text).takeLast(100_000)
+                file.writeText(merged)
+                copyLogToPublic(context, merged)
+            }
+        }
+
+        fun copyLogToPublic(context: android.content.Context, text: String) {
+            runCatching {
+                val name = "httpdm-crash.log"
+                if (Build.VERSION.SDK_INT >= 29) {
+                    val resolver = context.contentResolver
+                    val values = ContentValues().apply {
+                        put(MediaStore.Downloads.DISPLAY_NAME, name)
+                        put(MediaStore.Downloads.MIME_TYPE, "text/plain")
+                        put(MediaStore.Downloads.IS_PENDING, 1)
+                    }
+                    val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    if (uri != null) {
+                        resolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) }
+                        val done = ContentValues().apply {
+                            put(MediaStore.Downloads.IS_PENDING, 0)
+                        }
+                        resolver.update(uri, done, null, null)
+                    }
+                } else {
+                    val dir = android.os.Environment
+                        .getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+                    if (dir != null && dir.isDirectory && dir.canWrite()) {
+                        File(dir, name).writeText(text)
+                    }
+                }
             }
         }
     }

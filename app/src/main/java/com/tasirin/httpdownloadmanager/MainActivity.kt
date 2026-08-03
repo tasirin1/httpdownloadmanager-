@@ -107,7 +107,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        runCatching { installSplashScreen() }
         super.onCreate(savedInstanceState)
         showPreviousCrashIfAny()
         try {

@@ -730,7 +730,9 @@ class DownloadEngine(private val context: Context) {
     }
 
     private fun sanitizeFileName(name: String): String {
-        val clean = name.replace(Regex("[/\\]"), "_").trim()
+        // Pakai replace karakter, bukan regex [/\] yang error di regex ICU
+        // Android ("Missing closing bracket in character class").
+        val clean = name.replace('/', '_').replace('\\', '_').trim()
         return clean.ifEmpty { "download" }
     }
 

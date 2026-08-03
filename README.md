@@ -38,7 +38,7 @@ Aplikasi download manager sederhana untuk **Android 5.0 (API 21) ke atas**, diba
 
 ## Penyimpanan
 
-Default file disimpan ke **Folder Downloads** (MediaStore di Android 10+, folder Downloads publik di bawahnya).
+Default file disimpan ke **Folder Downloads** (MediaStore di Android 10+, folder Downloads publik di Android 5–9 — izin penyimpanan diminta otomatis saat membuka dialog Penyimpanan di Android 6+). Pemilih folder defaultnya langsung terbuka di folder Downloads (Android 8+), dan aman dipakai di Android 5/6 (tanpa force close saat memilih folder).
 Untuk memilih lokasi lain (misalnya folder di SD card):
 
 1. Ketuk menu **⋮ → Penyimpanan**

@@ -8,6 +8,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.DocumentsContract
 import android.text.TextUtils
 import android.view.Menu
 import android.view.MenuItem
@@ -19,6 +20,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -57,19 +59,22 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     ) { uri ->
         if (uri != null) {
             runCatching {
-                contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                )
+                takePersistablePermission(uri)
+                val name = DocumentFile.fromTreeUri(this, uri)?.name
+                StoragePrefs.saveFolder(this, uri, name)
+                val label = name ?: getString(R.string.storage_custom_folder)
+                Snackbar.make(
+                    binding.root,
+                    getString(R.string.storage_folder_selected, label),
+                    Snackbar.LENGTH_SHORT
+                ).show()
+            }.onFailure {
+                Snackbar.make(
+                    binding.root,
+                    R.string.storage_picker_error,
+                    Snackbar.LENGTH_LONG
+                ).show()
             }
-            val name = DocumentFile.fromTreeUri(this, uri)?.name
-            StoragePrefs.saveFolder(this, uri, name)
-            val label = name ?: getString(R.string.storage_custom_folder)
-            Snackbar.make(
-                binding.root,
-                getString(R.string.storage_folder_selected, label),
-                Snackbar.LENGTH_SHORT
-            ).show()
         }
     }
 
@@ -80,12 +85,15 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         pendingMoveId = null
         if (uri != null && id != null) {
             runCatching {
-                contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                )
+                takePersistablePermission(uri)
+                App.engine.move(id, uri)
+            }.onFailure {
+                Snackbar.make(
+                    binding.root,
+                    R.string.storage_picker_error,
+                    Snackbar.LENGTH_LONG
+                ).show()
             }
-            App.engine.move(id, uri)
         }
     }
 
@@ -295,7 +303,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             options.add(getString(R.string.action_rename) to { showRenameDialog(item) })
             options.add(getString(R.string.action_move) to {
                 pendingMoveId = item.id
-                movePicker.launch(null)
+                launchDocumentTree(movePicker)
             })
         }
         if (item.state == DownloadState.PENDING ||
@@ -333,7 +341,51 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             .show()
     }
 
+    private fun takePersistablePermission(uri: Uri) {
+        runCatching {
+            contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+        }
+    }
+
+    private fun launchDocumentTree(launcher: ActivityResultLauncher<Uri?>) {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
+            )
+        }
+        if (intent.resolveActivity(packageManager) == null) {
+            Snackbar.make(
+                binding.root,
+                R.string.storage_picker_unavailable,
+                Snackbar.LENGTH_LONG
+            ).show()
+            return
+        }
+        launcher.launch(downloadsInitialUri())
+    }
+
+    private fun downloadsInitialUri(): Uri? {
+        if (Build.VERSION.SDK_INT < 26) return null
+        return runCatching {
+            DocumentsContract.buildDocumentUri(
+                "com.android.externalstorage.documents", "primary:Download"
+            )
+        }.getOrNull()
+    }
+
     private fun showStorageDialog() {
+        if (Build.VERSION.SDK_INT in 23..28 &&
+            checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissionsIfNeeded()
+        }
         val currentName = StoragePrefs.getFolderName(this)
             ?: getString(R.string.storage_default_folder)
         val builder = MaterialAlertDialogBuilder(this)
@@ -341,7 +393,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             .setMessage(getString(R.string.storage_current, currentName))
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton(R.string.storage_choose_folder) { _, _ ->
-                folderPicker.launch(null)
+                launchDocumentTree(folderPicker)
             }
         if (StoragePrefs.getFolderUri(this) != null) {
             builder.setNeutralButton(R.string.storage_use_default) { _, _ ->

@@ -38,6 +38,8 @@
     <string name="storage_custom_folder">Custom folder</string>
     <string name="storage_choose_folder">Choose folder…</string>
     <string name="storage_use_default">Use default</string>
+    <string name="storage_picker_error">Failed to use folder: %1$s</string>
+    <string name="storage_picker_unavailable">No app available to pick a folder on this device</string>
     <string name="storage_folder_selected">Folder selected: %1$s</string>
 
     <string name="action_remote">Remote (HTTP)</string>

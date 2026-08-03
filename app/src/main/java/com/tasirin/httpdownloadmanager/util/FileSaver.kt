@@ -104,14 +104,17 @@ class FileSaver(context: Context) {
     @Suppress("DEPRECATION")
     private fun publishToPublicDir(partial: File, fileName: String): PublishResult {
         val publicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        if (Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED && publicDir.canWrite()) {
-            val target = File(publicDir, fileName)
-            try {
-                target.outputStream().use { out -> partial.inputStream().use { it.copyTo(out) } }
-                partial.delete()
-                return PublishResult(filePath = target.absolutePath)
-            } catch (_: Exception) {
-                // fallback ke penyimpanan internal
+        if (Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED) {
+            runCatching { publicDir.mkdirs() }
+            if (publicDir.isDirectory && publicDir.canWrite()) {
+                val target = File(publicDir, fileName)
+                try {
+                    target.outputStream().use { out -> partial.inputStream().use { it.copyTo(out) } }
+                    partial.delete()
+                    return PublishResult(filePath = target.absolutePath)
+                } catch (_: Exception) {
+                    // fallback ke penyimpanan internal
+                }
             }
         }
         return publishToInternal(partial, fileName)

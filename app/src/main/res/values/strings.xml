@@ -38,6 +38,8 @@
     <string name="storage_custom_folder">Folder kustom</string>
     <string name="storage_choose_folder">Pilih folder…</string>
     <string name="storage_use_default">Pakai default</string>
+    <string name="storage_picker_error">Gagal menggunakan folder: %1$s</string>
+    <string name="storage_picker_unavailable">Tidak ada aplikasi untuk memilih folder di perangkat ini</string>
     <string name="storage_folder_selected">Folder dipilih: %1$s</string>
 
     <string name="action_remote">Remote (HTTP)</string>

@@ -39,6 +39,8 @@ class DownloadRepository(context: Context) {
                             username = o.optString("username"),
                             password = o.optString("password"),
                             headers = o.optString("headers"),
+                            speedLimitKbps = o.optInt("speedLimitKbps", 0),
+                            priority = o.optInt("priority", 0),
                             segments = parseSegments(o)
                         )
                     )
@@ -66,6 +68,8 @@ class DownloadRepository(context: Context) {
             o.put("username", item.username)
             o.put("password", item.password)
             o.put("headers", item.headers)
+            o.put("speedLimitKbps", item.speedLimitKbps)
+            o.put("priority", item.priority)
             val segArr = JSONArray()
             item.segments.forEach { seg ->
                 val so = JSONObject()

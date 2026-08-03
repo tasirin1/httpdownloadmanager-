@@ -26,7 +26,11 @@
   .err { color: #b00020; margin-top: 4px; }
   .bar { height: 8px; background: #e4e8ef; border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
   .fill { height: 100%; background: #FF6F00; width: 0; }
-  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .actions a { padding: 6px 12px; font-size: 13px; text-decoration: none; border-radius: 8px; }
+  a.stream { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+  a.dl { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
+  select { font-size: 15px; padding: 10px; border-radius: 8px; border: 1px solid #cbd2dd; background: #fff; }
   .actions button { padding: 6px 12px; font-size: 13px; background: #eef1f6; color: #1c1c1c; border: 1px solid #cbd2dd; }
 </style>
 </head>
@@ -38,6 +42,22 @@
 <form id="addForm" class="hidden">
   <input id="url" type="url" placeholder="URL file (https://…)" required>
   <input id="name" type="text" placeholder="Nama file (opsional)">
+  <div class="form-row">
+    <select id="speed">
+      <option value="0">Kecepatan: global</option>
+      <option value="128">128 KB/s</option>
+      <option value="256">256 KB/s</option>
+      <option value="512">512 KB/s</option>
+      <option value="1024">1 MB/s</option>
+      <option value="2048">2 MB/s</option>
+      <option value="5120">5 MB/s</option>
+    </select>
+    <select id="priority">
+      <option value="-1">Prioritas: Rendah</option>
+      <option value="0" selected>Prioritas: Normal</option>
+      <option value="1">Prioritas: Tinggi</option>
+    </select>
+  </div>
   <div class="form-row">
     <button type="submit">Tambah Download</button>
     <button id="cancelAdd" type="button" class="btn-ghost">Batal</button>
@@ -143,6 +163,11 @@ function render(items) {
 
 function actionButtons(it) {
   let s = '';
+  const encId = encodeURIComponent(it.id);
+  if (it.state === 'COMPLETED') {
+    s += '<a class="stream" href="' + API + '/file/' + encId + '" target="_blank">Stream</a>';
+    s += '<a class="dl" href="' + API + '/file/' + encId + '?dl=1" download>Download</a>';
+  }
   if (it.state === 'DOWNLOADING') s += '<button data-action="pause">Jeda</button>';
   if (it.state === 'PAUSED' || it.state === 'FAILED') s += '<button data-action="resume">Lanjut</button>';
   if (it.state === 'DOWNLOADING' || it.state === 'PENDING' || it.state === 'PAUSED') s += '<button data-action="cancel">Batal</button>';
@@ -168,6 +193,8 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
   const body = new URLSearchParams({url: url});
   const name = document.getElementById('name').value.trim();
   if (name) body.append('name', name);
+  body.append('speedLimitKbps', document.getElementById('speed').value);
+  body.append('priority', document.getElementById('priority').value);
   await fetch(API + '/api/add', {method: 'POST', body});
   document.getElementById('url').value = '';
   document.getElementById('name').value = '';

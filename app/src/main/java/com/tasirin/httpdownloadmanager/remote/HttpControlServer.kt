@@ -1,11 +1,17 @@
 package com.tasirin.httpdownloadmanager.remote
 
 import android.content.Context
+import android.net.Uri
 import com.tasirin.httpdownloadmanager.App
+import com.tasirin.httpdownloadmanager.data.DownloadState
+import com.tasirin.httpdownloadmanager.util.MimeTypes
 import fi.iki.elonen.NanoHTTPD
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
+import java.io.FileInputStream
 import java.io.IOException
+import java.io.InputStream
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.net.URLDecoder
@@ -23,6 +29,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(PORT) {
                 session.method == Method.GET && session.uri == "/api/downloads" -> downloadsJson()
                 session.method == Method.POST && session.uri == "/api/add" -> addDownload(session)
                 session.method == Method.POST && session.uri == "/api/action" -> runAction(session)
+                session.method == Method.GET && session.uri.startsWith("/file/") -> serveFile(session)
                 else -> newFixedLengthResponse(
                     Response.Status.NOT_FOUND,
                     "text/plain; charset=utf-8",
@@ -84,7 +91,11 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(PORT) {
         if (url.isEmpty()) {
             return jsonResponse(JSONObject().put("ok", false).put("error", "url kosong"))
         }
-        App.engine.addDownload(url, params["name"])
+        val speed = params["speedLimitKbps"]?.toIntOrNull()?.coerceIn(0, 100_000) ?: 0
+        val priority = params["priority"]?.toIntOrNull()?.coerceIn(-1, 1) ?: 0
+        App.engine.addDownload(
+            url, params["name"], speedLimitKbps = speed, priority = priority
+        )
         return jsonResponse(JSONObject().put("ok", true))
     }
 
@@ -102,6 +113,106 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(PORT) {
             )
         }
         return jsonResponse(JSONObject().put("ok", true))
+    }
+
+    private fun serveFile(session: IHTTPSession): Response {
+        val id = session.uri.removePrefix("/file/")
+        val item = App.engine.items.value.find {
+            it.id == id && it.state == DownloadState.COMPLETED
+        } ?: return notFound()
+        val download = session.parms["dl"] == "1"
+        val mime = MimeTypes.forFile(item.fileName)
+        val safeName = item.fileName.replace("\"", "_").replace("\\", "_")
+        val disposition = if (download) {
+            "attachment; filename=\"$safeName\""
+        } else {
+            "inline; filename=\"$safeName\""
+        }
+
+        val input: InputStream
+        val total: Long
+        if (!item.filePath.isNullOrEmpty()) {
+            val file = File(item.filePath)
+            if (!file.exists() || !file.isFile) return notFound()
+            input = FileInputStream(file)
+            total = file.length()
+        } else if (!item.contentUri.isNullOrEmpty()) {
+            val uri = Uri.parse(item.contentUri)
+            val resolver = context.contentResolver
+            val stream = resolver.openInputStream(uri) ?: return notFound()
+            val len = resolver.openAssetFileDescriptor(uri, "r")?.length ?: -1L
+            input = stream
+            total = len
+        } else {
+            return notFound()
+        }
+
+        val response = runCatching {
+            val rangeHeader = session.headers["range"] ?: session.headers["Range"]
+            val range = if (total > 0) parseRange(rangeHeader, total) else null
+            when {
+                range != null -> {
+                    val (start, end) = range
+                    val partLen = end - start + 1
+                    if (start > 0) skipFully(input, start)
+                    newFixedLengthResponse(
+                        Response.Status.PARTIAL_CONTENT, mime, input, partLen
+                    ).also {
+                        it.addHeader("Content-Range", "bytes $start-$end/$total")
+                    }
+                }
+                total > 0 -> newFixedLengthResponse(Response.Status.OK, mime, input, total)
+                else -> newChunkedResponse(Response.Status.OK, mime, input)
+            }
+        }.getOrElse {
+            runCatching { input.close() }
+            return newFixedLengthResponse(
+                Response.Status.INTERNAL_ERROR,
+                "text/plain; charset=utf-8",
+                "Error: ${it.message}"
+            )
+        }
+        response.addHeader("Accept-Ranges", "bytes")
+        response.addHeader("Content-Disposition", disposition)
+        return response
+    }
+
+    private fun notFound(): Response = newFixedLengthResponse(
+        Response.Status.NOT_FOUND,
+        "text/plain; charset=utf-8",
+        "File tidak ditemukan"
+    )
+
+    private fun parseRange(header: String?, total: Long): Pair<Long, Long>? {
+        if (header.isNullOrBlank() || total <= 0) return null
+        val m = Regex("bytes=(\\d*)-(\\d*)").find(header) ?: return null
+        val start = m.groupValues[1].toLongOrNull()
+        val endRaw = m.groupValues[2].toLongOrNull()
+        return when {
+            start != null -> {
+                val s = start.coerceIn(0, total - 1)
+                val e = (endRaw ?: (total - 1)).coerceIn(s, total - 1)
+                s to e
+            }
+            endRaw != null -> {
+                val n = endRaw.coerceAtLeast(1)
+                (total - n).coerceAtLeast(0) to (total - 1)
+            }
+            else -> null
+        }
+    }
+
+    private fun skipFully(input: InputStream, n: Long) {
+        var remaining = n
+        while (remaining > 0) {
+            val skipped = input.skip(remaining)
+            if (skipped <= 0) {
+                if (input.read() == -1) return
+                remaining--
+            } else {
+                remaining -= skipped
+            }
+        }
     }
 
     private fun readForm(session: IHTTPSession): Map<String, String> {

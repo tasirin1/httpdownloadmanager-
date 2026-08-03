@@ -48,6 +48,7 @@
     <string name="remote_no_url">No network address available</string>
     <string name="remote_message">Status: %1$s\n\nOpen from another device browser:\n%2$s</string>
     <string name="remote_started">Server running on port %1$d</string>
+        <string name="remote_qr_desc">Remote server address (QR)</string>
     <string name="remote_start_failed">Failed to start server: %1$s</string>
 
     <string name="action_settings">Settings</string>
@@ -59,6 +60,10 @@
     <string name="settings_concurrent">Concurrent downloads (queue)</string>
     <string name="settings_speed_limit">Speed limit</string>
     <string name="settings_retry">Retry attempts on failure</string>
+    <string name="speed_limit_per_label">Speed limit (per download)</string>
+    <string name="priority_label">Priority</string>
+    <string name="action_limit_priority">Limit &amp; priority</string>
+
 
     <string-array name="concurrent_options">
         <item>1</item>
@@ -76,6 +81,21 @@
         <item>2 MB/s</item>
         <item>5 MB/s</item>
     </string-array>
+    <string-array name="speed_limit_per_options">
+        <item>Follow global setting</item>
+        <item>128 KB/s</item>
+        <item>256 KB/s</item>
+        <item>512 KB/s</item>
+        <item>1 MB/s</item>
+        <item>2 MB/s</item>
+        <item>5 MB/s</item>
+    </string-array>
+    <string-array name="priority_options">
+        <item>Low</item>
+        <item>Normal</item>
+        <item>High</item>
+    </string-array>
+
     <string-array name="retry_options">
         <item>0 (no retry)</item>
         <item>1</item>

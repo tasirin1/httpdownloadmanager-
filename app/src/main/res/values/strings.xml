@@ -48,6 +48,7 @@
     <string name="remote_no_url">Tidak ada alamat jaringan tersedia</string>
     <string name="remote_message">Status: %1$s\n\nBuka dari browser di perangkat lain:\n%2$s</string>
     <string name="remote_started">Server aktif di port %1$d</string>
+        <string name="remote_qr_desc">Alamat remote server (QR)</string>
     <string name="remote_start_failed">Gagal memulai server: %1$s</string>
 
     <string name="action_settings">Pengaturan</string>
@@ -59,6 +60,10 @@
     <string name="settings_concurrent">Unduhan bersamaan (antrean)</string>
     <string name="settings_speed_limit">Batas kecepatan</string>
     <string name="settings_retry">Percobaan ulang saat gagal</string>
+    <string name="speed_limit_per_label">Batas kecepatan (per download)</string>
+    <string name="priority_label">Prioritas</string>
+    <string name="action_limit_priority">Batas &amp; prioritas</string>
+
 
     <string-array name="concurrent_options">
         <item>1</item>
@@ -76,6 +81,21 @@
         <item>2 MB/s</item>
         <item>5 MB/s</item>
     </string-array>
+    <string-array name="speed_limit_per_options">
+        <item>Ikuti pengaturan global</item>
+        <item>128 KB/s</item>
+        <item>256 KB/s</item>
+        <item>512 KB/s</item>
+        <item>1 MB/s</item>
+        <item>2 MB/s</item>
+        <item>5 MB/s</item>
+    </string-array>
+    <string-array name="priority_options">
+        <item>Rendah</item>
+        <item>Normal</item>
+        <item>Tinggi</item>
+    </string-array>
+
     <string-array name="retry_options">
         <item>0 (tanpa ulang)</item>
         <item>1</item>

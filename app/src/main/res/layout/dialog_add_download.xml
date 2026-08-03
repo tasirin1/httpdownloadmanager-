@@ -61,4 +61,30 @@
         android:inputType="textMultiLine"
         android:minLines="2"
         android:maxLines="4" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/speed_limit_per_label"
+        android:textAppearance="?attr/textAppearanceLabelMedium" />
+
+    <Spinner
+        android:id="@+id/spinner_speed_limit_per"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/priority_label"
+        android:textAppearance="?attr/textAppearanceLabelMedium" />
+
+    <Spinner
+        android:id="@+id/spinner_priority"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp" />
 </LinearLayout>

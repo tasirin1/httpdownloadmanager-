@@ -3,6 +3,8 @@ package com.tasirin.httpdownloadmanager
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -13,18 +15,23 @@ import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.content.FileProvider
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.qrcode.QRCodeWriter
 import com.tasirin.httpdownloadmanager.data.DownloadItem
 import com.tasirin.httpdownloadmanager.data.DownloadState
 import com.tasirin.httpdownloadmanager.databinding.ActivityMainBinding
@@ -83,6 +90,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -154,6 +162,23 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val usernameInput = view.findViewById<EditText>(R.id.input_username)
         val passwordInput = view.findViewById<EditText>(R.id.input_password)
         val headersInput = view.findViewById<EditText>(R.id.input_headers)
+        val speedPerOptions = resources.getStringArray(R.array.speed_limit_per_options)
+        val speedKbps = intArrayOf(0, 128, 256, 512, 1024, 2048, 5120)
+        val spinnerSpeedPer = view.findViewById<Spinner>(R.id.spinner_speed_limit_per)
+        spinnerSpeedPer.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_item, speedPerOptions
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        val priorityValues = intArrayOf(-1, 0, 1)
+        val spinnerPriority = view.findViewById<Spinner>(R.id.spinner_priority)
+        spinnerPriority.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_item,
+            resources.getStringArray(R.array.priority_options)
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        spinnerPriority.setSelection(1)
         val recentTitle = view.findViewById<TextView>(R.id.recent_title)
         val recentContainer = view.findViewById<LinearLayout>(R.id.recent_container)
 
@@ -192,13 +217,17 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                     val username = usernameInput.text?.toString()?.trim().orEmpty()
                     val password = passwordInput.text?.toString()?.trim().orEmpty()
                     val headers = headersInput.text?.toString()?.trim().orEmpty()
+                    val perSpeed = speedKbps[spinnerSpeedPer.selectedItemPosition]
+                    val priority = priorityValues[spinnerPriority.selectedItemPosition]
                     urls.forEachIndexed { index, url ->
                         App.engine.addDownload(
                             url,
                             if (index == 0) name else null,
                             username,
                             password,
-                            headers
+                            headers,
+                            perSpeed,
+                            priority
                         )
                     }
                 }
@@ -268,6 +297,16 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 pendingMoveId = item.id
                 movePicker.launch(null)
             })
+        }
+        if (item.state == DownloadState.PENDING ||
+            item.state == DownloadState.PAUSED ||
+            item.state == DownloadState.FAILED
+        ) {
+            options.add(
+                getString(R.string.action_limit_priority) to {
+                    showLimitPriorityDialog(item)
+                }
+            )
         }
         options.add(getString(R.string.delete) to { App.engine.remove(item.id) })
         val labels = options.map { it.first }.toTypedArray()
@@ -374,21 +413,28 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
     private fun showRemoteDialog() {
         val server = App.httpServer
-        val status = if (server.isAlive) {
-            getString(R.string.remote_running)
+        val view = layoutInflater.inflate(R.layout.dialog_remote, null)
+        val statusView = view.findViewById<TextView>(R.id.remote_status)
+        val urlsView = view.findViewById<TextView>(R.id.remote_urls)
+        val qrView = view.findViewById<ImageView>(R.id.remote_qr)
+        if (server.isAlive) {
+            statusView.setText(R.string.remote_running)
+            val urls = HttpControlServer.ipv4Addresses()
+                .map { "http://$it:${server.listeningPort}/" }
+            urlsView.text = urls.joinToString("\n").ifEmpty {
+                getString(R.string.remote_no_url)
+            }
+            urls.firstOrNull()?.let { address ->
+                generateQrCode(address, 640)?.let { qrView.setImageBitmap(it) }
+            }
         } else {
-            getString(R.string.remote_stopped)
-        }
-        val urls = if (server.isAlive) {
-            HttpControlServer.ipv4Addresses()
-                .joinToString("\n") { "http://$it:${server.listeningPort}/" }
-                .ifEmpty { getString(R.string.remote_no_url) }
-        } else {
-            getString(R.string.remote_no_url)
+            statusView.setText(R.string.remote_stopped)
+            urlsView.text = getString(R.string.remote_no_url)
+            qrView.visibility = View.GONE
         }
         val builder = MaterialAlertDialogBuilder(this)
             .setTitle(R.string.action_remote)
-            .setMessage(getString(R.string.remote_message, status, urls))
+            .setView(view)
             .setNegativeButton(R.string.cancel, null)
         if (server.isAlive) {
             builder.setPositiveButton(R.string.remote_stop) { _, _ ->
@@ -415,6 +461,61 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             }
         }
         builder.show()
+    }
+
+    private fun generateQrCode(content: String, size: Int): Bitmap? {
+        return runCatching {
+            val hints = mapOf(EncodeHintType.MARGIN to 1)
+            val matrix = QRCodeWriter().encode(
+                content, BarcodeFormat.QR_CODE, size, size, hints
+            )
+            val pixels = IntArray(size * size)
+            for (y in 0 until size) {
+                for (x in 0 until size) {
+                    pixels[y * size + x] = if (matrix[x, y]) Color.BLACK else Color.WHITE
+                }
+            }
+            Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888)
+        }.getOrNull()
+    }
+
+    private fun showLimitPriorityDialog(item: DownloadItem) {
+        val view = layoutInflater.inflate(R.layout.dialog_limit_priority, null)
+        val speedPerOptions = resources.getStringArray(R.array.speed_limit_per_options)
+        val speedKbps = intArrayOf(0, 128, 256, 512, 1024, 2048, 5120)
+        val spinnerSpeed = view.findViewById<Spinner>(R.id.spinner_speed_limit_per)
+        spinnerSpeed.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_item, speedPerOptions
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        val speedIndex = speedKbps.indexOf(item.speedLimitKbps)
+        spinnerSpeed.setSelection(if (speedIndex >= 0) speedIndex else 0)
+
+        val priorityValues = intArrayOf(-1, 0, 1)
+        val spinnerPriority = view.findViewById<Spinner>(R.id.spinner_priority)
+        spinnerPriority.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_item,
+            resources.getStringArray(R.array.priority_options)
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        spinnerPriority.setSelection(
+            priorityValues.indexOf(item.priority).coerceAtLeast(0)
+        )
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(item.fileName)
+            .setView(view)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.save) { _, _ ->
+                App.engine.setLimitAndPriority(
+                    item.id,
+                    speedKbps[spinnerSpeed.selectedItemPosition],
+                    priorityValues[spinnerPriority.selectedItemPosition]
+                )
+            }
+            .show()
     }
 
     private fun openDownload(item: DownloadItem) {

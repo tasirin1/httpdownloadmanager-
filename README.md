@@ -11,10 +11,13 @@ Aplikasi download manager sederhana untuk **Android 5.0 (API 21) ke atas**, diba
 - Daftar download tersimpan otomatis (bertahan setelah app ditutup)
 - Buka file selesai dengan aplikasi lain
 - Nama file otomatis menyesuaikan server (header Content-Disposition/Content-Type) jika tidak diisi manual
-- Remote control dari browser di perangkat lain via HTTP server bawaan (LAN)
+- Remote control dari browser di perangkat lain via HTTP server bawaan (LAN), lengkap dengan **QR code** alamat server (menu Remote)
+- File yang sudah selesai bisa **di-streaming atau di-download** langsung dari browser remote (dukungan HTTP Range untuk video/audio)
+- **Splash screen** modern + **ikon baru** (adaptive icon, Android 8+; PNG fallback untuk Android 5–7)
 - Berjalan di latar belakang (foreground service) + resume otomatis download yang terputus setelah restart/boot
 - Unduhan paralel dengan antrean (maks. bersamaan bisa diatur)
 - Kecepatan (KB/s/MB/s) + ETA per file, dan batas kecepatan global
+- **Batas kecepatan & prioritas per-download** (dialog tambah download / long-press item yang antre/dijeda)
 - Multi-koneksi (segmented download) untuk file besar yang mendukung Range
 - Share URL langsung dari aplikasi lain (Share → Download Manager)
 - Retry otomatis saat gagal (bisa diatur)
@@ -55,9 +58,17 @@ Izin akses folder bersifat persisten (bertahan setelah aplikasi ditutup/di-resta
 Menu **⋮ → Pengaturan**:
 
 - Lanjutkan download yang terputus otomatis (latar belakang)
-- Mulai otomatis saat perangkat boot
+- Mulai otomatis saat perangkat boot (bisa dimatikan/dinyalakan dari menu ⋮ → Auto Start saat boot)
 - Unduhan bersamaan (1–5) — sisanya antre
 - Batas kecepatan (Tanpa batas / 128 KB/s … 5 MB/s)
+- Percobaan ulang saat gagal
+
+## Remote (HTTP) & Streaming
+
+1. Buka **⋮ → Remote (HTTP)** lalu **Mulai server**
+2. Scan **QR code** di dialog tersebut dengan kamera ponsel lain, atau ketik alamat `http://<ip-ponsel>:8080/` di browser perangkat lain (harus satu jaringan Wi-Fi)
+3. Dari halaman remote Anda bisa: menambah download (termasuk batas kecepatan & prioritas), menjeda/melanjutkan/membatalkan, serta **Stream** (putar/pratinjau) atau **Download** file yang sudah selesai
+4. File besar didukung **HTTP Range** sehingga video/audio bisa di-seek saat streaming
 - Percobaan ulang saat gagal (0–5)
 
 ## Latar Belakang & Auto Start

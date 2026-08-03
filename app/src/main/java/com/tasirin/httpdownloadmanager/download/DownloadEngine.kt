@@ -54,7 +54,9 @@ class DownloadEngine(private val context: Context) {
         fileName: String?,
         username: String = "",
         password: String = "",
-        headers: String = ""
+        headers: String = "",
+        speedLimitKbps: Int = 0,
+        priority: Int = 0
     ) {
         val cleanUrl = url.trim()
         if (cleanUrl.isEmpty()) return
@@ -71,7 +73,9 @@ class DownloadEngine(private val context: Context) {
             autoResume = true,
             username = username,
             password = password,
-            headers = headers
+            headers = headers,
+            speedLimitKbps = speedLimitKbps,
+            priority = priority
         )
         update(_items.value + item)
         StoragePrefs.addRecentUrl(context, cleanUrl)
@@ -138,6 +142,10 @@ class DownloadEngine(private val context: Context) {
         }
     }
 
+    fun setLimitAndPriority(id: String, speedLimitKbps: Int, priority: Int) {
+        updateItem(id) { it.copy(speedLimitKbps = speedLimitKbps, priority = priority) }
+    }
+
     fun move(id: String, destTreeUri: Uri) {
         val item = _items.value.find { it.id == id } ?: return
         if (item.state != DownloadState.COMPLETED) return
@@ -164,7 +172,9 @@ class DownloadEngine(private val context: Context) {
 
     private fun startQueued() {
         val max = StoragePrefs.maxConcurrent(context)
-        val pending = _items.value.filter { it.state == DownloadState.PENDING }
+        val pending = _items.value
+            .filter { it.state == DownloadState.PENDING }
+            .sortedByDescending { it.priority }
         var active = jobs.values.count { it.isActive }
         if (active < max && pending.isNotEmpty()) {
             ensureServiceRunning()
@@ -225,7 +235,9 @@ class DownloadEngine(private val context: Context) {
 
     private suspend fun runDownload(item: DownloadItem) {
         val saver = FileSaver(context)
-        val throttle = SpeedThrottle(StoragePrefs.speedLimitKbps(context))
+        val globalLimit = StoragePrefs.speedLimitKbps(context)
+        val limit = if (item.speedLimitKbps > 0) item.speedLimitKbps else globalLimit
+        val throttle = SpeedThrottle(limit)
 
         if (item.segments.isNotEmpty()) {
             runSegmented(item, saver, throttle, item.totalBytes, null)

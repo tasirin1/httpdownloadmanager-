@@ -114,14 +114,19 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
         lifecycleScope.launch {
             App.engine.items.collect { items ->
-                adapter.submitList(items)
-                binding.emptyView.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+                runCatching {
+                    adapter.submitList(items)
+                    binding.emptyView.visibility =
+                        if (items.isEmpty()) View.VISIBLE else View.GONE
+                }
             }
         }
 
         requestPermissionsIfNeeded()
-        if (StoragePrefs.isBackgroundEnabled(this)) {
-            App.engine.resumeInterrupted()
+        runCatching {
+            if (StoragePrefs.isBackgroundEnabled(this)) {
+                App.engine.resumeInterrupted()
+            }
         }
         if (StoragePrefs.isServerBackgroundEnabled(this) && !App.httpServer.isAlive) {
             runCatching { App.httpServer.startServer() }

@@ -29,6 +29,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -59,6 +60,10 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     private lateinit var binding: ActivityMainBinding
     private lateinit var adapter: DownloadAdapter
     private var pendingMoveId: String? = null
+    private var activeStorageCurrent: TextView? = null
+    private var activeStorageInput: EditText? = null
+    private var storagePathEdited = false
+    private var updatingStorageInput = false
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -72,17 +77,22 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 takePersistablePermission(uri)
                 val name = DocumentFile.fromTreeUri(this, uri)?.name
                 StoragePrefs.saveFolder(this, uri, name)
-                val label = name ?: getString(R.string.storage_custom_folder)
-                Snackbar.make(
-                    binding.root,
-                    getString(R.string.storage_folder_selected, label),
-                    Snackbar.LENGTH_SHORT
+                StoragePrefs.setTextFolder(this, null)
+                refreshActiveStorageUi()
+                updateStorageInfo()
+                Toast.makeText(
+                    this,
+                    getString(
+                        R.string.storage_folder_selected,
+                        name ?: getString(R.string.storage_custom_folder)
+                    ),
+                    Toast.LENGTH_SHORT
                 ).show()
             }.onFailure {
-                Snackbar.make(
-                    binding.root,
-                    R.string.storage_picker_error,
-                    Snackbar.LENGTH_LONG
+                Toast.makeText(
+                    this,
+                    getString(R.string.storage_picker_error, it.message ?: "?"),
+                    Toast.LENGTH_LONG
                 ).show()
             }
         }
@@ -530,11 +540,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             )
         }
         if (intent.resolveActivity(packageManager) == null) {
-            Snackbar.make(
-                binding.root,
-                R.string.storage_picker_unavailable,
-                Snackbar.LENGTH_LONG
-            ).show()
+            Toast.makeText(this, R.string.storage_picker_unavailable, Toast.LENGTH_LONG).show()
             return
         }
         launcher.launch(downloadsInitialUri())
@@ -556,6 +562,77 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         return getString(R.string.storage_current, name)
     }
 
+    private fun wireStorageSection(view: View) {
+        val currentStorage = view.findViewById<TextView>(R.id.current_storage)
+        val pathInput = view.findViewById<EditText>(R.id.input_storage_path)
+        activeStorageCurrent = currentStorage
+        activeStorageInput = pathInput
+        storagePathEdited = false
+        currentStorage.text = currentStorageLabel()
+        pathInput.setText(StoragePrefs.getTextFolder(this) ?: defaultDownloadsPath())
+        pathInput.setSelection(pathInput.text.length)
+        pathInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                if (!updatingStorageInput) storagePathEdited = true
+            }
+        })
+
+        view.findViewById<Button>(R.id.btn_pick_storage).setOnClickListener {
+            if (Build.VERSION.SDK_INT in 23..28) {
+                requestPermissionsIfNeeded()
+            }
+            launchDocumentTree(folderPicker)
+        }
+        view.findViewById<Button>(R.id.btn_reset_storage).setOnClickListener {
+            StoragePrefs.saveFolder(this, null, null)
+            StoragePrefs.setTextFolder(this, null)
+            refreshActiveStorageUi()
+            updateStorageInfo()
+            Toast.makeText(this, R.string.storage_default_folder, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun refreshActiveStorageUi() {
+        val input = activeStorageInput
+        activeStorageCurrent?.text = currentStorageLabel()
+        storagePathEdited = false
+        if (input != null) {
+            updatingStorageInput = true
+            input.setText(StoragePrefs.getTextFolder(this) ?: defaultDownloadsPath())
+            input.setSelection(input.text.length)
+            updatingStorageInput = false
+        }
+    }
+
+    private fun clearActiveStorageUi() {
+        activeStorageCurrent = null
+        activeStorageInput = null
+        storagePathEdited = false
+        updatingStorageInput = false
+    }
+
+    private fun applyStoragePath(pathInput: EditText) {
+        if (!storagePathEdited) return
+        val path = pathInput.text?.toString()?.trim().orEmpty()
+        if (path.isEmpty()) return
+        val dir = File(path)
+        if (!dir.isDirectory) {
+            Toast.makeText(this, R.string.storage_text_folder_invalid, Toast.LENGTH_LONG).show()
+            return
+        }
+        StoragePrefs.setTextFolder(this, path)
+        StoragePrefs.saveFolder(this, null, null)
+        refreshActiveStorageUi()
+        updateStorageInfo()
+        Toast.makeText(
+            this,
+            getString(R.string.storage_text_folder_saved, path),
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
     private fun showStorageDialog() {
         if (Build.VERSION.SDK_INT in 23..28 &&
             checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
@@ -563,38 +640,17 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         ) {
             requestPermissionsIfNeeded()
         }
-        val currentName = StoragePrefs.getFolderName(this)
-            ?: StoragePrefs.getTextFolder(this)
-            ?: getString(R.string.storage_default_folder)
-        val options = mutableListOf(
-            getString(R.string.storage_choose_folder),
-            getString(R.string.storage_text_folder)
-        )
-        if (StoragePrefs.getFolderUri(this) != null ||
-            StoragePrefs.getTextFolder(this) != null
-        ) {
-            options.add(getString(R.string.storage_use_default))
-        }
-        MaterialAlertDialogBuilder(this)
+        val view = layoutInflater.inflate(R.layout.dialog_storage, null)
+        wireStorageSection(view)
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle(R.string.action_storage)
-            .setMessage(getString(R.string.storage_current, currentName))
-            .setItems(options.toTypedArray()) { _, which ->
-                when (which) {
-                    0 -> launchDocumentTree(folderPicker)
-                    1 -> showTextFolderDialog()
-                    else -> {
-                        StoragePrefs.saveFolder(this, null, null)
-                        StoragePrefs.setTextFolder(this, null)
-                        Snackbar.make(
-                            binding.root,
-                            R.string.storage_default_folder,
-                            Snackbar.LENGTH_SHORT
-                        ).show()
-                    }
-                }
-            }
+            .setView(view)
             .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.save) { _, _ ->
+                applyStoragePath(view.findViewById(R.id.input_storage_path))
+            }
             .show()
+        dialog.setOnDismissListener { clearActiveStorageUi() }
     }
 
     private fun showTextFolderDialog() {
@@ -612,17 +668,13 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 if (path.isNotEmpty() && dir.isDirectory) {
                     StoragePrefs.setTextFolder(this, path)
                     StoragePrefs.saveFolder(this, null, null)
-                    Snackbar.make(
-                        binding.root,
+                    Toast.makeText(
+                        this,
                         getString(R.string.storage_text_folder_saved, path),
-                        Snackbar.LENGTH_SHORT
+                        Toast.LENGTH_SHORT
                     ).show()
                 } else {
-                    Snackbar.make(
-                        binding.root,
-                        R.string.storage_text_folder_invalid,
-                        Snackbar.LENGTH_LONG
-                    ).show()
+                    Toast.makeText(this, R.string.storage_text_folder_invalid, Toast.LENGTH_LONG).show()
                 }
             }
             .show()
@@ -693,11 +745,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val checkServerAutostart = view.findViewById<CheckBox>(R.id.check_server_autostart)
         val checkBattery = view.findViewById<CheckBox>(R.id.check_battery)
         val pinInput = view.findViewById<EditText>(R.id.input_pin)
-        val currentStorage = view.findViewById<TextView>(R.id.current_storage)
-        currentStorage.text = currentStorageLabel()
-        view.findViewById<Button>(R.id.btn_change_storage).setOnClickListener {
-            showStorageDialog()
-        }
+        wireStorageSection(view)
         checkBackground.isChecked = StoragePrefs.isBackgroundEnabled(this)
         checkAutoStart.isChecked = StoragePrefs.isAutoStartEnabled(this)
         checkServerBackground.isChecked = StoragePrefs.isServerBackgroundEnabled(this)
@@ -754,11 +802,12 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             segmentValues.indexOf(StoragePrefs.segmentCount(this)).coerceAtLeast(0)
         )
 
-        MaterialAlertDialogBuilder(this)
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle(R.string.action_settings)
             .setView(view)
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton(R.string.save) { _, _ ->
+                applyStoragePath(view.findViewById(R.id.input_storage_path))
                 StoragePrefs.setBackgroundEnabled(this, checkBackground.isChecked)
                 StoragePrefs.setAutoStartEnabled(this, checkAutoStart.isChecked)
                 StoragePrefs.setServerBackgroundEnabled(this, checkServerBackground.isChecked)
@@ -792,6 +841,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 }
             }
             .show()
+        dialog.setOnDismissListener { clearActiveStorageUi() }
     }
 
     private fun showRemoteDialog() {

@@ -51,6 +51,9 @@
     <string name="remote_start_failed">Gagal memulai server: %1$s</string>
 
     <string name="action_settings">Pengaturan</string>
+    <string name="action_autostart">Auto Start saat boot</string>
+    <string name="autostart_on">Auto Start saat boot: AKTIF</string>
+    <string name="autostart_off">Auto Start saat boot: MATI</string>
     <string name="settings_background">Lanjutkan download yang terputus otomatis (latar belakang)</string>
     <string name="settings_autostart">Mulai otomatis saat perangkat boot</string>
     <string name="settings_concurrent">Unduhan bersamaan (antrean)</string>

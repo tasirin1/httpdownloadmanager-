@@ -17,4 +17,9 @@
         android:id="@+id/action_settings"
         android:title="@string/action_settings"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/action_autostart"
+        android:checkable="true"
+        android:title="@string/action_autostart"
+        app:showAsAction="never" />
 </menu>

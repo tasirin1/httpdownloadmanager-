@@ -211,6 +211,12 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         return true
     }
 
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        menu.findItem(R.id.action_autostart)?.isChecked =
+            StoragePrefs.isAutoStartEnabled(this)
+        return super.onPrepareOptionsMenu(menu)
+    }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_clear_completed -> {
@@ -227,6 +233,16 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             }
             R.id.action_settings -> {
                 showSettingsDialog()
+                true
+            }
+            R.id.action_autostart -> {
+                val enabled = !StoragePrefs.isAutoStartEnabled(this)
+                StoragePrefs.setAutoStartEnabled(this, enabled)
+                Snackbar.make(
+                    binding.root,
+                    if (enabled) R.string.autostart_on else R.string.autostart_off,
+                    Snackbar.LENGTH_SHORT
+                ).show()
                 true
             }
             else -> super.onOptionsItemSelected(item)

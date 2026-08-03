@@ -5,10 +5,12 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.documentfile.provider.DocumentFile
 import com.tasirin.httpdownloadmanager.data.DownloadItem
 import java.io.File
+import java.io.IOException
 
 class FileSaver(context: Context) {
 
@@ -18,7 +20,30 @@ class FileSaver(context: Context) {
 
     data class PublishResult(val contentUri: String? = null, val filePath: String? = null)
 
-    fun partialFile(fileName: String): File = File(downloadDir, "$fileName.part")
+    fun partialFile(fileName: String, segment: Int? = null): File {
+        val suffix = if (segment != null) ".part.$segment" else ".part"
+        return File(downloadDir, "$fileName$suffix")
+    }
+
+    fun partialFiles(item: DownloadItem): List<File> {
+        if (item.segments.isEmpty()) {
+            return listOf(partialFile(item.fileName))
+        }
+        return item.segments.map { partialFile(item.fileName, it.index) }
+    }
+
+    fun mergeSegments(fileName: String, segmentCount: Int): File {
+        val target = partialFile(fileName)
+        target.outputStream().use { out ->
+            for (i in 0 until segmentCount) {
+                val part = partialFile(fileName, i)
+                if (!part.exists()) throw IOException("Segmen $i tidak ditemukan")
+                part.inputStream().use { input -> input.copyTo(out) }
+                part.delete()
+            }
+        }
+        return target
+    }
 
     fun publish(partial: File, fileName: String): PublishResult {
         val folderUri = customFolderUri
@@ -100,12 +125,59 @@ class FileSaver(context: Context) {
     }
 
     fun deleteFiles(item: DownloadItem) {
-        runCatching { partialFile(item.fileName).delete() }
+        partialFiles(item).forEach { runCatching { it.delete() } }
         if (!item.contentUri.isNullOrEmpty()) {
             runCatching { appContext.contentResolver.delete(Uri.parse(item.contentUri), null, null) }
         }
         if (!item.filePath.isNullOrEmpty()) {
             runCatching { File(item.filePath).delete() }
         }
+    }
+
+    fun rename(item: DownloadItem, newName: String): Boolean {
+        if (newName.isBlank() || newName == item.fileName) return false
+        return runCatching {
+            when {
+                !item.contentUri.isNullOrEmpty() -> {
+                    val uri = Uri.parse(item.contentUri)
+                    if (Build.VERSION.SDK_INT >= 29 && uri.authority == MediaStore.AUTHORITY) {
+                        val values = ContentValues().apply {
+                            put(MediaStore.Downloads.DISPLAY_NAME, newName)
+                        }
+                        appContext.contentResolver.update(uri, values, null, null) > 0
+                    } else {
+                        DocumentsContract.renameDocument(appContext.contentResolver, uri, newName) != null
+                    }
+                }
+                !item.filePath.isNullOrEmpty() -> {
+                    val file = File(item.filePath)
+                    val target = File(file.parentFile, newName)
+                    file.exists() && file.renameTo(target)
+                }
+                else -> false
+            }
+        }.getOrDefault(false)
+    }
+
+    fun move(item: DownloadItem, destTreeUri: Uri): PublishResult? {
+        return runCatching {
+            val tree = DocumentFile.fromTreeUri(appContext, destTreeUri) ?: return null
+            val target = tree.findFile(item.fileName)
+                ?: tree.createFile(MimeTypes.forFile(item.fileName), item.fileName)
+                ?: return null
+            val input = when {
+                !item.contentUri.isNullOrEmpty() ->
+                    appContext.contentResolver.openInputStream(Uri.parse(item.contentUri))
+                !item.filePath.isNullOrEmpty() -> File(item.filePath).inputStream()
+                else -> null
+            } ?: return null
+            input.use { src ->
+                val out = appContext.contentResolver.openOutputStream(target.uri, "wt")
+                    ?: return null
+                out.use { dst -> src.copyTo(dst) }
+            }
+            deleteFiles(item)
+            PublishResult(contentUri = target.uri.toString())
+        }.getOrNull()
     }
 }

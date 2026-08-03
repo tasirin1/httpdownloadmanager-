@@ -13,6 +13,17 @@ Aplikasi download manager sederhana untuk **Android 5.0 (API 21) ke atas**, diba
 - Nama file otomatis menyesuaikan server (header Content-Disposition/Content-Type) jika tidak diisi manual
 - Remote control dari browser di perangkat lain via HTTP server bawaan (LAN)
 - Berjalan di latar belakang (foreground service) + resume otomatis download yang terputus setelah restart/boot
+- Unduhan paralel dengan antrean (maks. bersamaan bisa diatur)
+- Kecepatan (KB/s/MB/s) + ETA per file, dan batas kecepatan global
+- Multi-koneksi (segmented download) untuk file besar yang mendukung Range
+- Share URL langsung dari aplikasi lain (Share → Download Manager)
+- Retry otomatis saat gagal (bisa diatur)
+- Auth HTTP Basic + custom header (Referer, Cookie, dll.)
+- Tempel banyak URL sekaligus + riwayat URL terakhir
+- Ubah nama / pindahkan file selesai (long-press item)
+- Verifikasi ukuran file vs Content-Length
+- Tema gelap otomatis + bahasa Indonesia/Inggris (ikuti sistem)
+- Widget homescreen status download
 - Pilihan lokasi penyimpanan: Folder Downloads (default) atau folder kustom (internal/SD card via Storage Access Framework)
 - File tersimpan di folder Downloads publik (Android < 10) / MediaStore Downloads (Android 10+) jika folder kustom tidak dipilih
 - Tombol "Bersihkan yang selesai" dan "Penyimpanan" di menu toolbar
@@ -33,6 +44,21 @@ Untuk memilih lokasi lain (misalnya folder di SD card):
 4. Untuk kembali ke default, buka **Penyimpanan** lagi lalu tekan **Pakai default**
 
 Izin akses folder bersifat persisten (bertahan setelah aplikasi ditutup/di-restart).
+
+## Widget & Pintasan
+
+- **Widget homescreen**: tambahkan widget "Download Manager" (3 baris) untuk melihat download aktif + progress; ketuk widget untuk membuka aplikasi
+- **Share dari aplikasi lain**: pilih "Share" pada link di browser/file manager lalu pilih **Download Manager** — URL langsung terbuka di dialog tambah
+
+## Pengaturan Lengkap
+
+Menu **⋮ → Pengaturan**:
+
+- Lanjutkan download yang terputus otomatis (latar belakang)
+- Mulai otomatis saat perangkat boot
+- Unduhan bersamaan (1–5) — sisanya antre
+- Batas kecepatan (Tanpa batas / 128 KB/s … 5 MB/s)
+- Percobaan ulang saat gagal (0–5)
 
 ## Latar Belakang & Auto Start
 
@@ -116,6 +142,7 @@ app/src/main/java/com/tasirin/httpdownloadmanager/
 ├── receiver/BootReceiver.kt  # Mulai otomatis saat boot
 ├── remote/HttpControlServer.kt # HTTP server untuk remote via browser
 ├── ui/DownloadAdapter.kt    # RecyclerView adapter
+├── widget/DownloadWidgetProvider.kt # Widget homescreen
 └── util/
     ├── FileSaver.kt         # Simpan file (MediaStore / folder Downloads)
     ├── MimeTypes.kt         # Deteksi MIME

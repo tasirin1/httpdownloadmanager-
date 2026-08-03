@@ -10,6 +10,7 @@ import com.tasirin.httpdownloadmanager.App
 import com.tasirin.httpdownloadmanager.data.DownloadState
 import com.tasirin.httpdownloadmanager.util.NotificationHelper
 import com.tasirin.httpdownloadmanager.util.StoragePrefs
+import com.tasirin.httpdownloadmanager.widget.DownloadWidgetProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -35,6 +36,7 @@ class DownloadService : Service() {
                     it.state == DownloadState.DOWNLOADING || it.state == DownloadState.PENDING
                 }
                 NotificationHelper.updateNotification(this@DownloadService, items)
+                DownloadWidgetProvider.update(this@DownloadService, items)
                 if (!active) {
                     ServiceCompat.stopForeground(
                         this@DownloadService,

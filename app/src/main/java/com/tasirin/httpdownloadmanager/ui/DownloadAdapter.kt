@@ -19,6 +19,7 @@ class DownloadAdapter(private val listener: Listener) :
 
     interface Listener {
         fun onAction(item: DownloadItem, action: Action)
+        fun onLongPress(item: DownloadItem)
     }
 
     class ViewHolder(val binding: ItemDownloadBinding) : RecyclerView.ViewHolder(binding.root)
@@ -38,13 +39,23 @@ class DownloadAdapter(private val listener: Listener) :
         b.progressBar.progress = item.progressPercent
         b.textProgress.text = if (item.totalBytes > 0) {
             String.format(
-                Locale.US, "%d%% • %s / %s",
+                Locale.US, "%d%% \u2022 %s / %s",
                 item.progressPercent,
                 formatSize(item.bytesDownloaded),
                 formatSize(item.totalBytes)
             )
         } else {
             formatSize(item.bytesDownloaded)
+        }
+
+        val showSpeed = item.state == DownloadState.DOWNLOADING && item.speedBps > 0
+        b.textSpeed.visibility = if (showSpeed) View.VISIBLE else View.GONE
+        if (showSpeed) {
+            b.textSpeed.text = b.root.context.getString(
+                R.string.speed_and_eta,
+                formatSpeed(item.speedBps),
+                formatEta(item.etaSeconds)
+            )
         }
 
         b.buttonPause.visibility =
@@ -81,6 +92,10 @@ class DownloadAdapter(private val listener: Listener) :
         b.buttonCancel.setOnClickListener { listener.onAction(item, Action.CANCEL) }
         b.buttonOpen.setOnClickListener { listener.onAction(item, Action.OPEN) }
         b.buttonDelete.setOnClickListener { listener.onAction(item, Action.DELETE) }
+        b.root.setOnLongClickListener {
+            listener.onLongPress(item)
+            true
+        }
     }
 
     private fun statusText(item: DownloadItem, context: android.content.Context): String {
@@ -101,6 +116,25 @@ class DownloadAdapter(private val listener: Listener) :
         val mb = kb / 1024.0
         if (mb < 1024) return String.format(Locale.US, "%.1f MB", mb)
         return String.format(Locale.US, "%.2f GB", mb / 1024.0)
+    }
+
+    private fun formatSpeed(bps: Long): String {
+        if (bps < 1024) return "$bps B/s"
+        val kb = bps / 1024.0
+        if (kb < 1024) return String.format(Locale.US, "%.1f KB/s", kb)
+        return String.format(Locale.US, "%.2f MB/s", kb / 1024.0)
+    }
+
+    private fun formatEta(seconds: Long): String {
+        if (seconds <= 0) return "0s"
+        val h = seconds / 3600
+        val m = (seconds % 3600) / 60
+        val s = seconds % 60
+        return when {
+            h > 0 -> String.format(Locale.US, "%dh %02dm", h, m)
+            m > 0 -> String.format(Locale.US, "%dm %02ds", m, s)
+            else -> "${s}s"
+        }
     }
 
     companion object {

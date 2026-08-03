@@ -35,7 +35,11 @@ class DownloadRepository(context: Context) {
                             filePath = o.optString("filePath").ifEmpty { null },
                             addedAt = o.optLong("addedAt", 0),
                             nameIsCustom = o.optBoolean("nameIsCustom", false),
-                            autoResume = o.optBoolean("autoResume", false)
+                            autoResume = o.optBoolean("autoResume", false),
+                            username = o.optString("username"),
+                            password = o.optString("password"),
+                            headers = o.optString("headers"),
+                            segments = parseSegments(o)
                         )
                     )
                 }
@@ -59,9 +63,41 @@ class DownloadRepository(context: Context) {
             o.put("addedAt", item.addedAt)
             o.put("nameIsCustom", item.nameIsCustom)
             o.put("autoResume", item.autoResume)
+            o.put("username", item.username)
+            o.put("password", item.password)
+            o.put("headers", item.headers)
+            val segArr = JSONArray()
+            item.segments.forEach { seg ->
+                val so = JSONObject()
+                so.put("index", seg.index)
+                so.put("start", seg.start)
+                so.put("end", seg.end)
+                so.put("downloaded", seg.downloaded)
+                segArr.put(so)
+            }
+            o.put("segments", segArr)
             arr.put(o)
         }
         prefs.edit().putString(KEY_ITEMS, arr.toString()).apply()
+    }
+
+    private fun parseSegments(o: JSONObject): List<DownloadSegment> {
+        return runCatching {
+            val segArr = o.getJSONArray("segments")
+            buildList {
+                for (j in 0 until segArr.length()) {
+                    val so = segArr.getJSONObject(j)
+                    add(
+                        DownloadSegment(
+                            index = so.getInt("index"),
+                            start = so.getLong("start"),
+                            end = so.getLong("end"),
+                            downloaded = so.getLong("downloaded")
+                        )
+                    )
+                }
+            }
+        }.getOrDefault(emptyList())
     }
 
     companion object {

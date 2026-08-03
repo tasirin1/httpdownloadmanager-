@@ -10,8 +10,25 @@
         android:id="@+id/input_url"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="@string/url_hint"
-        android:inputType="textUri" />
+        android:hint="@string/url_hint_multi"
+        android:inputType="textUri|textMultiLine"
+        android:minLines="2"
+        android:maxLines="4" />
+
+    <TextView
+        android:id="@+id/recent_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/recent_urls"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/recent_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
 
     <EditText
         android:id="@+id/input_name"
@@ -19,4 +36,29 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:hint="@string/name_hint_optional" />
+
+    <EditText
+        android:id="@+id/input_username"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:hint="@string/username_hint_optional" />
+
+    <EditText
+        android:id="@+id/input_password"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:hint="@string/password_hint_optional"
+        android:inputType="textPassword" />
+
+    <EditText
+        android:id="@+id/input_headers"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:hint="@string/headers_hint_optional"
+        android:inputType="textMultiLine"
+        android:minLines="2"
+        android:maxLines="4" />
 </LinearLayout>

@@ -70,6 +70,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(PORT) {
             o.put("bytesDownloaded", item.bytesDownloaded)
             o.put("totalBytes", item.totalBytes)
             o.put("progress", item.progressPercent)
+            o.put("speedBps", item.speedBps)
+            o.put("etaSeconds", item.etaSeconds)
             item.error?.let { o.put("error", it) }
             arr.put(o)
         }

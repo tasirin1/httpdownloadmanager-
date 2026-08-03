@@ -2,10 +2,15 @@
     <string name="app_name">Download Manager</string>
 
     <string name="add_download">Tambah Download</string>
-    <string name="url_hint">URL file (https://…)</string>
-    <string name="name_hint_optional">Nama file (opsional)</string>
+    <string name="url_hint_multi">URL (bisa banyak, satu per baris)</string>
+    <string name="name_hint_optional">Nama file (opsional, untuk 1 URL)</string>
+    <string name="username_hint_optional">Username (opsional)</string>
+    <string name="password_hint_optional">Password (opsional)</string>
+    <string name="headers_hint_optional">Header tambahan (opsional)\ncontoh:\nReferer: https://…</string>
+    <string name="recent_urls">URL terakhir</string>
     <string name="download">Unduh</string>
     <string name="cancel">Batal</string>
+    <string name="save">Simpan</string>
     <string name="invalid_url">URL tidak boleh kosong</string>
 
     <string name="pause">Jeda</string>
@@ -13,6 +18,20 @@
     <string name="open">Buka</string>
     <string name="delete">Hapus</string>
     <string name="clear_completed">Bersihkan yang selesai</string>
+    <string name="empty_hint">Belum ada download.\nKetuk tombol + untuk menambah URL.</string>
+    <string name="no_app_to_open">Tidak ada aplikasi untuk membuka file ini</string>
+    <string name="speed_and_eta">%1$s · ETA %2$s</string>
+
+    <string name="action_rename">Ubah nama</string>
+    <string name="action_move">Pindahkan</string>
+
+    <string name="status_pending">Menunggu…</string>
+    <string name="status_downloading">Mendownload…</string>
+    <string name="status_paused">Dijeda</string>
+    <string name="status_completed">Selesai</string>
+    <string name="status_cancelled">Dibatalkan</string>
+    <string name="status_failed">Gagal</string>
+
     <string name="action_storage">Penyimpanan</string>
     <string name="storage_current">Lokasi saat ini: %1$s</string>
     <string name="storage_default_folder">Folder Downloads (default)</string>
@@ -20,6 +39,7 @@
     <string name="storage_choose_folder">Pilih folder…</string>
     <string name="storage_use_default">Pakai default</string>
     <string name="storage_folder_selected">Folder dipilih: %1$s</string>
+
     <string name="action_remote">Remote (HTTP)</string>
     <string name="remote_start">Mulai server</string>
     <string name="remote_stop">Hentikan server</string>
@@ -29,22 +49,44 @@
     <string name="remote_message">Status: %1$s\n\nBuka dari browser di perangkat lain:\n%2$s</string>
     <string name="remote_started">Server aktif di port %1$d</string>
     <string name="remote_start_failed">Gagal memulai server: %1$s</string>
+
     <string name="action_settings">Pengaturan</string>
     <string name="settings_background">Lanjutkan download yang terputus otomatis (latar belakang)</string>
     <string name="settings_autostart">Mulai otomatis saat perangkat boot</string>
-    <string name="save">Simpan</string>
-    <string name="empty_hint">Belum ada download.\nKetuk tombol + untuk menambah URL.</string>
-    <string name="no_app_to_open">Tidak ada aplikasi untuk membuka file ini</string>
+    <string name="settings_concurrent">Unduhan bersamaan (antrean)</string>
+    <string name="settings_speed_limit">Batas kecepatan</string>
+    <string name="settings_retry">Percobaan ulang saat gagal</string>
 
-    <string name="status_pending">Menunggu…</string>
-    <string name="status_downloading">Mendownload…</string>
-    <string name="status_paused">Dijeda</string>
-    <string name="status_completed">Selesai</string>
-    <string name="status_cancelled">Dibatalkan</string>
-    <string name="status_failed">Gagal</string>
+    <string-array name="concurrent_options">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+    </string-array>
+    <string-array name="speed_limit_options">
+        <item>Tanpa batas</item>
+        <item>128 KB/s</item>
+        <item>256 KB/s</item>
+        <item>512 KB/s</item>
+        <item>1 MB/s</item>
+        <item>2 MB/s</item>
+        <item>5 MB/s</item>
+    </string-array>
+    <string-array name="retry_options">
+        <item>0 (tanpa ulang)</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+    </string-array>
 
     <string name="notification_channel">Progress download</string>
     <string name="notification_title">Download Manager</string>
     <string name="notification_active_files">Mendownload %d file…</string>
     <string name="notification_done">%d download selesai</string>
+
+    <string name="widget_active">%1$d download aktif</string>
+    <string name="widget_idle">Tidak ada download aktif</string>
 </resources>

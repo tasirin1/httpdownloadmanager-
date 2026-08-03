@@ -1,0 +1,92 @@
+<resources>
+    <string name="app_name">Download Manager</string>
+
+    <string name="add_download">Add Download</string>
+    <string name="url_hint_multi">URL (multiple allowed, one per line)</string>
+    <string name="name_hint_optional">File name (optional, for 1 URL)</string>
+    <string name="username_hint_optional">Username (optional)</string>
+    <string name="password_hint_optional">Password (optional)</string>
+    <string name="headers_hint_optional">Extra headers (optional)\nExample:\nReferer: https://…</string>
+    <string name="recent_urls">Recent URLs</string>
+    <string name="download">Download</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="invalid_url">URL must not be empty</string>
+
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+    <string name="open">Open</string>
+    <string name="delete">Delete</string>
+    <string name="clear_completed">Clear completed</string>
+    <string name="empty_hint">No downloads yet.\nTap + to add a URL.</string>
+    <string name="no_app_to_open">No app found to open this file</string>
+    <string name="speed_and_eta">%1$s · ETA %2$s</string>
+
+    <string name="action_rename">Rename</string>
+    <string name="action_move">Move</string>
+
+    <string name="status_pending">Pending…</string>
+    <string name="status_downloading">Downloading…</string>
+    <string name="status_paused">Paused</string>
+    <string name="status_completed">Completed</string>
+    <string name="status_cancelled">Cancelled</string>
+    <string name="status_failed">Failed</string>
+
+    <string name="action_storage">Storage</string>
+    <string name="storage_current">Current location: %1$s</string>
+    <string name="storage_default_folder">Downloads folder (default)</string>
+    <string name="storage_custom_folder">Custom folder</string>
+    <string name="storage_choose_folder">Choose folder…</string>
+    <string name="storage_use_default">Use default</string>
+    <string name="storage_folder_selected">Folder selected: %1$s</string>
+
+    <string name="action_remote">Remote (HTTP)</string>
+    <string name="remote_start">Start server</string>
+    <string name="remote_stop">Stop server</string>
+    <string name="remote_running">Running</string>
+    <string name="remote_stopped">Stopped</string>
+    <string name="remote_no_url">No network address available</string>
+    <string name="remote_message">Status: %1$s\n\nOpen from another device browser:\n%2$s</string>
+    <string name="remote_started">Server running on port %1$d</string>
+    <string name="remote_start_failed">Failed to start server: %1$s</string>
+
+    <string name="action_settings">Settings</string>
+    <string name="settings_background">Automatically resume interrupted downloads (background)</string>
+    <string name="settings_autostart">Start automatically on device boot</string>
+    <string name="settings_concurrent">Concurrent downloads (queue)</string>
+    <string name="settings_speed_limit">Speed limit</string>
+    <string name="settings_retry">Retry attempts on failure</string>
+
+    <string-array name="concurrent_options">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+    </string-array>
+    <string-array name="speed_limit_options">
+        <item>Unlimited</item>
+        <item>128 KB/s</item>
+        <item>256 KB/s</item>
+        <item>512 KB/s</item>
+        <item>1 MB/s</item>
+        <item>2 MB/s</item>
+        <item>5 MB/s</item>
+    </string-array>
+    <string-array name="retry_options">
+        <item>0 (no retry)</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+    </string-array>
+
+    <string name="notification_channel">Download progress</string>
+    <string name="notification_title">Download Manager</string>
+    <string name="notification_active_files">Downloading %d file(s)…</string>
+    <string name="notification_done">%d download(s) completed</string>
+
+    <string name="widget_active">%1$d active download(s)</string>
+    <string name="widget_idle">No active downloads</string>
+</resources>

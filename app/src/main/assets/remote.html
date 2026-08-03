@@ -90,6 +90,23 @@ function fmt(bytes) {
   return (mb / 1024).toFixed(2) + ' GB';
 }
 
+function fmtSpeed(bps) {
+  if (bps < 1024) return bps + ' B/s';
+  const kb = bps / 1024;
+  if (kb < 1024) return kb.toFixed(1) + ' KB/s';
+  return (kb / 1024).toFixed(2) + ' MB/s';
+}
+
+function fmtEta(seconds) {
+  if (seconds <= 0) return '0s';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return h + 'h ' + String(m).padStart(2, '0') + 'm';
+  if (m > 0) return m + 'm ' + String(s).padStart(2, '0') + 's';
+  return s + 's';
+}
+
 function stateLabel(s) {
   return {PENDING:'Menunggu', DOWNLOADING:'Mendownload', PAUSED:'Dijeda', COMPLETED:'Selesai', FAILED:'Gagal', CANCELLED:'Dibatalkan'}[s] || s;
 }
@@ -104,9 +121,13 @@ function render(items) {
   for (const it of items) {
     const li = document.createElement('li');
     const prog = it.totalBytes > 0 ? Math.round(it.bytesDownloaded * 100 / it.totalBytes) : 0;
-    const meta = it.totalBytes > 0
+    let meta = it.totalBytes > 0
       ? prog + '% &#183; ' + fmt(it.bytesDownloaded) + ' / ' + fmt(it.totalBytes)
       : fmt(it.bytesDownloaded);
+    if (it.state === 'DOWNLOADING' && it.speedBps > 0) {
+      meta += ' &#183; ' + fmtSpeed(it.speedBps);
+      if (it.etaSeconds > 0) meta += ' &#183; ETA ' + fmtEta(it.etaSeconds);
+    }
     const err = it.error ? '<div class="err">' + escapeHtml(it.error) + '</div>' : '';
     li.innerHTML =
       '<div class="name">' + escapeHtml(it.fileName) + '</div>' +

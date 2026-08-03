@@ -4,6 +4,13 @@ enum class DownloadState {
     PENDING, DOWNLOADING, PAUSED, COMPLETED, FAILED, CANCELLED
 }
 
+data class DownloadSegment(
+    val index: Int,
+    val start: Long,
+    val end: Long,
+    val downloaded: Long
+)
+
 data class DownloadItem(
     val id: String,
     val url: String,
@@ -16,7 +23,13 @@ data class DownloadItem(
     val filePath: String? = null,
     val addedAt: Long = System.currentTimeMillis(),
     val nameIsCustom: Boolean = false,
-    val autoResume: Boolean = false
+    val autoResume: Boolean = false,
+    val username: String = "",
+    val password: String = "",
+    val headers: String = "",
+    val segments: List<DownloadSegment> = emptyList(),
+    val speedBps: Long = 0,
+    val etaSeconds: Long = 0
 ) {
     val progressPercent: Int
         get() = if (totalBytes > 0) ((bytesDownloaded * 100) / totalBytes).toInt() else 0

@@ -92,6 +92,7 @@
 • Download multi-segmen paralel (jumlah segmen bisa diatur)
 • Status baterai &amp; penyimpanan di halaman remote
 • Riwayat URL dengan pencarian cepat
+• Galeri foto/video (aplikasi &amp; halaman remote)
 • Batas kecepatan &amp; prioritas per-download
 • Streaming &amp; download file via browser remote
 • Verifikasi checksum MD5/SHA1/SHA256
@@ -127,6 +128,12 @@
     <string name="close">Tutup</string>
     <string name="fatal_error_title">Error saat membuka aplikasi</string>
     <string name="fatal_error_message">Terjadi error saat membuka aplikasi. Salin pesan di bawah ini untuk laporan:</string>
+
+    <string name="gallery">Galeri</string>
+    <string name="gallery_empty">Belum ada foto/video di folder download.</string>
+    <string name="gallery_open_error">Tidak ada aplikasi untuk membuka file ini</string>
+    <string name="settings_storage_label">Penyimpanan (folder tujuan)</string>
+    <string name="change_storage">Ubah penyimpanan…</string>
 
     <string name="speed_limit_per_label">Batas kecepatan (per download)</string>
     <string name="priority_label">Prioritas</string>

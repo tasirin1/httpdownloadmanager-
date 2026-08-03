@@ -132,9 +132,8 @@ class DownloadEngine(private val context: Context) {
     }
 
     fun clearCompleted() {
-        val completed = _items.value.filter { it.state == DownloadState.COMPLETED }
-        completed.forEach { FileSaver(context).deleteFiles(it) }
-        val ids = completed.map { it.id }.toSet()
+        // Hanya membersihkan daftar; file hasil download TIDAK dihapus.
+        val ids = _items.value.filter { it.state == DownloadState.COMPLETED }.map { it.id }.toSet()
         update(_items.value.filterNot { ids.contains(it.id) })
     }
 

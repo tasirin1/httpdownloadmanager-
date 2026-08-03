@@ -14,6 +14,10 @@
         android:title="@string/action_remote"
         app:showAsAction="never" />
     <item
+        android:id="@+id/action_gallery"
+        android:title="@string/gallery"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_settings"
         android:title="@string/action_settings"
         app:showAsAction="never" />

@@ -4,12 +4,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
+import android.util.Base64
 import android.os.BatteryManager
 import android.util.Log
 import com.tasirin.httpdownloadmanager.App
 import com.tasirin.httpdownloadmanager.data.DownloadState
+import com.tasirin.httpdownloadmanager.util.MediaLibrary
 import com.tasirin.httpdownloadmanager.util.MimeTypes
 import com.tasirin.httpdownloadmanager.util.StoragePrefs
+import androidx.documentfile.provider.DocumentFile
 import fi.iki.elonen.NanoHTTPD
 import org.json.JSONArray
 import org.json.JSONObject
@@ -39,6 +42,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     session.method == Method.GET && session.uri == "/" -> htmlPage()
                     session.method == Method.GET && session.uri == "/api/downloads" -> downloadsJson()
                     session.method == Method.GET && session.uri == "/api/status" -> statusJson()
+                    session.method == Method.GET && session.uri == "/api/gallery" -> galleryJson()
+                    session.method == Method.GET && session.uri == "/api/media" -> serveMedia(session)
                     session.method == Method.POST && session.uri == "/api/add" -> addDownload(session)
                     session.method == Method.POST && session.uri == "/api/action" -> runAction(session)
                     session.method == Method.GET && session.uri.startsWith("/file/") -> serveFile(session)
@@ -235,13 +240,6 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         } ?: return notFound()
         val download = session.parms["dl"] == "1"
         val mime = MimeTypes.forFile(item.fileName)
-        val safeName = item.fileName.replace("\"", "_").replace("\\", "_")
-        val disposition = if (download) {
-            "attachment; filename=\"$safeName\""
-        } else {
-            "inline; filename=\"$safeName\""
-        }
-
         val input: InputStream
         val total: Long
         if (!item.filePath.isNullOrEmpty()) {
@@ -260,8 +258,68 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             return notFound()
         }
 
+        return streamMedia(
+            name = item.fileName,
+            mime = mime,
+            input = input,
+            total = total,
+            rangeHeader = session.headers["range"] ?: session.headers["Range"],
+            download = download
+        )
+    }
+
+    private fun serveMedia(session: IHTTPSession): Response {
+        val token = session.parms["token"].orEmpty()
+        if (token.isEmpty()) return notFound()
+        val raw = MediaLibrary.decodeToken(token) ?: return notFound()
+        val download = session.parms["dl"] == "1"
+        val input: InputStream
+        val total: Long
+        val name: String
+        when {
+            raw.startsWith("f:") -> {
+                val file = File(raw.substring(2))
+                if (!file.isFile) return notFound()
+                input = FileInputStream(file)
+                total = file.length()
+                name = file.name
+            }
+            raw.startsWith("u:") -> {
+                val uri = Uri.parse(raw.substring(2))
+                val resolver = context.contentResolver
+                val stream = resolver.openInputStream(uri) ?: return notFound()
+                val len = resolver.openAssetFileDescriptor(uri, "r")?.length ?: -1L
+                input = stream
+                total = len
+                name = DocumentFile.fromSingleUri(context, uri)?.name ?: "media"
+            }
+            else -> return notFound()
+        }
+        return streamMedia(
+            name = name,
+            mime = MimeTypes.forFile(name),
+            input = input,
+            total = total,
+            rangeHeader = session.headers["range"] ?: session.headers["Range"],
+            download = download
+        )
+    }
+
+    private fun streamMedia(
+        name: String,
+        mime: String,
+        input: InputStream,
+        total: Long,
+        rangeHeader: String?,
+        download: Boolean
+    ): Response {
+        val safeName = name.replace("\"", "_").replace("\\", "_")
+        val disposition = if (download) {
+            "attachment; filename=\"$safeName\""
+        } else {
+            "inline; filename=\"$safeName\""
+        }
         val response = runCatching {
-            val rangeHeader = session.headers["range"] ?: session.headers["Range"]
             val range = if (total > 0) parseRange(rangeHeader, total) else null
             when {
                 range != null -> {
@@ -352,6 +410,20 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             }
         }
         return map
+    }
+
+    private fun galleryJson(): Response {
+        val arr = JSONArray()
+        MediaLibrary.scan(context).forEach { e ->
+            val o = JSONObject()
+            o.put("name", e.name)
+            o.put("size", e.size)
+            o.put("modified", e.modified)
+            o.put("isVideo", e.isVideo)
+            o.put("token", e.token)
+            arr.put(o)
+        }
+        return jsonResponse(JSONObject().put("items", arr))
     }
 
     private fun statusJson(): Response {

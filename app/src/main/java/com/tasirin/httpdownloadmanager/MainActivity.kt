@@ -22,6 +22,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageView
@@ -423,6 +424,10 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 showRemoteDialog()
                 true
             }
+            R.id.action_gallery -> {
+                startActivity(Intent(this, GalleryActivity::class.java))
+                true
+            }
             R.id.action_settings -> {
                 showSettingsDialog()
                 true
@@ -536,6 +541,13 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 "com.android.externalstorage.documents", "primary:Download"
             )
         }.getOrNull()
+    }
+
+    private fun currentStorageLabel(): String {
+        val name = StoragePrefs.getFolderName(this)
+            ?: StoragePrefs.getTextFolder(this)
+            ?: getString(R.string.storage_default_folder)
+        return getString(R.string.storage_current, name)
     }
 
     private fun showStorageDialog() {
@@ -675,6 +687,11 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val checkServerAutostart = view.findViewById<CheckBox>(R.id.check_server_autostart)
         val checkBattery = view.findViewById<CheckBox>(R.id.check_battery)
         val pinInput = view.findViewById<EditText>(R.id.input_pin)
+        val currentStorage = view.findViewById<TextView>(R.id.current_storage)
+        currentStorage.text = currentStorageLabel()
+        view.findViewById<Button>(R.id.btn_change_storage).setOnClickListener {
+            showStorageDialog()
+        }
         checkBackground.isChecked = StoragePrefs.isBackgroundEnabled(this)
         checkAutoStart.isChecked = StoragePrefs.isAutoStartEnabled(this)
         checkServerBackground.isChecked = StoragePrefs.isServerBackgroundEnabled(this)

@@ -92,6 +92,7 @@
 • Parallel multi-segment downloads (configurable)
 • Battery &amp; storage status on remote page
 • URL history with quick search
+• Photo/video gallery (app &amp; remote page)
 • Per-download speed limit &amp; priority
 • Stream &amp; download files via remote browser
 • MD5/SHA1/SHA256 checksum verification
@@ -127,6 +128,12 @@
     <string name="close">Close</string>
     <string name="fatal_error_title">Error opening app</string>
     <string name="fatal_error_message">An error occurred while opening the app. Copy the message below for reporting:</string>
+
+    <string name="gallery">Gallery</string>
+    <string name="gallery_empty">No photos/videos in the download folder yet.</string>
+    <string name="gallery_open_error">No app found to open this file</string>
+    <string name="settings_storage_label">Storage (destination folder)</string>
+    <string name="change_storage">Change storage…</string>
 
     <string name="speed_limit_per_label">Speed limit (per download)</string>
     <string name="priority_label">Priority</string>

@@ -38,12 +38,24 @@
   #logBox pre { background: #f6f7f9; border-radius: 8px; padding: 10px; font-size: 12px; max-height: 300px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
   #logBox button { margin-top: 8px; }
   .actions button { padding: 6px 12px; font-size: 13px; background: #eef1f6; color: #1c1c1c; border: 1px solid #cbd2dd; }
+  .gal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .gal-cell { position: relative; aspect-ratio: 1 / 1; background: #111; border-radius: 10px; overflow: hidden; cursor: pointer; }
+  .gal-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .gal-cell .gal-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .gal-cell .gal-play span { width: 0; height: 0; border-top: 18px solid transparent; border-bottom: 18px solid transparent; border-left: 28px solid rgba(255,255,255,.9); filter: drop-shadow(0 1px 3px rgba(0,0,0,.5)); }
+  .gal-cell .gal-name { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 6px; font-size: 11px; color: #fff; background: rgba(0,0,0,.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #mediaModal { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 50; display: none; align-items: center; justify-content: center; flex-direction: column; padding: 16px; }
+  #mediaModal.open { display: flex; }
+  #mediaModal img, #mediaModal video { max-width: 100%; max-height: 82vh; border-radius: 8px; }
+  #mediaModal .m-actions { display: flex; gap: 10px; margin-top: 12px; }
+  .gal-empty { padding: 24px; text-align: center; color: #666; }
 </style>
 </head>
 <body>
 <div class="header">
   <h1>&#11015; Download Manager</h1>
   <button id="logBtn" class="btn-ghost" type="button">Log error</button>
+  <button id="galleryBtn" class="btn-ghost" type="button">Galeri</button>
   <button id="newBtn" class="new-btn" type="button">+ New Download</button>
 </div>
 <div id="deviceStatus"></div>
@@ -56,6 +68,14 @@
 <div id="logBox" class="hidden">
   <pre id="logText"></pre>
   <button id="logClose" type="button" class="btn-ghost">Tutup</button>
+</div>
+<div id="mediaModal">
+  <img id="mmImage" class="hidden">
+  <video id="mmVideo" class="hidden" controls autoplay playsinline></video>
+  <div class="m-actions">
+    <a id="mmDownload" class="dl" href="#" download>Download</a>
+    <button id="mmClose" type="button" class="btn-ghost">Tutup</button>
+  </div>
 </div>
 <form id="addForm" class="hidden">
   <input id="url" type="url" placeholder="URL file (https://…)" required>
@@ -82,6 +102,10 @@
     <button id="cancelAdd" type="button" class="btn-ghost">Batal</button>
   </div>
 </form>
+<div id="galleryView" class="hidden">
+  <div id="galleryStatus"></div>
+  <div id="galleryGrid" class="gal-grid"></div>
+</div>
 <div id="status"></div>
 <ul id="list"></ul>
 <script>
@@ -141,6 +165,97 @@ async function refreshStatus() {
   } catch (e) {
     /* server off: biarkan kosong */
   }
+}
+
+let galleryOpen = false;
+const galleryView = document.getElementById('galleryView');
+const galleryBtn = document.getElementById('galleryBtn');
+const galleryGrid = document.getElementById('galleryGrid');
+const galleryStatus = document.getElementById('galleryStatus');
+const mediaModal = document.getElementById('mediaModal');
+const mmImage = document.getElementById('mmImage');
+const mmVideo = document.getElementById('mmVideo');
+const mmDownload = document.getElementById('mmDownload');
+
+galleryBtn.addEventListener('click', function () {
+  galleryOpen = !galleryOpen;
+  galleryView.classList.toggle('hidden', !galleryOpen);
+  galleryBtn.textContent = galleryOpen ? '\u2715 Tutup galeri' : 'Galeri';
+  if (galleryOpen) {
+    loadGallery();
+  } else {
+    refresh();
+  }
+});
+
+document.getElementById('mmClose').addEventListener('click', function () {
+  mediaModal.classList.remove('open');
+  mmVideo.pause();
+  mmVideo.removeAttribute('src');
+  mmImage.classList.add('hidden');
+  mmVideo.classList.add('hidden');
+});
+
+mediaModal.addEventListener('click', function (e) {
+  if (e.target === mediaModal) {
+    document.getElementById('mmClose').click();
+  }
+});
+
+async function loadGallery() {
+  try {
+    const res = await fetch(API + '/api/gallery');
+    if (res.status === 401) {
+      galleryStatus.textContent = 'PIN diperlukan. Muat ulang halaman untuk login.';
+      return;
+    }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    galleryStatus.textContent = '';
+    const grid = galleryGrid;
+    grid.innerHTML = '';
+    if (!data.items || !data.items.length) {
+      grid.innerHTML = '<div class="gal-empty">Belum ada foto/video di folder download.</div>';
+      return;
+    }
+    for (const it of data.items) {
+      const cell = document.createElement('div');
+      cell.className = 'gal-cell';
+      const src = API + '/api/media?token=' + encodeURIComponent(it.token);
+      if (it.isVideo) {
+        cell.innerHTML =
+          '<div class="gal-play"><span></span></div>' +
+          '<div class="gal-name">' + escapeHtml(it.name) + '</div>';
+      } else {
+        cell.innerHTML =
+          '<img loading="lazy" src="' + src + '" alt="' + escapeHtml(it.name) + '">' +
+          '<div class="gal-name">' + escapeHtml(it.name) + '</div>';
+      }
+      cell.addEventListener('click', function () {
+        openMedia(it, src);
+      });
+      grid.appendChild(cell);
+    }
+  } catch (e) {
+    galleryStatus.textContent = 'Gagal memuat galeri: ' + e;
+  }
+}
+
+function openMedia(it, src) {
+  mmImage.classList.add('hidden');
+  mmVideo.classList.add('hidden');
+  mmImage.removeAttribute('src');
+  mmVideo.removeAttribute('src');
+  if (it.isVideo) {
+    mmVideo.src = src;
+    mmVideo.classList.remove('hidden');
+  } else {
+    mmImage.src = src;
+    mmImage.classList.remove('hidden');
+  }
+  mmDownload.href = src + '&dl=1';
+  mmDownload.setAttribute('download', it.name);
+  mediaModal.classList.add('open');
 }
 
 async function refresh() {

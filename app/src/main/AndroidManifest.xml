@@ -47,6 +47,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".GalleryActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HttpDownloadManager" />
+
         <service
             android:name=".download.DownloadService"
             android:exported="false"

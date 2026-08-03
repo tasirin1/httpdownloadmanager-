@@ -7,8 +7,14 @@
 <style>
   * { box-sizing: border-box; }
   body { font-family: system-ui, -apple-system, sans-serif; background: #f2f4f8; margin: 0; padding: 16px; color: #1c1c1c; }
-  h1 { font-size: 20px; margin: 0 0 12px; }
+  .header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .header h1 { font-size: 20px; margin: 0; }
+  .new-btn { white-space: nowrap; background: #FF6F00; }
+  .hidden { display: none !important; }
   form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .form-row { display: flex; gap: 8px; }
+  .form-row button { flex: 1; }
+  .btn-ghost { background: #eef1f6; color: #1c1c1c; border: 1px solid #cbd2dd; }
   input, button { font-size: 15px; padding: 10px; border-radius: 8px; border: 1px solid #cbd2dd; }
   button { background: #0D47A1; color: #fff; border: none; cursor: pointer; }
   button:active { opacity: .8; }
@@ -25,17 +31,39 @@
 </style>
 </head>
 <body>
-<h1>&#11015; Download Manager</h1>
-<form id="addForm">
+<div class="header">
+  <h1>&#11015; Download Manager</h1>
+  <button id="newBtn" class="new-btn" type="button">+ New Download</button>
+</div>
+<form id="addForm" class="hidden">
   <input id="url" type="url" placeholder="URL file (https://…)" required>
   <input id="name" type="text" placeholder="Nama file (opsional)">
-  <button type="submit">Tambah Download</button>
+  <div class="form-row">
+    <button type="submit">Tambah Download</button>
+    <button id="cancelAdd" type="button" class="btn-ghost">Batal</button>
+  </div>
 </form>
 <div id="status"></div>
 <ul id="list"></ul>
 <script>
 const API = '';
 let failCount = 0;
+
+const addForm = document.getElementById('addForm');
+const newBtn = document.getElementById('newBtn');
+
+function toggleAddForm(show) {
+  addForm.classList.toggle('hidden', !show);
+  newBtn.textContent = show ? '\u2715 Tutup' : '+ New Download';
+  if (show) document.getElementById('url').focus();
+}
+
+newBtn.addEventListener('click', function () {
+  toggleAddForm(addForm.classList.contains('hidden'));
+});
+document.getElementById('cancelAdd').addEventListener('click', function () {
+  toggleAddForm(false);
+});
 
 async function refresh() {
   try {
@@ -122,6 +150,7 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
   await fetch(API + '/api/add', {method: 'POST', body});
   document.getElementById('url').value = '';
   document.getElementById('name').value = '';
+  toggleAddForm(false);
   refresh();
 });
 

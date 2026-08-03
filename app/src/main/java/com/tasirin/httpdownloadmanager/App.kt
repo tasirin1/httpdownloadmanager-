@@ -1,7 +1,7 @@
-package com.tasirin.downloadmanager
+package com.tasirin.httpdownloadmanager
 
 import android.app.Application
-import com.tasirin.downloadmanager.download.DownloadEngine
+import com.tasirin.httpdownloadmanager.download.DownloadEngine
 
 class App : Application() {
     override fun onCreate() {

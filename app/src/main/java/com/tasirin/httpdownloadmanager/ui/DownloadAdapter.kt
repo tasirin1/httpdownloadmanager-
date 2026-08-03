@@ -1,4 +1,4 @@
-package com.tasirin.downloadmanager.ui
+package com.tasirin.httpdownloadmanager.ui
 
 import android.view.LayoutInflater
 import android.view.View
@@ -6,10 +6,10 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.tasirin.downloadmanager.R
-import com.tasirin.downloadmanager.data.DownloadItem
-import com.tasirin.downloadmanager.data.DownloadState
-import com.tasirin.downloadmanager.databinding.ItemDownloadBinding
+import com.tasirin.httpdownloadmanager.R
+import com.tasirin.httpdownloadmanager.data.DownloadItem
+import com.tasirin.httpdownloadmanager.data.DownloadState
+import com.tasirin.httpdownloadmanager.databinding.ItemDownloadBinding
 import java.util.Locale
 
 class DownloadAdapter(private val listener: Listener) :

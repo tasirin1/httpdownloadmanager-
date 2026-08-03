@@ -1,4 +1,4 @@
-package com.tasirin.downloadmanager.util
+package com.tasirin.httpdownloadmanager.util
 
 object MimeTypes {
 

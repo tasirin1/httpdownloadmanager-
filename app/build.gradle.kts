@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.tasirin.downloadmanager"
+    namespace = "com.tasirin.httpdownloadmanager"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.tasirin.downloadmanager"
+        applicationId = "com.tasirin.httpdownloadmanager"
         minSdk = 21
         targetSdk = 34
         versionCode = 1

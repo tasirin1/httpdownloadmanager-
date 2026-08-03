@@ -1,4 +1,4 @@
-package com.tasirin.downloadmanager
+package com.tasirin.httpdownloadmanager
 
 import android.Manifest
 import android.content.Intent
@@ -18,12 +18,12 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
-import com.tasirin.downloadmanager.data.DownloadItem
-import com.tasirin.downloadmanager.data.DownloadState
-import com.tasirin.downloadmanager.databinding.ActivityMainBinding
-import com.tasirin.downloadmanager.ui.DownloadAdapter
-import com.tasirin.downloadmanager.util.MimeTypes
-import com.tasirin.downloadmanager.util.StoragePrefs
+import com.tasirin.httpdownloadmanager.data.DownloadItem
+import com.tasirin.httpdownloadmanager.data.DownloadState
+import com.tasirin.httpdownloadmanager.databinding.ActivityMainBinding
+import com.tasirin.httpdownloadmanager.ui.DownloadAdapter
+import com.tasirin.httpdownloadmanager.util.MimeTypes
+import com.tasirin.httpdownloadmanager.util.StoragePrefs
 import kotlinx.coroutines.launch
 import java.io.File
 

@@ -1,4 +1,4 @@
-package com.tasirin.downloadmanager.data
+package com.tasirin.httpdownloadmanager.data
 
 enum class DownloadState {
     PENDING, DOWNLOADING, PAUSED, COMPLETED, FAILED, CANCELLED

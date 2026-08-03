@@ -1,13 +1,13 @@
-package com.tasirin.downloadmanager.download
+package com.tasirin.httpdownloadmanager.download
 
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
-import com.tasirin.downloadmanager.data.DownloadItem
-import com.tasirin.downloadmanager.data.DownloadRepository
-import com.tasirin.downloadmanager.data.DownloadState
-import com.tasirin.downloadmanager.util.FileSaver
+import com.tasirin.httpdownloadmanager.data.DownloadItem
+import com.tasirin.httpdownloadmanager.data.DownloadRepository
+import com.tasirin.httpdownloadmanager.data.DownloadState
+import com.tasirin.httpdownloadmanager.util.FileSaver
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

@@ -1,4 +1,4 @@
-package com.tasirin.downloadmanager.util
+package com.tasirin.httpdownloadmanager.util
 
 import android.Manifest
 import android.app.Notification
@@ -11,10 +11,10 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
-import com.tasirin.downloadmanager.MainActivity
-import com.tasirin.downloadmanager.R
-import com.tasirin.downloadmanager.data.DownloadItem
-import com.tasirin.downloadmanager.data.DownloadState
+import com.tasirin.httpdownloadmanager.MainActivity
+import com.tasirin.httpdownloadmanager.R
+import com.tasirin.httpdownloadmanager.data.DownloadItem
+import com.tasirin.httpdownloadmanager.data.DownloadState
 
 object NotificationHelper {
 

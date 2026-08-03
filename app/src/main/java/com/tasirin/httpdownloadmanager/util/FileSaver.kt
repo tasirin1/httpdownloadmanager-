@@ -1,4 +1,4 @@
-package com.tasirin.downloadmanager.util
+package com.tasirin.httpdownloadmanager.util
 
 import android.content.ContentValues
 import android.content.Context
@@ -7,7 +7,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.documentfile.provider.DocumentFile
-import com.tasirin.downloadmanager.data.DownloadItem
+import com.tasirin.httpdownloadmanager.data.DownloadItem
 import java.io.File
 
 class FileSaver(context: Context) {

@@ -80,7 +80,7 @@ Jika secret tidak diisi, workflow tetap menghasilkan `app-debug.apk`.
 ## Struktur Project
 
 ```
-app/src/main/java/com/tasirin/downloadmanager/
+app/src/main/java/com/tasirin/httpdownloadmanager/
 ├── MainActivity.kt          # UI utama + dialog tambah URL
 ├── App.kt                   # Application (inisialisasi engine)
 ├── data/

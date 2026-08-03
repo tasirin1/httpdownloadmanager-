@@ -1,4 +1,4 @@
-package com.tasirin.downloadmanager.download
+package com.tasirin.httpdownloadmanager.download
 
 import android.app.Service
 import android.content.Intent
@@ -6,9 +6,9 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.ServiceCompat
-import com.tasirin.downloadmanager.App
-import com.tasirin.downloadmanager.data.DownloadState
-import com.tasirin.downloadmanager.util.NotificationHelper
+import com.tasirin.httpdownloadmanager.App
+import com.tasirin.httpdownloadmanager.data.DownloadState
+import com.tasirin.httpdownloadmanager.util.NotificationHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

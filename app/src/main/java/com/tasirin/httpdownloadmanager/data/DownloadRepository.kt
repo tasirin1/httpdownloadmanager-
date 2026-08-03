@@ -1,4 +1,4 @@
-package com.tasirin.downloadmanager.data
+package com.tasirin.httpdownloadmanager.data
 
 import android.content.Context
 import org.json.JSONArray

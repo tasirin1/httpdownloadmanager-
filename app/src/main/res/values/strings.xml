@@ -145,6 +145,9 @@
     <string name="filter_videos">Video</string>
     <string name="hls_quality_title">Pilih kualitas video</string>
     <string name="hls_direct">Unduh playlist asli (tanpa pilih)</string>
+    <string name="gallery_delete_title">Hapus file</string>
+    <string name="gallery_delete_message">Hapus file ini?\n%1$s</string>
+    <string name="gallery_delete_error">Gagal menghapus file</string>
     <string name="gallery_empty">Belum ada foto/video di folder download.</string>
     <string name="gallery_open_error">Tidak ada aplikasi untuk membuka file ini</string>
     <string name="settings_storage_label">Penyimpanan (folder tujuan)</string>

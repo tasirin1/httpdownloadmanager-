@@ -144,6 +144,9 @@
     <string name="filter_videos">Videos</string>
     <string name="hls_quality_title">Pick video quality</string>
     <string name="hls_direct">Download original playlist (no pick)</string>
+    <string name="gallery_delete_title">Delete file</string>
+    <string name="gallery_delete_message">Delete this file?\n%1$s</string>
+    <string name="gallery_delete_error">Failed to delete file</string>
     <string name="gallery_empty">No photos/videos in the download folder yet.</string>
     <string name="gallery_open_error">No app found to open this file</string>
     <string name="settings_storage_label">Storage (destination folder)</string>

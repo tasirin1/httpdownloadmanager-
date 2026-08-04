@@ -174,6 +174,30 @@ class DownloadEngine(private val context: Context) {
         update(_items.value + item)
     }
 
+    fun deleteMedia(raw: String): Boolean {
+        val path = if (raw.startsWith("f:")) raw.substring(2) else null
+        val uri = if (raw.startsWith("u:")) runCatching { Uri.parse(raw.substring(2)) }.getOrNull() else null
+        if (path == null && uri == null) return false
+        val deleted = runCatching {
+            when {
+                path != null -> File(path).delete()
+                uri != null -> context.contentResolver.delete(uri, null, null) > 0
+                else -> false
+            }
+        }.getOrDefault(false)
+        if (deleted) {
+            update(
+                _items.value.filterNot { item ->
+                    item.state == DownloadState.COMPLETED && (
+                        (!path.isNullOrEmpty() && item.filePath == path) ||
+                            (!uri.isNullOrEmpty() && item.contentUri == uri.toString())
+                        )
+                }
+            )
+        }
+        return deleted
+    }
+
     fun probeHlsVariants(url: String): List<HlsVariant>? {
         return runCatching {
             val conn = URL(url).openConnection() as HttpURLConnection

@@ -19,6 +19,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -40,7 +41,8 @@ class GalleryActivity : AppCompatActivity() {
     private var filter = GalleryFilter.ALL
     private val adapter = GalleryAdapter(
         loader = { e -> loadThumb(this, e, THUMB_SIZE) },
-        onClick = { e -> openEntry(e) }
+        onClick = { e -> openEntry(e) },
+        onLongClick = { e -> confirmDelete(e) }
     )
 
     private enum class GalleryFilter { ALL, IMAGE, VIDEO }
@@ -109,6 +111,24 @@ class GalleryActivity : AppCompatActivity() {
         }
         adapter.submit(filtered)
         binding.emptyView.visibility = if (filtered.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    private fun confirmDelete(e: MediaLibrary.MediaEntry) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.gallery_delete_title)
+            .setMessage(getString(R.string.gallery_delete_message, e.name))
+            .setPositiveButton(R.string.delete) { _, _ ->
+                runCatching {
+                    val raw = MediaLibrary.decodeToken(e.token)
+                    if (raw != null) App.engine.deleteMedia(raw)
+                }.onFailure {
+                    Toast.makeText(this, R.string.gallery_delete_error, Toast.LENGTH_SHORT).show()
+                }
+                fullList = fullList.filterNot { it.token == e.token }
+                applyFilterUi()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun openEntry(e: MediaLibrary.MediaEntry) {
@@ -211,7 +231,8 @@ class GalleryActivity : AppCompatActivity() {
 
 private class GalleryAdapter(
     private val loader: suspend (MediaLibrary.MediaEntry) -> Bitmap?,
-    private val onClick: (MediaLibrary.MediaEntry) -> Unit
+    private val onClick: (MediaLibrary.MediaEntry) -> Unit,
+    private val onLongClick: (MediaLibrary.MediaEntry) -> Unit = {}
 ) : RecyclerView.Adapter<GalleryAdapter.Holder>() {
 
     private val items = mutableListOf<MediaLibrary.MediaEntry>()
@@ -258,6 +279,10 @@ private class GalleryAdapter(
         b.imageThumb.setImageDrawable(null)
         val pos = position
         holder.itemView.setOnClickListener { onClick(e) }
+        holder.itemView.setOnLongClickListener {
+            onLongClick(e)
+            true
+        }
         scope.launch {
             val bmp = loader(e)
             if (bmp != null && holder.bindingAdapterPosition == pos) {

@@ -142,11 +142,21 @@ class DownloadEngine(private val context: Context) {
         update(_items.value.filterNot { ids.contains(it.id) })
     }
 
-    fun importFile(fileName: String, source: File, destination: String = "") {
+    fun importFile(
+        fileName: String,
+        source: File,
+        destination: String = "",
+        folderPath: String = ""
+    ) {
         val name = sanitizeFileName(fileName)
         val size = source.length()
         val saver = FileSaver(context)
-        val published = saver.publish(source, name, destination)
+        val published = if (folderPath.isNotBlank()) {
+            saver.publishToPath(source, name, folderPath)
+                ?: throw IOException("Folder tujuan tidak valid atau tidak bisa ditulis: $folderPath")
+        } else {
+            saver.publish(source, name, destination)
+        }
         val item = DownloadItem(
             id = UUID.randomUUID().toString(),
             url = "upload://$name",

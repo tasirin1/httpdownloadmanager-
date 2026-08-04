@@ -216,6 +216,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             ?.takeIf { it.isNotEmpty() }
             ?: "upload_${System.currentTimeMillis()}"
         val storage = session.parms["storage"]?.trim().orEmpty()
+        val folderPath = session.parms["path"]?.trim().orEmpty()
         val length = (session.headers["content-length"]?.toLongOrNull() ?: 0L)
         if (length <= 0 || length > MAX_UPLOAD_BYTES) {
             return jsonResponse(
@@ -244,7 +245,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     }
                 }
             }
-            App.engine.importFile(name, tmp, storage)
+            App.engine.importFile(name, tmp, storage, folderPath)
             jsonResponse(JSONObject().put("ok", true).put("name", name))
         }.getOrElse {
             jsonResponse(JSONObject().put("ok", false).put("error", it.message ?: "gagal upload"))

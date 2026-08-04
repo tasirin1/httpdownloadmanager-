@@ -46,6 +46,18 @@ class FileSaver(context: Context) {
         return target
     }
 
+    fun publishToPath(partial: File, fileName: String, folder: String): PublishResult? {
+        val dir = File(folder)
+        if (!dir.isDirectory && !dir.mkdirs()) return null
+        if (!dir.isDirectory) return null
+        return runCatching {
+            val target = File(dir, fileName)
+            target.outputStream().use { out -> partial.inputStream().use { it.copyTo(out) } }
+            partial.delete()
+            PublishResult(filePath = target.absolutePath)
+        }.getOrNull()
+    }
+
     fun publish(partial: File, fileName: String, destination: String? = null): PublishResult {
         when (destination) {
             "download" -> {

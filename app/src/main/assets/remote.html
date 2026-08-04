@@ -163,11 +163,7 @@
 
   <div id="uploadBox" class="hidden">
     <input id="uploadFile" type="file">
-    <select id="uploadStorage">
-      <option value="">Penyimpanan: Default</option>
-      <option value="download">Folder Downloads</option>
-      <option value="internal">Internal app</option>
-    </select>
+    <input id="uploadStorage" type="text" placeholder="Path folder tujuan di device (kosongkan = default)" value="">
     <span id="uploadStatus"></span>
   </div>
 
@@ -294,7 +290,7 @@ uploadFile.addEventListener('change', async function () {
   uploadBtn.disabled = true;
   try {
     const res = await fetch(API + '/api/upload?name=' + encodeURIComponent(file.name) +
-      '&storage=' + encodeURIComponent(document.getElementById('uploadStorage').value), {
+      '&path=' + encodeURIComponent(document.getElementById('uploadStorage').value.trim()), {
       method: 'POST',
       body: file
     });

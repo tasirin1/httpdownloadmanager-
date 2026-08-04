@@ -105,7 +105,14 @@
 &#8226; MD5/SHA1/SHA256 checksum verification
 &#8226; Full-storage detection + automatic .part cleanup
 &#8226; Crash logger ("Log error" button on the remote page)
-&#8226; Remote file manager: browse folders, upload, download, rename, move &amp; delete files</string>
+&#8226; Remote file manager: browse folders, upload, download, rename, move &amp; delete files
+&#8226; Upload multiple files at once with progress &amp; speed
+&#8226; Download folders as ZIP in the file manager
+&#8226; Multi-select mode (bulk delete/move) in the file manager
+&#8226; Search &amp; sort files in the file manager
+&#8226; Dark mode for the remote page
+&#8226; Real-time download speed graph
+&#8226; Upload streams directly to the destination folder (saves RAM &amp; cache space)</string>
     <string name="checksum_hint_optional">Optional checksum (md5:/sha1:/sha256:) — e.g. md5:abcdef&#8230;</string>
     <string name="shortcut_add_download">Add Download</string>
     <string name="filter_all">All</string>

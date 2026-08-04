@@ -28,11 +28,14 @@ import java.io.FileInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.FileOutputStream
+import java.io.BufferedOutputStream
 import java.net.Inet4Address
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import java.net.NetworkInterface
 import java.net.URLDecoder
 
@@ -59,6 +62,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     session.method == Method.POST && session.uri == "/api/action" -> runAction(session)
                     session.method == Method.POST && session.uri == "/api/delete_media" -> deleteMedia(session)
                     session.method == Method.POST && session.uri == "/api/fs_action" -> fsAction(session)
+                    session.method == Method.GET && session.uri == "/api/fs_zip" -> fsZip(session)
                     session.method == Method.GET && session.uri.startsWith("/file/") -> serveFile(session)
                     session.method == Method.GET && session.uri == "/api/log" -> crashLog()
                     else -> newFixedLengthResponse(
@@ -240,9 +244,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             )
         }
         return runCatching {
-            val tmp = File.createTempFile("upload", ".tmp", context.cacheDir)
-            session.inputStream.use { input ->
-                tmp.outputStream().use { out ->
+            App.engine.importStream(name, storage, folderPath, length) { out ->
+                session.inputStream.use { input ->
                     val buffer = ByteArray(64 * 1024)
                     var remaining = length
                     while (remaining > 0) {
@@ -254,10 +257,97 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     }
                 }
             }
-            App.engine.importFile(name, tmp, storage, folderPath)
             jsonResponse(JSONObject().put("ok", true).put("name", name))
         }.getOrElse {
             jsonResponse(JSONObject().put("ok", false).put("error", it.message ?: "gagal upload"))
+        }
+    }
+
+    private fun fsZip(session: IHTTPSession): Response {
+        val raw = session.parms["path"].orEmpty()
+        if (raw.isEmpty()) return notFound()
+        val folderName = when {
+            raw.startsWith(MS_PREFIX) -> raw.removePrefix(MS_PREFIX).trim('/').substringAfterLast('/')
+            else -> File(raw.removePrefix(FS_PREFIX)).name
+        }.ifEmpty { "folder" }
+        val tmp = runCatching {
+            File.createTempFile("fszip", ".zip", context.cacheDir).apply {
+                ZipOutputStream(BufferedOutputStream(FileOutputStream(this))).use { zos ->
+                    if (raw.startsWith(MS_PREFIX)) {
+                        zipMedia(zos, raw.removePrefix(MS_PREFIX))
+                    } else {
+                        zipFile(zos, File(raw.removePrefix(FS_PREFIX)), "")
+                    }
+                }
+            }
+        }.getOrNull() ?: return notFound()
+        if (tmp.length() == 0L) {
+            tmp.delete()
+            return notFound()
+        }
+        return streamMedia(
+            name = "$folderName.zip",
+            mime = "application/zip",
+            input = FileInputStream(tmp),
+            total = tmp.length(),
+            rangeHeader = session.headers["range"] ?: session.headers["Range"],
+            download = true
+        )
+    }
+
+    private fun zipFile(zos: ZipOutputStream, file: File, prefix: String) {
+        val entryPath = if (prefix.isEmpty()) file.name else "$prefix/${file.name}"
+        if (file.isDirectory) {
+            val children = runCatching { file.listFiles() }.getOrNull()
+            if (children.isNullOrEmpty()) {
+                zos.putNextEntry(ZipEntry("$entryPath/"))
+                zos.closeEntry()
+                return
+            }
+            children.sortedBy { it.name.lowercase() }.forEach { child ->
+                zipFile(zos, child, entryPath)
+            }
+        } else if (file.isFile) {
+            zos.putNextEntry(ZipEntry(entryPath))
+            file.inputStream().use { it.copyTo(zos) }
+            zos.closeEntry()
+        }
+    }
+
+    private fun zipMedia(zos: ZipOutputStream, relative: String) {
+        if (Build.VERSION.SDK_INT < 29) return
+        val base = relative.trim('/')
+        val folder = base + "/"
+        val resolver = context.contentResolver
+        val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+        val projection = arrayOf(
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.RELATIVE_PATH
+        )
+        runCatching {
+            resolver.query(
+                collection, projection,
+                "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?",
+                arrayOf("$folder%"), null
+            )?.use { c ->
+                val iId = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                val iName = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                val iRel = c.getColumnIndexOrThrow(MediaStore.MediaColumns.RELATIVE_PATH)
+                while (c.moveToNext()) {
+                    val relPath = c.getString(iRel) ?: continue
+                    val name = c.getString(iName) ?: continue
+                    if (!relPath.startsWith(folder)) continue
+                    val entry = relPath.removePrefix(folder) + name
+                    resolver.openInputStream(
+                        ContentUris.withAppendedId(collection, c.getLong(iId))
+                    )?.use { input ->
+                        zos.putNextEntry(ZipEntry(entry))
+                        input.copyTo(zos)
+                        zos.closeEntry()
+                    }
+                }
+            }
         }
     }
 

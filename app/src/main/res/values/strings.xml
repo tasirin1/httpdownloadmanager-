@@ -106,7 +106,14 @@
 &#8226; Verifikasi checksum MD5/SHA1/SHA256
 &#8226; Deteksi penyimpanan penuh + pembersihan .part otomatis
 &#8226; Crash logger (tombol "Log error" di halaman remote)
-&#8226; File manager remote: lihat folder, unggah, unduh, ganti nama, pindah &amp; hapus file</string>
+&#8226; File manager remote: lihat folder, unggah, unduh, ganti nama, pindah &amp; hapus file
+&#8226; Upload banyak file sekaligus dengan progress &amp; kecepatan
+&#8226; Download folder sebagai ZIP di file manager
+&#8226; Mode pilih banyak file (hapus/pindah massal) di file manager
+&#8226; Cari &amp; urutkan file di file manager
+&#8226; Mode gelap halaman remote
+&#8226; Grafik kecepatan download real-time
+&#8226; Upload streaming langsung ke folder tujuan (hemat RAM &amp; ruang cache)</string>
     <string name="checksum_hint_optional">Checksum opsional (md5:/sha1:/sha256:) — contoh md5:abcdef&#8230;</string>
     <string name="shortcut_add_download">Tambah Download</string>
     <string name="filter_all">Semua</string>

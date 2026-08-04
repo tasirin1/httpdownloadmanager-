@@ -129,6 +129,49 @@
   .fs-root .fs-rcap small { display: block; color: var(--muted); font-size: 12px; word-break: break-all; margin-top: 2px; }
   .fs-empty { padding: 30px 16px; text-align: center; color: var(--muted); }
   .btn-ghost:disabled { opacity: .45; cursor: default; }
+  .fs-tools { display: flex; gap: 8px; margin-bottom: 10px; }
+  .fs-tools input { flex: 1; }
+  .fs-tools select { flex: 0 0 auto; width: auto; }
+  .fs-batch { display: flex; align-items: center; gap: 8px; background: var(--blue-bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+  .fs-batch span { font-size: 13px; font-weight: 700; margin-right: auto; }
+  .fs-batch button { padding: 7px 13px; font-size: 12.5px; font-weight: 600; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+  .fs-batch button:hover { border-color: var(--primary); }
+  .fs-batch button.danger { color: var(--red); }
+  .fs-check { flex: 0 0 22px; height: 22px; border-radius: 50%; border: 2px solid var(--muted); display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff; line-height: 1; }
+  .fs-check.on { background: var(--primary); border-color: var(--primary); }
+  .fs-progress { margin-bottom: 10px; }
+  .fs-progress-head { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--muted); margin-bottom: 6px; word-break: break-all; }
+  .fs-progress .bar { margin: 0; }
+  .spark { width: 100%; height: 26px; display: block; margin-top: 6px; }
+  .spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+  html[data-theme="dark"] {
+    --bg: #10131a;
+    --card: #1a1f29;
+    --ink: #e6ebf4;
+    --muted: #93a1b5;
+    --primary: #5b8cff;
+    --primary-2: #3f6fe0;
+    --accent: #ff8f2b;
+    --green: #3fbf77;
+    --green-bg: #123524;
+    --red: #ff7a7a;
+    --red-bg: #3a1717;
+    --amber: #f5a623;
+    --amber-bg: #3a2c0e;
+    --blue-bg: #1d2c4d;
+    --line: #2b3340;
+  }
+  html[data-theme="dark"] .topbar { background: linear-gradient(135deg, #0c1322 0%, #14306b 100%); }
+  html[data-theme="dark"] .seg { background: #222a37; }
+  html[data-theme="dark"] .seg button.on { background: #2a3443; color: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+  html[data-theme="dark"] input, html[data-theme="dark"] select { background: #151a23; color: var(--ink); border-color: var(--line); }
+  html[data-theme="dark"] .bar { background: #232b38; }
+  html[data-theme="dark"] .gal-cell { background: #0e1116; }
+  html[data-theme="dark"] .fs-actions a, html[data-theme="dark"] .fs-actions button,
+  html[data-theme="dark"] .actions button, html[data-theme="dark"] .btn-ghost { background: #232b38; color: var(--ink); }
+  html[data-theme="dark"] .actions a.stream, html[data-theme="dark"] a.fs-stream { background: var(--green-bg); color: var(--green); }
+  html[data-theme="dark"] .actions a.dl, html[data-theme="dark"] a.fs-dl { background: var(--amber-bg); color: var(--amber); }
+  html[data-theme="dark"] #logBox pre { background: #0b0f16; }
   /* Modal */
   #mediaModal { position: fixed; inset: 0; background: rgba(8,10,16,.94); z-index: 60; display: none; align-items: center; justify-content: center; flex-direction: column; padding: 20px; }
   #mediaModal.open { display: flex; }
@@ -159,6 +202,10 @@
     .fs-row { padding: 12px; }
     .fs-row .fs-actions a, .fs-row .fs-actions button { flex: 1 1 auto; min-width: 64px; padding: 8px 10px; text-align: center; }
     .fs-path { font-size: 12px; }
+    .fs-tools { flex-direction: column; }
+    .fs-tools select { width: 100%; }
+    .fs-batch { flex-wrap: wrap; }
+    .fs-batch button { flex: 1 1 auto; }
     .item { padding: 12px; }
     .name { font-size: 13.5px; }
     .icon { flex-basis: 34px; height: 34px; font-size: 17px; }
@@ -177,6 +224,7 @@
     <button id="galleryBtn" class="pill" type="button">&#128247; Galeri</button>
     <button id="fsBtn" class="pill" type="button">&#128193; File Manager</button>
     <button id="logBtn" class="pill" type="button">&#128241; Log error</button>
+    <button id="themeBtn" class="pill" type="button">&#127769;</button>
   </div>
 </div>
 
@@ -194,9 +242,13 @@
   </div>
 
   <div id="uploadBox" class="hidden">
-    <input id="uploadFile" type="file">
+    <input id="uploadFile" type="file" multiple>
     <input id="uploadStorage" type="text" placeholder="Path folder tujuan di device (kosongkan = default)" value="">
     <span id="uploadStatus"></span>
+    <div class="fs-progress hidden" id="uploadProgressBox">
+      <div class="fs-progress-head"><span id="uploadProgressText"></span><span id="uploadProgressPct"></span></div>
+      <div class="bar"><div class="fill" id="uploadProgressBar"></div></div>
+    </div>
   </div>
 
   <div class="seg" id="filters">
@@ -254,8 +306,30 @@
     <div class="toolbar">
       <button id="fsUploadBtn" type="button">&#8679; Upload ke folder ini</button>
       <button id="fsMkdirBtn" type="button">&#128193; Folder baru</button>
+      <button id="fsSelectBtn" type="button">&#9989; Pilih</button>
     </div>
-    <input id="fsUploadFile" type="file" class="hidden">
+    <div class="fs-tools" id="fsToolsRow">
+      <input id="fsSearch" type="search" placeholder="Cari file…">
+      <select id="fsSort">
+        <option value="name_asc">Nama A-Z</option>
+        <option value="name_desc">Nama Z-A</option>
+        <option value="size_desc">Ukuran terbesar</option>
+        <option value="size_asc">Ukuran terkecil</option>
+        <option value="date_desc">Terbaru</option>
+        <option value="date_asc">Terlama</option>
+      </select>
+    </div>
+    <div id="fsBatch" class="fs-batch hidden">
+      <span id="fsBatchCount"></span>
+      <button id="fsBatchMove" type="button">&#10145; Pindah</button>
+      <button id="fsBatchDelete" type="button" class="danger">&#128465; Hapus</button>
+      <button id="fsBatchCancel" type="button">Batal</button>
+    </div>
+    <div class="fs-progress hidden" id="fsProgressBox">
+      <div class="fs-progress-head"><span id="fsProgressText"></span><span id="fsProgressPct"></span></div>
+      <div class="bar"><div class="fill" id="fsProgressBar"></div></div>
+    </div>
+    <input id="fsUploadFile" type="file" class="hidden" multiple>
     <div id="fsStatus"></div>
     <div id="fsList" class="fs-list"></div>
   </div>
@@ -278,6 +352,17 @@
 
 <script>
 const API = '';
+const themeBtn = document.getElementById('themeBtn');
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('dm_theme', theme);
+  themeBtn.textContent = theme === 'dark' ? '\u2600\uFE0F' : '\u{1F319}';
+}
+applyTheme(localStorage.getItem('dm_theme') || 'light');
+themeBtn.addEventListener('click', function () {
+  applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+});
+
 let failCount = 0;
 let webFilter = 'ALL';
 const WEB_FILTERS = {ALL:'webFilterAll', ACTIVE:'webFilterActive', COMPLETED:'webFilterCompleted', FAILED:'webFilterFailed'};
@@ -328,30 +413,89 @@ const uploadStatus = document.getElementById('uploadStatus');
 uploadBtn.addEventListener('click', function () {
   uploadBox.classList.toggle('hidden');
 });
-uploadFile.addEventListener('change', async function () {
-  const file = uploadFile.files[0];
-  if (!file) return;
-  uploadStatus.textContent = 'Mengunggah ' + file.name + ' \u2026';
-  uploadBtn.disabled = true;
-  try {
-    const res = await fetch(API + '/api/upload?name=' + encodeURIComponent(file.name) +
-      '&path=' + encodeURIComponent(document.getElementById('uploadStorage').value.trim()), {
-      method: 'POST',
-      body: file
-    });
-    const data = await res.json();
-    if (data.ok) {
-      uploadStatus.textContent = 'Selesai: ' + data.name;
-      uploadFile.value = '';
-      refresh();
-    } else {
-      uploadStatus.textContent = 'Gagal: ' + (data.error || '?');
+
+function uploadFiles(files, path, statusEl, progressBox, progressText, progressPct, progressBar, done) {
+  let i = 0;
+  let totalBytes = 0;
+  for (const f of files) totalBytes += f.size;
+  let sentBytes = 0;
+  let lastBytes = 0;
+  let lastTime = Date.now();
+  let speed = 0;
+  progressBox.classList.remove('hidden');
+
+  function next() {
+    if (i >= files.length) {
+      progressBox.classList.add('hidden');
+      if (done) done(true);
+      return;
     }
-  } catch (e) {
-    uploadStatus.textContent = 'Gagal upload: ' + e;
-  } finally {
-    uploadBtn.disabled = false;
+    const file = files[i];
+    statusEl.textContent = 'Mengunggah ' + file.name + ' (' + (i + 1) + '/' + files.length + ') \u2026';
+    progressText.textContent = file.name;
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', API + '/api/upload?name=' + encodeURIComponent(file.name) +
+      '&path=' + encodeURIComponent(path));
+    xhr.upload.onprogress = function (e) {
+      if (!e.lengthComputable) return;
+      const now = Date.now();
+      const dt = (now - lastTime) / 1000;
+      if (dt > 0.3) {
+        speed = (e.loaded - lastBytes) / dt;
+        lastBytes = e.loaded;
+        lastTime = now;
+      }
+      const doneNow = sentBytes + e.loaded;
+      const pct = totalBytes > 0 ? Math.round(doneNow * 100 / totalBytes) : 0;
+      progressBar.style.width = pct + '%';
+      progressPct.textContent = pct + '% \u00b7 ' + fmtSpeed(speed);
+    };
+    xhr.onload = function () {
+      sentBytes += file.size;
+      let ok = false;
+      try {
+        ok = xhr.responseText && JSON.parse(xhr.responseText).ok;
+      } catch (e) {}
+      if (!ok) {
+        statusEl.textContent = 'Gagal: ' + file.name;
+        progressBox.classList.add('hidden');
+        if (done) done(false);
+        return;
+      }
+      i++;
+      next();
+    };
+    xhr.onerror = function () {
+      statusEl.textContent = 'Gagal upload: ' + file.name;
+      progressBox.classList.add('hidden');
+      if (done) done(false);
+    };
+    xhr.send(file);
   }
+  next();
+}
+
+uploadFile.addEventListener('change', function () {
+  const files = Array.from(uploadFile.files);
+  if (!files.length) return;
+  uploadBtn.disabled = true;
+  uploadFiles(
+    files,
+    document.getElementById('uploadStorage').value.trim(),
+    uploadStatus,
+    document.getElementById('uploadProgressBox'),
+    document.getElementById('uploadProgressText'),
+    document.getElementById('uploadProgressPct'),
+    document.getElementById('uploadProgressBar'),
+    function (ok) {
+      uploadBtn.disabled = false;
+      if (ok) {
+        uploadStatus.textContent = 'Selesai: ' + files.length + ' file';
+        uploadFile.value = '';
+        refresh();
+      }
+    }
+  );
 });
 
 async function refreshStatus() {
@@ -479,6 +623,9 @@ async function loadGallery() {
 // File manager
 let fsOpen = false;
 let fsPath = '';
+let fsItems = [];
+let fsSelectMode = false;
+const fsSelected = [];
 const fsView = document.getElementById('fsView');
 const fsBtn = document.getElementById('fsBtn');
 const fsList = document.getElementById('fsList');
@@ -487,6 +634,11 @@ const fsCount = document.getElementById('fsCount');
 const fsStatus = document.getElementById('fsStatus');
 const fsUpBtn = document.getElementById('fsUpBtn');
 const fsUploadFile = document.getElementById('fsUploadFile');
+const fsSelectBtn = document.getElementById('fsSelectBtn');
+const fsBatch = document.getElementById('fsBatch');
+const fsToolsRow = document.getElementById('fsToolsRow');
+const fsSearch = document.getElementById('fsSearch');
+const fsSort = document.getElementById('fsSort');
 
 fsBtn.addEventListener('click', function () {
   if (galleryOpen) {
@@ -497,6 +649,12 @@ fsBtn.addEventListener('click', function () {
   fsOpen = !fsOpen;
   fsView.classList.toggle('hidden', !fsOpen);
   fsBtn.textContent = fsOpen ? '\u2715 Tutup file' : '\u{1F4C1} File Manager';
+  if (!fsOpen) {
+    fsSelectMode = false;
+    fsSelected.length = 0;
+    fsSelectBtn.textContent = '\u9989 Pilih';
+    fsBatch.classList.add('hidden');
+  }
   if (fsOpen) {
     loadFs();
   } else {
@@ -535,13 +693,46 @@ async function loadFs() {
     fsStatus.textContent = '';
     fsPathEl.textContent = fsPath || 'Pilih lokasi penyimpanan';
     fsUpBtn.disabled = !fsPath;
-    const items = data.items || [];
-    fsCount.textContent = items.length ? items.length + ' item' : '';
-    renderFs(items);
+    fsToolsRow.classList.toggle('hidden', !fsPath);
+    fsSelectBtn.classList.toggle('hidden', !fsPath);
+    fsItems = data.items || [];
+    fsCount.textContent = fsItems.length ? fsItems.length + ' item' : '';
+    applyFsFilter();
   } catch (e) {
     fsMsg('Gagal memuat: ' + e, true);
   }
 }
+
+function applyFsFilter() {
+  if (!fsPath) {
+    renderFs(fsItems);
+    return;
+  }
+  const q = fsSearch.value.trim().toLowerCase();
+  const sort = fsSort.value;
+  let items = fsItems;
+  if (q) {
+    items = items.filter(function (it) {
+      return it.name.toLowerCase().indexOf(q) >= 0;
+    });
+  }
+  items = items.slice().sort(function (a, b) {
+    if (a.kind !== b.kind) return a.kind === 'dir' ? -1 : 1;
+    switch (sort) {
+      case 'name_asc': return a.name.localeCompare(b.name);
+      case 'name_desc': return b.name.localeCompare(a.name);
+      case 'size_desc': return b.size - a.size;
+      case 'size_asc': return a.size - b.size;
+      case 'date_desc': return b.modified - a.modified;
+      case 'date_asc': return a.modified - b.modified;
+    }
+    return 0;
+  });
+  renderFs(items);
+}
+
+fsSearch.addEventListener('input', applyFsFilter);
+fsSort.addEventListener('change', applyFsFilter);
 
 function renderFs(items) {
   const box = fsList;
@@ -573,35 +764,46 @@ function renderFs(items) {
   for (const it of items) {
     const row = document.createElement('div');
     row.className = 'fs-row';
+    if (it.kind === 'dir') row.classList.add('fs-dir');
     const icon = it.kind === 'dir' ? '\u{1F4C1}' : fileIcon(it.name);
     let meta = '';
     if (it.kind === 'file') {
       meta = fmt(it.size);
       if (it.modified > 0) meta += ' \u00b7 ' + fmtDate(it.modified);
     }
+    const selIdx = fsSelected.indexOf(it);
+    const check = fsSelectMode
+      ? '<span class="fs-check' + (selIdx >= 0 ? ' on' : '') + '">' + (selIdx >= 0 ? '\u2713' : '') + '</span>'
+      : '';
     let actions = '';
-    if (it.kind === 'file') {
-      const media = API + '/api/media?token=' + encodeURIComponent(it.token);
-      if (mediaExts.indexOf(extOf(it.name).toLowerCase()) >= 0) {
-        actions += '<a class="fs-stream" href="' + media + '" target="_blank">&#9654; Stream</a>';
+    if (!fsSelectMode) {
+      if (it.kind === 'file') {
+        const media = API + '/api/media?token=' + encodeURIComponent(it.token);
+        if (mediaExts.indexOf(extOf(it.name).toLowerCase()) >= 0) {
+          actions += '<a class="fs-stream" href="' + media + '" target="_blank">&#9654; Stream</a>';
+        }
+        actions += '<a class="fs-dl" href="' + media + '?dl=1" download>&#11015; Download</a>';
+      } else {
+        actions += '<a class="fs-dl" href="' + API + '/api/fs_zip?path=' +
+          encodeURIComponent(it.path) + '" download title="Download folder sebagai ZIP">&#128230; ZIP</a>';
       }
-      actions += '<a class="fs-dl" href="' + media + '?dl=1" download>&#11015; Download</a>';
+      actions += '<button data-op="rename">&#9998; Rename</button>';
+      actions += '<button data-op="move">&#10145; Pindah</button>';
+      actions += '<button data-op="delete" class="danger">&#128465; Hapus</button>';
     }
-    actions += '<button data-op="rename">&#9998; Rename</button>';
-    actions += '<button data-op="move">&#10145; Pindah</button>';
-    actions += '<button data-op="delete" class="danger">&#128465; Hapus</button>';
     row.innerHTML =
-      '<div class="icon">' + icon + '</div>' +
+      check + '<div class="icon">' + icon + '</div>' +
       '<div class="fs-main"><div class="fs-name">' + escapeHtml(it.name) + '</div>' +
       (meta ? '<div class="fs-meta">' + meta + '</div>' : '') + '</div>' +
-      '<div class="fs-actions">' + actions + '</div>';
-    if (it.kind === 'dir') {
-      row.classList.add('fs-dir');
-      row.addEventListener('click', function () {
+      (actions ? '<div class="fs-actions">' + actions + '</div>' : '');
+    row.addEventListener('click', function () {
+      if (fsSelectMode) {
+        toggleFsSelect(it, row);
+      } else if (it.kind === 'dir') {
         fsPath = it.path;
         loadFs();
-      });
-    }
+      }
+    });
     row.querySelectorAll('[data-op]').forEach(function (b) {
       b.addEventListener('click', function (ev) {
         ev.stopPropagation();
@@ -611,6 +813,62 @@ function renderFs(items) {
     box.appendChild(row);
   }
 }
+
+function toggleFsSelect(it, row) {
+  const idx = fsSelected.indexOf(it);
+  if (idx >= 0) {
+    fsSelected.splice(idx, 1);
+  } else {
+    fsSelected.push(it);
+  }
+  const check = row.querySelector('.fs-check');
+  check.classList.toggle('on', fsSelected.indexOf(it) >= 0);
+  check.textContent = fsSelected.indexOf(it) >= 0 ? '\u2713' : '';
+  updateFsBatch();
+}
+
+function updateFsBatch() {
+  fsBatch.classList.toggle('hidden', fsSelected.length === 0);
+  document.getElementById('fsBatchCount').textContent = fsSelected.length + ' dipilih';
+}
+
+fsSelectBtn.addEventListener('click', function () {
+  if (!fsPath) return;
+  fsSelectMode = !fsSelectMode;
+  fsSelected.length = 0;
+  fsSelectBtn.textContent = fsSelectMode ? '\u2715 Batal pilih' : '\u9989 Pilih';
+  fsBatch.classList.add('hidden');
+  loadFs();
+});
+
+document.getElementById('fsBatchDelete').addEventListener('click', async function () {
+  if (!fsSelected.length) return;
+  if (!confirm('Hapus ' + fsSelected.length + ' item? Folder dihapus beserta isinya.')) return;
+  for (const it of fsSelected) {
+    await postFsAction({action: 'delete', path: it.path});
+  }
+  fsSelected.length = 0;
+  loadFs();
+});
+
+document.getElementById('fsBatchMove').addEventListener('click', async function () {
+  if (!fsSelected.length) return;
+  const dest = prompt('Path folder tujuan di device\nContoh: f:/storage/emulated/0/Download/sub\natau: m:Download/sub', fsPath);
+  if (!dest) return;
+  for (const it of fsSelected) {
+    await postFsAction({action: 'move', path: it.path, dest: dest.trim()});
+  }
+  fsSelected.length = 0;
+  loadFs();
+});
+
+document.getElementById('fsBatchCancel').addEventListener('click', function () {
+  fsSelectMode = false;
+  fsSelected.length = 0;
+  fsSelectBtn.textContent = '\u9989 Pilih';
+  fsBatch.classList.add('hidden');
+  loadFs();
+});
 
 async function doFsOp(it, op) {
   if (op === 'delete') {
@@ -660,30 +918,28 @@ document.getElementById('fsUploadBtn').addEventListener('click', function () {
   fsUploadFile.click();
 });
 
-fsUploadFile.addEventListener('change', async function () {
-  const file = fsUploadFile.files[0];
-  if (!file) return;
-  fsMsg('Mengunggah ' + file.name + ' \u2026');
+fsUploadFile.addEventListener('change', function () {
+  const files = Array.from(fsUploadFile.files);
+  if (!files.length) return;
   const btn = document.getElementById('fsUploadBtn');
   btn.disabled = true;
-  try {
-    const res = await fetch(API + '/api/upload?name=' + encodeURIComponent(file.name) +
-      '&path=' + encodeURIComponent(fsPath), {
-      method: 'POST',
-      body: file
-    });
-    const data = await res.json();
-    if (data.ok) {
-      fsMsg('Selesai: ' + data.name);
-      loadFs();
-    } else {
-      fsMsg('Gagal: ' + (data.error || '?'), true);
+  uploadFiles(
+    files,
+    fsPath,
+    fsStatus,
+    document.getElementById('fsProgressBox'),
+    document.getElementById('fsProgressText'),
+    document.getElementById('fsProgressPct'),
+    document.getElementById('fsProgressBar'),
+    function (ok) {
+      btn.disabled = false;
+      if (ok) {
+        fsMsg('Selesai: ' + files.length + ' file');
+        fsUploadFile.value = '';
+        loadFs();
+      }
     }
-  } catch (e) {
-    fsMsg('Gagal upload: ' + e, true);
-  } finally {
-    btn.disabled = false;
-  }
+  );
 });
 
 function extOf(name) {
@@ -742,6 +998,7 @@ async function refresh() {
     const data = await res.json();
     failCount = 0;
     document.getElementById('status').textContent = '';
+    (data.items || []).forEach(sampleSpeed);
     render(data.items);
   } catch (e) {
     failCount++;
@@ -765,6 +1022,32 @@ function fmtSpeed(bps) {
   const kb = bps / 1024;
   if (kb < 1024) return kb.toFixed(1) + ' KB/s';
   return (kb / 1024).toFixed(2) + ' MB/s';
+}
+
+const speedHistory = {};
+function sampleSpeed(it) {
+  if (it.state !== 'DOWNLOADING') {
+    delete speedHistory[it.id];
+    return;
+  }
+  const arr = speedHistory[it.id] || [];
+  arr.push(it.speedBps);
+  if (arr.length > 30) arr.shift();
+  speedHistory[it.id] = arr;
+}
+
+function sparkSvg(arr) {
+  if (!arr || arr.length < 2) return '';
+  const w = 120;
+  const h = 26;
+  const max = Math.max.apply(null, arr) || 1;
+  const pts = arr.map(function (v, i) {
+    const x = Math.round((i / (arr.length - 1)) * (w - 4)) + 2;
+    const y = h - 3 - Math.round((v / max) * (h - 6));
+    return x + ',' + y;
+  }).join(' ');
+  return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none">' +
+    '<polyline points="' + pts + '"/></svg>';
 }
 
 function fmtEta(seconds) {
@@ -824,11 +1107,13 @@ function render(items) {
       if (it.etaSeconds > 0) meta += ' \u00b7 ETA ' + fmtEta(it.etaSeconds);
     }
     const err = it.error ? '<div class="err">' + escapeHtml(it.error) + '</div>' : '';
+    const spark = it.state === 'DOWNLOADING' ? sparkSvg(speedHistory[it.id]) : '';
     li.innerHTML =
       '<div class="item-top"><div class="icon">' + fileIcon(it.fileName) + '</div><div class="item-body">' +
       '<div class="name">' + escapeHtml(it.fileName) + '</div>' +
       '<div class="meta">' + stateBadge(it.state) + '<span>' + meta + '</span></div>' + err +
       '<div class="bar"><div class="fill" style="width:' + prog + '%"></div></div>' +
+      spark +
       '<div class="actions">' + actionButtons(it) + '</div>' +
       '</div></div>';
     li.querySelectorAll('[data-action]').forEach(b =>

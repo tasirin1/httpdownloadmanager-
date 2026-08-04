@@ -29,6 +29,7 @@ import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLDecoder
@@ -150,24 +151,17 @@ class DownloadEngine(private val context: Context) {
         flushSave()
     }
 
-    fun importFile(
+    fun importStream(
         fileName: String,
-        source: File,
         destination: String = "",
-        folderPath: String = ""
-    ) {
+        folderPath: String = "",
+        length: Long,
+        writer: (OutputStream) -> Unit
+    ): FileSaver.PublishResult {
         val name = sanitizeFileName(fileName)
-        val size = source.length()
+        val size = length
         val saver = FileSaver(context)
-        val cleanFolder = folderPath.trim().removePrefix("f:")
-        val published = when {
-            cleanFolder.startsWith("m:") ->
-                saver.publishToMediaStoreFolder(source, name, cleanFolder.substring(2))
-            cleanFolder.isNotBlank() ->
-                saver.publishToPath(source, name, cleanFolder)
-                ?: throw IOException("Folder tujuan tidak valid atau tidak bisa ditulis: $cleanFolder")
-            else -> saver.publish(source, name, destination)
-        }
+        val published = saver.saveStream(name, destination, folderPath, writer)
         val item = DownloadItem(
             id = UUID.randomUUID().toString(),
             url = "upload://$name",
@@ -182,6 +176,7 @@ class DownloadEngine(private val context: Context) {
         )
         update(_items.value + item)
         flushSave()
+        return published
     }
 
     fun deleteMedia(raw: String): Boolean {

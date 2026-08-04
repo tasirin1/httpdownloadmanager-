@@ -12,6 +12,7 @@ import androidx.documentfile.provider.DocumentFile
 import com.tasirin.httpdownloadmanager.data.DownloadItem
 import java.io.File
 import java.io.IOException
+import java.io.OutputStream
 
 class FileSaver(context: Context) {
 
@@ -85,6 +86,111 @@ class FileSaver(context: Context) {
             publishToPublicDir(partial, fileName)
         }
     }
+
+    fun saveStream(
+        fileName: String,
+        destination: String = "",
+        folderPath: String = "",
+        writer: (OutputStream) -> Unit
+    ): PublishResult {
+        val cleanFolder = folderPath.trim().removePrefix("f:")
+        if (cleanFolder.isNotBlank()) {
+            if (cleanFolder.startsWith("m:")) {
+                return saveToMediaStore(fileName, cleanFolder.substring(2), writer)
+            }
+            val dir = File(cleanFolder)
+            if (!dir.isDirectory && !dir.mkdirs()) {
+                throw IOException("Folder tujuan tidak valid atau tidak bisa ditulis: $cleanFolder")
+            }
+            val target = File(dir, fileName)
+            target.outputStream().use { out -> writer(out) }
+            return PublishResult(filePath = target.absolutePath)
+        }
+        when (destination) {
+            "internal" -> return writeInternal(fileName, writer)
+            "download" -> {
+                if (Build.VERSION.SDK_INT >= 29) return saveToMediaStore(fileName, null, writer)
+                writePublicDir(fileName, writer)?.let { return it }
+                return writeInternal(fileName, writer)
+            }
+        }
+        customFolderUri?.let { uri ->
+            writeCustomFolder(fileName, uri, writer)?.let { return it }
+        }
+        StoragePrefs.getTextFolder(appContext)?.let { tf ->
+            val dir = File(tf)
+            if (dir.isDirectory) {
+                val target = File(dir, fileName)
+                target.outputStream().use { out -> writer(out) }
+                return PublishResult(filePath = target.absolutePath)
+            }
+        }
+        return if (Build.VERSION.SDK_INT >= 29) {
+            saveToMediaStore(fileName, null, writer)
+        } else {
+            writePublicDir(fileName, writer) ?: writeInternal(fileName, writer)
+        }
+    }
+
+    private fun writeInternal(fileName: String, writer: (OutputStream) -> Unit): PublishResult {
+        val target = File(downloadDir, fileName)
+        target.outputStream().use { out -> writer(out) }
+        return PublishResult(filePath = target.absolutePath)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun writePublicDir(fileName: String, writer: (OutputStream) -> Unit): PublishResult? {
+        val publicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        if (Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED) return null
+        runCatching { publicDir.mkdirs() }
+        if (!publicDir.isDirectory || !publicDir.canWrite()) return null
+        val target = File(publicDir, fileName)
+        target.outputStream().use { out -> writer(out) }
+        return PublishResult(filePath = target.absolutePath)
+    }
+
+    private fun saveToMediaStore(
+        fileName: String,
+        relativePath: String?,
+        writer: (OutputStream) -> Unit
+    ): PublishResult {
+        val resolver = appContext.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+            put(MediaStore.Downloads.MIME_TYPE, MimeTypes.forFile(fileName))
+            relativePath?.let { rel ->
+                put(MediaStore.Downloads.RELATIVE_PATH, rel.trim('/').trimEnd('/') + "/")
+            }
+            put(MediaStore.Downloads.IS_PENDING, 1)
+        }
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            ?: throw IOException("Gagal membuat file di MediaStore")
+        try {
+            resolver.openOutputStream(uri)?.use { out -> writer(out) }
+                ?: throw IOException("Gagal membuka output MediaStore")
+            values.clear()
+            values.put(MediaStore.Downloads.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+            return PublishResult(contentUri = uri.toString())
+        } catch (e: Exception) {
+            runCatching { resolver.delete(uri, null, null) }
+            throw e
+        }
+    }
+
+    private fun writeCustomFolder(
+        fileName: String,
+        folderUri: Uri,
+        writer: (OutputStream) -> Unit
+    ): PublishResult? = runCatching {
+        val tree = DocumentFile.fromTreeUri(appContext, folderUri) ?: return null
+        val target = tree.findFile(fileName)
+            ?: tree.createFile(MimeTypes.forFile(fileName), fileName)
+            ?: return null
+        val output = appContext.contentResolver.openOutputStream(target.uri, "wt") ?: return null
+        output.use { writer(it) }
+        PublishResult(contentUri = target.uri.toString())
+    }.getOrNull()
 
     private fun publishToCustomFolder(
         partial: File,
@@ -176,37 +282,14 @@ class FileSaver(context: Context) {
     }
 
     private fun publishToMediaStore(partial: File, fileName: String): PublishResult {
-        return publishToMediaStoreFolder(partial, fileName, null)
-    }
-
-    fun publishToMediaStoreFolder(
-        partial: File,
-        fileName: String,
-        relativePath: String?
-    ): PublishResult {
-        val resolver = appContext.contentResolver
-        val values = ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-            put(MediaStore.Downloads.MIME_TYPE, MimeTypes.forFile(fileName))
-            relativePath?.let { rel ->
-                put(MediaStore.Downloads.RELATIVE_PATH, rel.trim('/').trimEnd('/') + "/")
+        val result = runCatching {
+            saveToMediaStore(fileName, null) { out ->
+                partial.inputStream().use { it.copyTo(out) }
             }
-            put(MediaStore.Downloads.IS_PENDING, 1)
-        }
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-        if (uri != null) {
-            try {
-                resolver.openOutputStream(uri)?.use { out ->
-                    partial.inputStream().use { it.copyTo(out) }
-                }
-                values.clear()
-                values.put(MediaStore.Downloads.IS_PENDING, 0)
-                resolver.update(uri, values, null, null)
-                partial.delete()
-                return PublishResult(contentUri = uri.toString())
-            } catch (_: Exception) {
-                resolver.delete(uri, null, null)
-            }
+        }.getOrNull()
+        if (result != null) {
+            partial.delete()
+            return result
         }
         return publishToInternal(partial, fileName)
     }

@@ -200,12 +200,14 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         val priority = params["priority"]?.toIntOrNull()?.coerceIn(-1, 1) ?: 0
         val checksum = params["checksum"]?.trim().orEmpty()
         val storage = params["storage"]?.trim().orEmpty()
+        val folderPath = params["path"]?.trim().orEmpty()
         App.engine.addDownload(
             url, params["name"],
             speedLimitKbps = speed,
             priority = priority,
             checksum = checksum,
-            destination = storage
+            destination = storage,
+            folderPath = folderPath
         )
         return jsonResponse(JSONObject().put("ok", true))
     }

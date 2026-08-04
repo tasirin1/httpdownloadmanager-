@@ -199,11 +199,7 @@
         <option value="1">Prioritas: Tinggi</option>
       </select>
     </div>
-    <select id="storage">
-      <option value="">Penyimpanan: Default (sesuai aplikasi)</option>
-      <option value="download">Folder Downloads (Android)</option>
-      <option value="internal">Internal app</option>
-    </select>
+    <input id="storage" type="text" placeholder="Path folder tujuan di device (kosongkan = default)" value="">
     <div class="form-row">
       <button type="submit" class="btn-main">Tambah Download</button>
       <button id="cancelAdd" type="button" class="btn-ghost">Batal</button>
@@ -588,7 +584,7 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
   body.append('priority', document.getElementById('priority').value);
   const checksum = document.getElementById('checksum').value.trim();
   if (checksum) body.append('checksum', checksum);
-  body.append('storage', document.getElementById('storage').value);
+  body.append('path', document.getElementById('storage').value.trim());
   await fetch(API + '/api/add', {method: 'POST', body});
   document.getElementById('url').value = '';
   document.getElementById('name').value = '';

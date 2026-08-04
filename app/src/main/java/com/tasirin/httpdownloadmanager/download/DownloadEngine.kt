@@ -63,7 +63,8 @@ class DownloadEngine(private val context: Context) {
         speedLimitKbps: Int = 0,
         priority: Int = 0,
         checksum: String = "",
-        destination: String = ""
+        destination: String = "",
+        folderPath: String = ""
     ) {
         val cleanUrl = url.trim()
         if (cleanUrl.isEmpty()) return
@@ -82,6 +83,7 @@ class DownloadEngine(private val context: Context) {
             password = password,
             headers = headers,
             destination = destination,
+            folderPath = folderPath,
             speedLimitKbps = speedLimitKbps,
             priority = priority,
             checksum = checksum
@@ -337,6 +339,19 @@ class DownloadEngine(private val context: Context) {
         }
     }
 
+    private fun publishItem(
+        saver: FileSaver,
+        partial: File,
+        fileName: String,
+        item: DownloadItem
+    ): FileSaver.PublishResult {
+        if (item.folderPath.isNotBlank()) {
+            return saver.publishToPath(partial, fileName, item.folderPath)
+                ?: throw IOException("Folder tujuan tidak valid atau tidak bisa ditulis: ${item.folderPath}")
+        }
+        return saver.publish(partial, fileName, item.destination)
+    }
+
     private fun organizeIfEnabled(
         saver: FileSaver,
         result: FileSaver.PublishResult,
@@ -524,7 +539,7 @@ class DownloadEngine(private val context: Context) {
 
         verifySize(item.id, downloaded, total)
 
-        val published0 = saver.publish(partialFile, fileName, item.destination)
+        val published0 = publishItem(saver, partialFile, fileName, item)
         verifyChecksum(item.id, fileName, published0, saver)?.let {
             throw IOException(it)
         }
@@ -589,7 +604,7 @@ class DownloadEngine(private val context: Context) {
         verifySize(item.id, current.bytesDownloaded, current.totalBytes)
 
         val merged = saver.mergeSegments(fileName, segments.size)
-        val published0 = saver.publish(merged, fileName, item.destination)
+        val published0 = publishItem(saver, merged, fileName, item)
         verifyChecksum(item.id, fileName, published0, saver)?.let {
             throw IOException(it)
         }

@@ -81,6 +81,7 @@
     <string name="action_about">About</string>
     <string name="about_title">About Download Manager</string>
     <string name="about_version">Version %1$s</string>
+    <string name="about_author">Created by: Julius Rudi Tasirin</string>
     <string name="ok">OK</string>
     <string name="about_changelog">Changelog:
 &#8226; Full-background remote server + QR code (URL shown on home screen)

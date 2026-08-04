@@ -81,6 +81,7 @@
     <string name="action_about">Tentang</string>
     <string name="about_title">Tentang Download Manager</string>
     <string name="about_version">Versi %1$s</string>
+    <string name="about_author">Pembuat: Julius Rudi Tasirin</string>
     <string name="ok">OK</string>
     <string name="about_changelog">Catatan perubahan:
 &#8226; Server remote full background + QR code (URL tampil di layar utama)

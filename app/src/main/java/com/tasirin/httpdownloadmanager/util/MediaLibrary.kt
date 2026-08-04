@@ -24,8 +24,6 @@ object MediaLibrary {
     private val IMAGE_EXTS = setOf("jpg", "jpeg", "png", "gif", "webp", "bmp")
     private val VIDEO_EXTS = setOf("mp4", "mkv", "webm", "avi", "mov", "3gp", "m4v", "mpg", "mpeg")
 
-    fun isMedia(name: String): Boolean = mediaKind(name) != null
-
     fun mediaKind(name: String): String? {
         val ext = name.substringAfterLast('.', "").lowercase()
         return when {

@@ -7,7 +7,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.util.Base64
 import android.os.BatteryManager
 import android.util.Log
 import com.tasirin.httpdownloadmanager.App

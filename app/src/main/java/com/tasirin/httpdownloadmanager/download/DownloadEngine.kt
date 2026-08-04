@@ -45,6 +45,7 @@ class DownloadEngine(private val context: Context) {
     private val jobs = mutableMapOf<String, Job>()
     private val retryAttempts = mutableMapOf<String, Int>()
     private val speedTracker = SpeedTracker()
+    private var saveJob: Job? = null
 
     @Volatile
     private var interruptedResumed = false
@@ -89,6 +90,7 @@ class DownloadEngine(private val context: Context) {
             checksum = checksum
         )
         update(_items.value + item)
+        flushSave()
         StoragePrefs.addRecentUrl(context, cleanUrl)
         attemptStart(item.id)
     }
@@ -100,6 +102,7 @@ class DownloadEngine(private val context: Context) {
         updateItem(id) {
             it.copy(state = DownloadState.PAUSED, autoResume = false, speedBps = 0, etaSeconds = 0)
         }
+        flushSave()
     }
 
     fun resume(id: String) {
@@ -128,6 +131,7 @@ class DownloadEngine(private val context: Context) {
         updateItem(id) {
             it.copy(state = DownloadState.CANCELLED, speedBps = 0, etaSeconds = 0)
         }
+        flushSave()
     }
 
     fun remove(id: String) {
@@ -136,12 +140,14 @@ class DownloadEngine(private val context: Context) {
         jobs.remove(id)?.cancel()
         _items.value.find { it.id == id }?.let { FileSaver(context).deleteFiles(it) }
         update(_items.value.filterNot { it.id == id })
+        flushSave()
     }
 
     fun clearCompleted() {
         // Hanya membersihkan daftar; file hasil download TIDAK dihapus.
         val ids = _items.value.filter { it.state == DownloadState.COMPLETED }.map { it.id }.toSet()
         update(_items.value.filterNot { ids.contains(it.id) })
+        flushSave()
     }
 
     fun importFile(
@@ -172,6 +178,7 @@ class DownloadEngine(private val context: Context) {
             autoResume = false
         )
         update(_items.value + item)
+        flushSave()
     }
 
     fun deleteMedia(raw: String): Boolean {
@@ -194,6 +201,7 @@ class DownloadEngine(private val context: Context) {
                         )
                 }
             )
+            flushSave()
         }
         return deleted
     }
@@ -415,6 +423,7 @@ class DownloadEngine(private val context: Context) {
                     etaSeconds = 0
                 )
             }
+            flushSave()
         }
     }
 
@@ -582,6 +591,7 @@ class DownloadEngine(private val context: Context) {
                 etaSeconds = 0
             )
         }
+        flushSave()
     }
 
     private suspend fun runSegmented(
@@ -648,6 +658,7 @@ class DownloadEngine(private val context: Context) {
                 etaSeconds = 0
             )
         }
+        flushSave()
     }
 
     private suspend fun downloadSegment(
@@ -790,6 +801,7 @@ class DownloadEngine(private val context: Context) {
             return "Checksum $algo tidak cocok (diharapkan $hex, didapat $digest)"
         }
         updateItem(itemId) { it.copy(checksumVerified = true) }
+        flushSave()
         return null
     }
 
@@ -901,6 +913,22 @@ class DownloadEngine(private val context: Context) {
     @Synchronized
     private fun update(items: List<DownloadItem>) {
         _items.value = items.sortedByDescending { it.addedAt }
+        scheduleSave()
+    }
+
+    @Synchronized
+    private fun scheduleSave() {
+        saveJob?.cancel()
+        saveJob = scope.launch {
+            delay(SAVE_DEBOUNCE_MS)
+            repository.save(_items.value)
+        }
+    }
+
+    @Synchronized
+    private fun flushSave() {
+        saveJob?.cancel()
+        saveJob = null
         repository.save(_items.value)
     }
 
@@ -918,6 +946,7 @@ class DownloadEngine(private val context: Context) {
         private const val RETRY_DELAY_1_MS = 5_000L
         private const val RETRY_DELAY_MAX_MS = 300_000L
         private const val MIN_FREE_BYTES = 2L * 1024 * 1024
+        private const val SAVE_DEBOUNCE_MS = 400L
     }
 }
 

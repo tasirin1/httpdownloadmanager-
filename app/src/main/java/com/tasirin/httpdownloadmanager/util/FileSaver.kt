@@ -135,18 +135,6 @@ class FileSaver(context: Context) {
         return freeBytes()
     }
 
-    fun openPublished(item: DownloadItem): java.io.InputStream? {
-        return when {
-            !item.contentUri.isNullOrEmpty() ->
-                runCatching {
-                    appContext.contentResolver.openInputStream(Uri.parse(item.contentUri))
-                }.getOrNull()
-            !item.filePath.isNullOrEmpty() ->
-                runCatching { File(item.filePath).inputStream() }.getOrNull()
-            else -> null
-        }
-    }
-
     fun sidecarChecksum(item: DownloadItem): Pair<String, String>? {
         val path = item.filePath ?: return null
         val file = File(path)

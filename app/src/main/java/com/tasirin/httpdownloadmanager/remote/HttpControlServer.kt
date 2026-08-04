@@ -730,16 +730,6 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     }
                 }
             }
-            val parent = base.substringBeforeLast('/', "")
-            if (parent.isNotEmpty()) {
-                items.put(
-                    JSONObject()
-                        .put("name", "..")
-                        .put("path", MS_PREFIX + parent)
-                        .put("kind", "dir")
-                        .put("up", true)
-                )
-            }
             dirs.sortedBy { it.lowercase() }.forEach { sub ->
                 items.put(
                     JSONObject()

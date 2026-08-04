@@ -1,5 +1,7 @@
 package com.tasirin.httpdownloadmanager.remote
 
+import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -8,6 +10,9 @@ import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.BatteryManager
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import com.tasirin.httpdownloadmanager.App
 import com.tasirin.httpdownloadmanager.data.DownloadState
@@ -46,12 +51,14 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     session.method == Method.GET && session.uri == "/api/downloads" -> downloadsJson()
                     session.method == Method.GET && session.uri == "/api/status" -> statusJson()
                     session.method == Method.GET && session.uri == "/api/gallery" -> galleryJson()
+                    session.method == Method.GET && session.uri == "/api/fs" -> fsList(session)
                     session.method == Method.GET && session.uri == "/api/thumb" -> serveThumb(session)
                     session.method == Method.GET && session.uri == "/api/media" -> serveMedia(session)
                     session.method == Method.POST && session.uri == "/api/add" -> addDownload(session)
                     session.method == Method.POST && session.uri == "/api/upload" -> handleUpload(session)
                     session.method == Method.POST && session.uri == "/api/action" -> runAction(session)
                     session.method == Method.POST && session.uri == "/api/delete_media" -> deleteMedia(session)
+                    session.method == Method.POST && session.uri == "/api/fs_action" -> fsAction(session)
                     session.method == Method.GET && session.uri.startsWith("/file/") -> serveFile(session)
                     session.method == Method.GET && session.uri == "/api/log" -> crashLog()
                     else -> newFixedLengthResponse(
@@ -616,6 +623,211 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         return jsonResponse(JSONObject().put("items", arr))
     }
 
+    // ---------- File manager ----------
+
+    private fun fsList(session: IHTTPSession): Response {
+        val raw = session.parms["path"].orEmpty()
+        return when {
+            raw.isEmpty() -> fsRoots()
+            raw.startsWith(MS_PREFIX) -> fsListMedia(raw.removePrefix(MS_PREFIX))
+            else -> fsListFiles(raw.removePrefix(FS_PREFIX))
+        }
+    }
+
+    private fun fsRoots(): Response {
+        val items = JSONArray()
+        fun add(name: String, path: String) {
+            items.put(
+                JSONObject()
+                    .put("name", name)
+                    .put("path", path)
+                    .put("kind", "dir")
+            )
+        }
+        add("Folder aplikasi", FS_PREFIX + File(context.filesDir, "downloads").absolutePath)
+        StoragePrefs.getTextFolder(context)?.let { tf ->
+            if (File(tf).isDirectory) add("Folder teks", FS_PREFIX + tf)
+        }
+        val primary = File("/storage/emulated/0")
+        if (primary.isDirectory && primary.listFiles() != null) {
+            add("Penyimpanan utama", FS_PREFIX + primary.absolutePath)
+        }
+        if (Build.VERSION.SDK_INT >= 29) {
+            add("MediaStore Download", MS_PREFIX + "Download")
+        } else {
+            val pub = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            if (pub.isDirectory && pub.listFiles() != null) {
+                add("Folder Download", FS_PREFIX + pub.absolutePath)
+            }
+        }
+        return jsonResponse(JSONObject().put("items", items))
+    }
+
+    private fun fsListFiles(path: String): Response {
+        val items = JSONArray()
+        val dir = File(path)
+        if (dir.isDirectory) {
+            runCatching { dir.listFiles() }.getOrNull()
+                ?.sortedWith(compareBy({ it.isFile }, { it.name.lowercase() }))
+                ?.forEach { f ->
+                    val o = JSONObject()
+                    o.put("name", f.name)
+                    o.put("path", FS_PREFIX + f.absolutePath)
+                    o.put("kind", if (f.isDirectory) "dir" else "file")
+                    o.put("size", if (f.isFile) f.length() else 0L)
+                    o.put("modified", f.lastModified())
+                    if (!f.isDirectory) o.put("token", MediaLibrary.tokenForPath(f.absolutePath))
+                    items.put(o)
+                }
+        }
+        return jsonResponse(JSONObject().put("path", path).put("items", items))
+    }
+
+    private fun fsListMedia(relative: String): Response {
+        val items = JSONArray()
+        if (Build.VERSION.SDK_INT >= 29) {
+            val base = relative.trim('/')
+            val folder = if (base.isEmpty()) "" else base + "/"
+            val resolver = context.contentResolver
+            val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+            val projection = arrayOf(
+                MediaStore.MediaColumns._ID,
+                MediaStore.MediaColumns.DISPLAY_NAME,
+                MediaStore.MediaColumns.SIZE,
+                MediaStore.MediaColumns.DATE_MODIFIED,
+                MediaStore.MediaColumns.RELATIVE_PATH
+            )
+            val selection = if (folder.isEmpty()) null else "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
+            val selArgs = if (folder.isEmpty()) null else arrayOf("$folder%")
+            val dirs = LinkedHashSet<String>()
+            val files = mutableListOf<JSONObject>()
+            runCatching {
+                resolver.query(collection, projection, selection, selArgs, null)?.use { c ->
+                    val iId = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                    val iName = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                    val iSize = c.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+                    val iMod = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
+                    val iRel = c.getColumnIndexOrThrow(MediaStore.MediaColumns.RELATIVE_PATH)
+                    while (c.moveToNext()) {
+                        val relPath = c.getString(iRel) ?: continue
+                        if (folder.isNotEmpty() && !relPath.startsWith(folder)) continue
+                        val rest = relPath.removePrefix(folder).trim('/')
+                        if (rest.isEmpty() || !rest.contains('/')) {
+                            val name = c.getString(iName) ?: continue
+                            val uri = ContentUris.withAppendedId(collection, c.getLong(iId)).toString()
+                            files.add(
+                                JSONObject()
+                                    .put("name", name)
+                                    .put("path", MS_PREFIX + uri)
+                                    .put("kind", "file")
+                                    .put("size", c.getLong(iSize))
+                                    .put("modified", c.getLong(iMod) * 1000L)
+                                    .put("token", MediaLibrary.tokenForUri(uri))
+                            )
+                        } else {
+                            dirs.add(rest.substringBefore('/'))
+                        }
+                    }
+                }
+            }
+            val parent = base.substringBeforeLast('/', "")
+            if (parent.isNotEmpty()) {
+                items.put(
+                    JSONObject()
+                        .put("name", "..")
+                        .put("path", MS_PREFIX + parent)
+                        .put("kind", "dir")
+                        .put("up", true)
+                )
+            }
+            dirs.sortedBy { it.lowercase() }.forEach { sub ->
+                items.put(
+                    JSONObject()
+                        .put("name", sub)
+                        .put("path", "$MS_PREFIX$base/$sub")
+                        .put("kind", "dir")
+                )
+            }
+            files.forEach { items.put(it) }
+        }
+        return jsonResponse(JSONObject().put("path", relative).put("items", items))
+    }
+
+    private fun fsAction(session: IHTTPSession): Response {
+        val params = readForm(session)
+        val action = params["action"].orEmpty()
+        val path = params["path"].orEmpty()
+        val name = params["name"]?.trim().orEmpty()
+        val dest = params["dest"]?.trim().orEmpty()
+        val ok = when {
+            path.isEmpty() -> false
+            path.startsWith(MS_PREFIX) -> fsActionMedia(action, path.removePrefix(MS_PREFIX), name, dest)
+            else -> fsActionFiles(action, path.removePrefix(FS_PREFIX), name, dest)
+        }
+        return jsonResponse(JSONObject().put("ok", ok))
+    }
+
+    private fun fsActionFiles(action: String, path: String, name: String, dest: String): Boolean {
+        val file = File(path)
+        return when (action) {
+            "delete" -> runCatching {
+                if (file.isDirectory) file.deleteRecursively() else file.delete()
+            }.getOrDefault(false)
+            "rename" -> {
+                if (name.isBlank() || name.contains('/') || name.contains('\\')) return false
+                runCatching {
+                    File(file.parentFile, name).let { file.renameTo(it) }
+                }.getOrDefault(false)
+            }
+            "move" -> {
+                if (dest.isBlank()) return false
+                val destDir = File(dest.removePrefix(FS_PREFIX))
+                if (!destDir.isDirectory) return false
+                if (file.parentFile?.absolutePath == destDir.absolutePath) return true
+                val target = File(destDir, file.name)
+                if (target.exists()) return false
+                if (file.renameTo(target)) return true
+                if (!file.isFile) return false
+                runCatching {
+                    file.copyTo(target, overwrite = false)
+                    file.delete()
+                    true
+                }.getOrDefault(false)
+            }
+            "mkdir" -> {
+                if (name.isBlank() || name.contains('/') || name.contains('\\')) return false
+                runCatching { File(file, name).mkdirs() }.getOrDefault(false)
+            }
+            else -> false
+        }
+    }
+
+    private fun fsActionMedia(action: String, uriStr: String, name: String, dest: String): Boolean {
+        val resolver = context.contentResolver
+        return runCatching {
+            val uri = Uri.parse(uriStr)
+            when (action) {
+                "delete" -> resolver.delete(uri, null, null) > 0
+                "rename" -> {
+                    if (name.isBlank() || name.contains('/') || name.contains('\\')) return false
+                    val values = ContentValues().apply {
+                        put(MediaStore.Downloads.DISPLAY_NAME, name)
+                    }
+                    resolver.update(uri, values, null, null) > 0
+                }
+                "move" -> {
+                    if (dest.isBlank()) return false
+                    val rel = dest.removePrefix(MS_PREFIX).trim('/') + "/"
+                    val values = ContentValues().apply {
+                        put(MediaStore.MediaColumns.RELATIVE_PATH, rel)
+                    }
+                    resolver.update(uri, values, null, null) > 0
+                }
+                else -> false
+            }
+        }.getOrDefault(false)
+    }
+
     private fun statusJson(): Response {
         val obj = JSONObject()
         val (level, charging) = batteryStatus()
@@ -671,6 +883,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
 
     companion object {
         const val DEFAULT_PORT = StoragePrefs.DEFAULT_PORT
+        private const val FS_PREFIX = "f:"
+        private const val MS_PREFIX = "m:"
         private const val MAX_BODY_SIZE = 1_048_576L
         private const val MAX_UPLOAD_BYTES = 2L * 1024 * 1024 * 1024
         private const val MAX_UPLOAD_MB = 2048

@@ -159,11 +159,14 @@ class DownloadEngine(private val context: Context) {
         val name = sanitizeFileName(fileName)
         val size = source.length()
         val saver = FileSaver(context)
-        val published = if (folderPath.isNotBlank()) {
-            saver.publishToPath(source, name, folderPath)
-                ?: throw IOException("Folder tujuan tidak valid atau tidak bisa ditulis: $folderPath")
-        } else {
-            saver.publish(source, name, destination)
+        val cleanFolder = folderPath.trim().removePrefix("f:")
+        val published = when {
+            cleanFolder.startsWith("m:") ->
+                saver.publishToMediaStoreFolder(source, name, cleanFolder.substring(2))
+            cleanFolder.isNotBlank() ->
+                saver.publishToPath(source, name, cleanFolder)
+                ?: throw IOException("Folder tujuan tidak valid atau tidak bisa ditulis: $cleanFolder")
+            else -> saver.publish(source, name, destination)
         }
         val item = DownloadItem(
             id = UUID.randomUUID().toString(),

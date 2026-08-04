@@ -104,6 +104,28 @@
   .gal-cell .ext { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #9aa4b2; font-size: 26px; font-weight: 800; text-transform: uppercase; }
   .gal-empty { grid-column: 1 / -1; padding: 40px 16px; text-align: center; color: var(--muted); }
   #galleryStatus { color: var(--red); font-size: 13px; margin-bottom: 8px; }
+  /* File manager */
+  .fs-path { font-size: 12.5px; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; word-break: break-all; }
+  .fs-list { display: flex; flex-direction: column; gap: 8px; }
+  .fs-row { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; box-shadow: var(--shadow); }
+  .fs-row .icon { flex: 0 0 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 18px; background: var(--blue-bg); }
+  .fs-row .fs-main { flex: 1; min-width: 0; }
+  .fs-row .fs-name { font-weight: 700; font-size: 13.5px; word-break: break-all; }
+  .fs-row .fs-meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .fs-row .fs-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .fs-row .fs-actions a, .fs-row .fs-actions button { padding: 5px 10px; font-size: 12px; font-weight: 600; text-decoration: none; border-radius: 999px; border: 1px solid transparent; cursor: pointer; }
+  a.fs-stream { background: var(--green-bg); color: var(--green); }
+  a.fs-stream:hover { border-color: var(--green); }
+  a.fs-dl { background: var(--amber-bg); color: var(--amber); }
+  a.fs-dl:hover { border-color: var(--amber); }
+  .fs-actions button { background: #eef1f6; color: var(--ink); }
+  .fs-actions button:hover { border-color: var(--muted); }
+  .fs-actions button.danger { color: var(--red); }
+  .fs-actions button.danger:hover { background: var(--red-bg); border-color: var(--red); }
+  .fs-root { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; margin-bottom: 10px; box-shadow: var(--shadow); }
+  .fs-root:hover { border-color: var(--primary); }
+  .fs-root .fs-rcap small { display: block; color: var(--muted); font-size: 12px; word-break: break-all; margin-top: 2px; }
+  .fs-empty { padding: 30px 16px; text-align: center; color: var(--muted); }
   /* Modal */
   #mediaModal { position: fixed; inset: 0; background: rgba(8,10,16,.94); z-index: 60; display: none; align-items: center; justify-content: center; flex-direction: column; padding: 20px; }
   #mediaModal.open { display: flex; }
@@ -147,6 +169,7 @@
     <div class="brand"><span class="logo">&#11015;</span><span>Download Manager<small>Remote Control</small></span></div>
     <button id="newBtn" class="pill primary" type="button">+ New Download</button>
     <button id="galleryBtn" class="pill" type="button">&#128247; Galeri</button>
+    <button id="fsBtn" class="pill" type="button">&#128193; File Manager</button>
     <button id="logBtn" class="pill" type="button">&#128241; Log error</button>
   </div>
 </div>
@@ -213,6 +236,22 @@
     <div class="gal-toolbar"><h2>&#128247; Galeri Device</h2><span class="count" id="galleryCount"></span></div>
     <div id="galleryStatus"></div>
     <div id="galleryGrid" class="gal-grid"></div>
+  </div>
+
+  <div id="fsView" class="hidden">
+    <div class="gal-toolbar">
+      <h2>&#128193; File Manager</h2>
+      <span class="count" id="fsCount"></span>
+      <button id="fsUpBtn" type="button" class="btn-ghost" style="margin-left:auto">&#11014; Naik</button>
+    </div>
+    <div id="fsPath" class="fs-path"></div>
+    <div class="toolbar">
+      <button id="fsUploadBtn" type="button">&#8679; Upload ke folder ini</button>
+      <button id="fsMkdirBtn" type="button">&#128193; Folder baru</button>
+    </div>
+    <input id="fsUploadFile" type="file" class="hidden">
+    <div id="fsStatus"></div>
+    <div id="fsList" class="fs-list"></div>
   </div>
 
   <div id="status"></div>
@@ -346,6 +385,11 @@ const mmSub = document.getElementById('mmSub');
 const mmDownload = document.getElementById('mmDownload');
 
 galleryBtn.addEventListener('click', function () {
+  if (fsOpen) {
+    fsOpen = false;
+    fsView.classList.add('hidden');
+    fsBtn.textContent = '\u{1F4C1} File Manager';
+  }
   galleryOpen = !galleryOpen;
   galleryView.classList.toggle('hidden', !galleryOpen);
   galleryBtn.textContent = galleryOpen ? '\u2715 Tutup galeri' : '\u{1F4F7} Galeri';
@@ -425,6 +469,215 @@ async function loadGallery() {
     galleryStatus.textContent = 'Gagal memuat galeri: ' + e;
   }
 }
+
+// File manager
+let fsOpen = false;
+let fsPath = '';
+const fsView = document.getElementById('fsView');
+const fsBtn = document.getElementById('fsBtn');
+const fsList = document.getElementById('fsList');
+const fsPathEl = document.getElementById('fsPath');
+const fsCount = document.getElementById('fsCount');
+const fsStatus = document.getElementById('fsStatus');
+const fsUpBtn = document.getElementById('fsUpBtn');
+const fsUploadFile = document.getElementById('fsUploadFile');
+
+fsBtn.addEventListener('click', function () {
+  if (galleryOpen) {
+    galleryOpen = false;
+    galleryView.classList.add('hidden');
+    galleryBtn.textContent = '\u{1F4F7} Galeri';
+  }
+  fsOpen = !fsOpen;
+  fsView.classList.toggle('hidden', !fsOpen);
+  fsBtn.textContent = fsOpen ? '\u2715 Tutup file' : '\u{1F4C1} File Manager';
+  if (fsOpen) {
+    loadFs();
+  } else {
+    refresh();
+  }
+});
+
+fsUpBtn.addEventListener('click', function () {
+  fsPath = parentFsPath(fsPath);
+  loadFs();
+});
+
+function parentFsPath(p) {
+  if (!p) return '';
+  if (p.startsWith('m:')) {
+    const rel = p.slice(2);
+    const idx = rel.lastIndexOf('/');
+    if (idx <= 0) return 'm:Download';
+    return 'm:' + rel.slice(0, idx);
+  }
+  const idx = p.lastIndexOf('/');
+  const up = idx > 0 ? p.slice(0, idx) : '';
+  return (up === 'f:' || up === 'm:') ? '' : up;
+}
+
+function fsMsg(text, isErr) {
+  fsStatus.textContent = text || '';
+  fsStatus.style.color = isErr ? 'var(--red)' : 'var(--green)';
+}
+
+async function loadFs() {
+  try {
+    const res = await fetch(API + '/api/fs?path=' + encodeURIComponent(fsPath));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    fsStatus.textContent = '';
+    fsPathEl.textContent = fsPath || 'Pilih lokasi penyimpanan';
+    const items = data.items || [];
+    fsCount.textContent = items.length ? items.length + ' item' : '';
+    renderFs(items);
+  } catch (e) {
+    fsMsg('Gagal memuat: ' + e, true);
+  }
+}
+
+function renderFs(items) {
+  const box = fsList;
+  box.innerHTML = '';
+  if (!fsPath) {
+    if (!items.length) {
+      box.innerHTML = '<div class="fs-empty">Tidak ada penyimpanan yang tersedia.</div>';
+      return;
+    }
+    for (const r of items) {
+      const row = document.createElement('div');
+      row.className = 'fs-root';
+      row.innerHTML = '<div class="icon">&#128193;</div>' +
+        '<div class="fs-main"><div class="fs-name">' + escapeHtml(r.name) + '</div>' +
+        '<div class="fs-rcap"><small>' + escapeHtml(r.path) + '</small></div></div>';
+      row.addEventListener('click', function () {
+        fsPath = r.path;
+        loadFs();
+      });
+      box.appendChild(row);
+    }
+    return;
+  }
+  if (!items.length) {
+    box.innerHTML = '<div class="fs-empty">Folder kosong.</div>';
+    return;
+  }
+  const mediaExts = ['jpg','jpeg','png','gif','webp','bmp','mp4','mkv','webm','avi','mov','3gp','m4v','mpg','mpeg','mp3','m4a','aac','wav','ogg','flac'];
+  for (const it of items) {
+    const row = document.createElement('div');
+    row.className = 'fs-row';
+    const icon = it.kind === 'dir' ? '\u{1F4C1}' : fileIcon(it.name);
+    let meta = '';
+    if (it.kind === 'file') {
+      meta = fmt(it.size);
+      if (it.modified > 0) meta += ' \u00b7 ' + fmtDate(it.modified);
+    }
+    let actions = '';
+    if (it.kind === 'file') {
+      const media = API + '/api/media?token=' + encodeURIComponent(it.token);
+      if (mediaExts.indexOf(extOf(it.name).toLowerCase()) >= 0) {
+        actions += '<a class="fs-stream" href="' + media + '" target="_blank">&#9654; Stream</a>';
+      }
+      actions += '<a class="fs-dl" href="' + media + '?dl=1" download>&#11015; Download</a>';
+    }
+    actions += '<button data-op="rename">&#9998; Rename</button>';
+    actions += '<button data-op="move">&#10145; Pindah</button>';
+    actions += '<button data-op="delete" class="danger">&#128465; Hapus</button>';
+    row.innerHTML =
+      '<div class="icon">' + icon + '</div>' +
+      '<div class="fs-main"><div class="fs-name">' + escapeHtml(it.name) + '</div>' +
+      (meta ? '<div class="fs-meta">' + meta + '</div>' : '') + '</div>' +
+      '<div class="fs-actions">' + actions + '</div>';
+    if (it.kind === 'dir') {
+      row.classList.add('fs-dir');
+      row.addEventListener('click', function () {
+        fsPath = it.path;
+        loadFs();
+      });
+    }
+    row.querySelectorAll('[data-op]').forEach(function (b) {
+      b.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        doFsOp(it, b.dataset.op);
+      });
+    });
+    box.appendChild(row);
+  }
+}
+
+async function doFsOp(it, op) {
+  if (op === 'delete') {
+    if (!confirm('Hapus ' + (it.kind === 'dir' ? 'folder' : 'file') + ' ini?\n' + it.name)) return;
+    await postFsAction({action: 'delete', path: it.path});
+  } else if (op === 'rename') {
+    const name = prompt('Nama baru:', it.name);
+    if (!name) return;
+    await postFsAction({action: 'rename', path: it.path, name: name.trim()});
+  } else if (op === 'move') {
+    const dest = prompt('Path folder tujuan di device\nContoh: f:/storage/emulated/0/Download/sub\natau: m:Download/sub', fsPath);
+    if (!dest) return;
+    await postFsAction({action: 'move', path: it.path, dest: dest.trim()});
+  }
+  loadFs();
+}
+
+async function postFsAction(params) {
+  const body = new URLSearchParams();
+  Object.entries(params).forEach(function (e) { body.append(e[0], e[1]); });
+  const res = await fetch(API + '/api/fs_action', {method: 'POST', body});
+  const data = await res.json();
+  if (!data.ok) fsMsg('Operasi gagal', true);
+}
+
+document.getElementById('fsMkdirBtn').addEventListener('click', async function () {
+  if (!fsPath) {
+    fsMsg('Buka folder tujuan dulu', true);
+    return;
+  }
+  if (fsPath.startsWith('m:')) {
+    fsMsg('Folder MediaStore dibuat otomatis saat upload pertama', true);
+    return;
+  }
+  const name = prompt('Nama folder baru:', 'Folder Baru');
+  if (!name) return;
+  await postFsAction({action: 'mkdir', path: fsPath, name: name.trim()});
+  loadFs();
+});
+
+document.getElementById('fsUploadBtn').addEventListener('click', function () {
+  if (!fsPath) {
+    fsMsg('Buka folder tujuan dulu', true);
+    return;
+  }
+  fsUploadFile.value = '';
+  fsUploadFile.click();
+});
+
+fsUploadFile.addEventListener('change', async function () {
+  const file = fsUploadFile.files[0];
+  if (!file) return;
+  fsMsg('Mengunggah ' + file.name + ' \u2026');
+  const btn = document.getElementById('fsUploadBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch(API + '/api/upload?name=' + encodeURIComponent(file.name) +
+      '&path=' + encodeURIComponent(fsPath), {
+      method: 'POST',
+      body: file
+    });
+    const data = await res.json();
+    if (data.ok) {
+      fsMsg('Selesai: ' + data.name);
+      loadFs();
+    } else {
+      fsMsg('Gagal: ' + (data.error || '?'), true);
+    }
+  } catch (e) {
+    fsMsg('Gagal upload: ' + e, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
 
 function extOf(name) {
   const i = name.lastIndexOf('.');

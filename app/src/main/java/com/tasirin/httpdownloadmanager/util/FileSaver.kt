@@ -176,10 +176,21 @@ class FileSaver(context: Context) {
     }
 
     private fun publishToMediaStore(partial: File, fileName: String): PublishResult {
+        return publishToMediaStoreFolder(partial, fileName, null)
+    }
+
+    fun publishToMediaStoreFolder(
+        partial: File,
+        fileName: String,
+        relativePath: String?
+    ): PublishResult {
         val resolver = appContext.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, fileName)
             put(MediaStore.Downloads.MIME_TYPE, MimeTypes.forFile(fileName))
+            relativePath?.let { rel ->
+                put(MediaStore.Downloads.RELATIVE_PATH, rel.trim('/').trimEnd('/') + "/")
+            }
             put(MediaStore.Downloads.IS_PENDING, 1)
         }
         val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)

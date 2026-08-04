@@ -104,7 +104,8 @@
 &#8226; Stream and download files via remote browser
 &#8226; MD5/SHA1/SHA256 checksum verification
 &#8226; Full-storage detection + automatic .part cleanup
-&#8226; Crash logger ("Log error" button on the remote page)</string>
+&#8226; Crash logger ("Log error" button on the remote page)
+&#8226; Remote file manager: browse folders, upload, download, rename, move &amp; delete files</string>
     <string name="checksum_hint_optional">Optional checksum (md5:/sha1:/sha256:) — e.g. md5:abcdef&#8230;</string>
     <string name="shortcut_add_download">Add Download</string>
     <string name="filter_all">All</string>

@@ -196,7 +196,7 @@ class DownloadEngine(private val context: Context) {
                             } else {
                                 resolveHlsUrl(url, next)
                             }
-                            variants.add(HlsVariant(label, variantUrl))
+                            variants.add(HlsVariant(label, variantUrl, bandwidth ?: 0L))
                         }
                         i += 2
                         continue

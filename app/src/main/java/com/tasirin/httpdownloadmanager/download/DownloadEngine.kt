@@ -189,8 +189,8 @@ class DownloadEngine(private val context: Context) {
             update(
                 _items.value.filterNot { item ->
                     item.state == DownloadState.COMPLETED && (
-                        (!path.isNullOrEmpty() && item.filePath == path) ||
-                            (!uri.isNullOrEmpty() && item.contentUri == uri.toString())
+                        (path != null && item.filePath == path) ||
+                            (uri != null && item.contentUri == uri.toString())
                         )
                 }
             )

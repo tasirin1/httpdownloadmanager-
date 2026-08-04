@@ -33,6 +33,9 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLDecoder
 import java.security.MessageDigest
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
 class DownloadEngine(private val context: Context) {
@@ -135,6 +138,86 @@ class DownloadEngine(private val context: Context) {
         // Hanya membersihkan daftar; file hasil download TIDAK dihapus.
         val ids = _items.value.filter { it.state == DownloadState.COMPLETED }.map { it.id }.toSet()
         update(_items.value.filterNot { ids.contains(it.id) })
+    }
+
+    fun importFile(fileName: String, source: File) {
+        val name = sanitizeFileName(fileName)
+        val size = source.length()
+        val saver = FileSaver(context)
+        val published = saver.publish(source, name)
+        val item = DownloadItem(
+            id = UUID.randomUUID().toString(),
+            url = "upload://$name",
+            fileName = name,
+            state = DownloadState.COMPLETED,
+            bytesDownloaded = size,
+            totalBytes = size,
+            contentUri = published.contentUri,
+            filePath = published.filePath,
+            nameIsCustom = true,
+            autoResume = false
+        )
+        update(_items.value + item)
+    }
+
+    fun probeHlsVariants(url: String): List<HlsVariant>? {
+        return runCatching {
+            val conn = URL(url).openConnection() as HttpURLConnection
+            try {
+                conn.requestMethod = "GET"
+                conn.connectTimeout = 15_000
+                conn.readTimeout = 20_000
+                conn.setRequestProperty("User-Agent", "HttpDownloadManager/1.0")
+                conn.connect()
+                val code = conn.responseCode
+                if (code !in 200..299) return null
+                val body = conn.inputStream.bufferedReader().use { it.readText() }.take(1_000_000)
+                if (!body.contains("#EXT-X-STREAM-INF")) return null
+                val variants = mutableListOf<HlsVariant>()
+                val lines = body.split('\n')
+                var i = 0
+                while (i < lines.size) {
+                    val line = lines[i].trim()
+                    if (line.startsWith("#EXT-X-STREAM-INF")) {
+                        val next = lines.getOrNull(i + 1)?.trim().orEmpty()
+                        if (next.isNotEmpty() && !next.startsWith("#")) {
+                            val bandwidth = Regex("BANDWIDTH=(\\d+)")
+                                .find(line)?.groupValues?.get(1)?.toLongOrNull()
+                            val res = Regex("RESOLUTION=(\\d+x\\d+)")
+                                .find(line)?.groupValues?.get(1)
+                            val name = Regex("NAME=\"([^\"]+)\"")
+                                .find(line)?.groupValues?.get(1)
+                            val kbps = bandwidth?.div(1000L) ?: 0L
+                            val label = name
+                                ?: (res?.let { "$it · $kbps kbps" })
+                                ?: "$kbps kbps"
+                            val variantUrl = if (next.startsWith("http")) {
+                                next
+                            } else {
+                                resolveHlsUrl(url, next)
+                            }
+                            variants.add(HlsVariant(label, variantUrl))
+                        }
+                        i += 2
+                        continue
+                    }
+                    i++
+                }
+                if (variants.isEmpty()) null else variants.sortedByDescending { it.bandwidth }
+            } finally {
+                conn.disconnect()
+            }
+        }.getOrNull()
+    }
+
+    private fun resolveHlsUrl(base: String, relative: String): String {
+        if (relative.startsWith("http://") || relative.startsWith("https://")) return relative
+        if (relative.startsWith("/")) {
+            val u = URL(base)
+            return "${u.protocol}://${u.host}${if (u.port > 0) ":${u.port}" else ""}$relative"
+        }
+        val idx = base.lastIndexOf('/')
+        return if (idx > 0) base.substring(0, idx + 1) + relative else relative
     }
 
 
@@ -242,6 +325,18 @@ class DownloadEngine(private val context: Context) {
         }
     }
 
+    private fun organizeIfEnabled(
+        saver: FileSaver,
+        result: FileSaver.PublishResult,
+        fileName: String
+    ): FileSaver.PublishResult {
+        return if (StoragePrefs.isAutoSortEnabled(context)) {
+            saver.organizeByType(result, fileName)
+        } else {
+            result
+        }
+    }
+
     private fun handleFailure(id: String, message: String?) {
         val item = _items.value.find { it.id == id } ?: return
         speedTracker.reset(id)
@@ -251,11 +346,8 @@ class DownloadEngine(private val context: Context) {
             retryAttempts[id] = attempts
             updateItem(id) { it.copy(state = DownloadState.PENDING, error = null) }
             scope.launch {
-                val backoff = when (attempts) {
-                    1 -> RETRY_DELAY_1_MS
-                    2 -> RETRY_DELAY_2_MS
-                    else -> RETRY_DELAY_3_MS
-                }
+                val backoff = (RETRY_DELAY_1_MS shl (attempts - 1))
+                    .coerceAtMost(RETRY_DELAY_MAX_MS)
                 delay(backoff)
                 if (_items.value.find { it.id == id }?.state == DownloadState.PENDING) {
                     attemptStart(id)
@@ -420,10 +512,11 @@ class DownloadEngine(private val context: Context) {
 
         verifySize(item.id, downloaded, total)
 
-        val published = saver.publish(partialFile, fileName)
-        verifyChecksum(item.id, fileName, published, saver)?.let {
+        val published0 = saver.publish(partialFile, fileName)
+        verifyChecksum(item.id, fileName, published0, saver)?.let {
             throw IOException(it)
         }
+        val published = organizeIfEnabled(saver, published0, fileName)
         speedTracker.reset(item.id)
         updateItem(item.id) {
             it.copy(
@@ -484,10 +577,11 @@ class DownloadEngine(private val context: Context) {
         verifySize(item.id, current.bytesDownloaded, current.totalBytes)
 
         val merged = saver.mergeSegments(fileName, segments.size)
-        val published = saver.publish(merged, fileName)
-        verifyChecksum(item.id, fileName, published, saver)?.let {
+        val published0 = saver.publish(merged, fileName)
+        verifyChecksum(item.id, fileName, published0, saver)?.let {
             throw IOException(it)
         }
+        val published = organizeIfEnabled(saver, published0, fileName)
         speedTracker.reset(item.id)
         updateItem(item.id) {
             it.copy(
@@ -760,18 +854,18 @@ class DownloadEngine(private val context: Context) {
     }
 
     private fun guessFileName(url: String): String {
-        val path = Uri.parse(url).lastPathSegment.orEmpty()
+        val noQuery = url.substringBefore('?').substringBefore('#')
+        val path = Uri.parse(noQuery).lastPathSegment.orEmpty()
         val candidate = path.substringAfterLast('/').trim()
-        return candidate.takeIf { it.isNotEmpty() && !it.contains('?') && !it.contains('=') }
-            ?: "download_${System.currentTimeMillis()}"
+        if (candidate.isNotEmpty() && !candidate.contains('=')) return candidate
+        return "unduhan_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())}"
     }
 
     companion object {
         private const val BUFFER_SIZE = 64 * 1024
         private const val SEGMENT_MIN_BYTES = 5L * 1024 * 1024
         private const val RETRY_DELAY_1_MS = 5_000L
-        private const val RETRY_DELAY_2_MS = 30_000L
-        private const val RETRY_DELAY_3_MS = 120_000L
+        private const val RETRY_DELAY_MAX_MS = 300_000L
         private const val MIN_FREE_BYTES = 2L * 1024 * 1024
     }
 }
@@ -779,6 +873,12 @@ class DownloadEngine(private val context: Context) {
 private data class ServerHeaders(
     val contentDisposition: String?,
     val contentType: String?
+)
+
+data class HlsVariant(
+    val name: String,
+    val url: String,
+    val bandwidth: Long
 )
 
 private class SpeedThrottle(private val limitKbps: Int) {

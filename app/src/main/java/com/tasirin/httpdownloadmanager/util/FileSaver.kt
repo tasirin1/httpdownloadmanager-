@@ -272,4 +272,64 @@ class FileSaver(context: Context) {
             PublishResult(contentUri = target.uri.toString())
         }.getOrNull()
     }
+
+    fun organizeByType(result: PublishResult, fileName: String): PublishResult {
+        if (result.contentUri == null && result.filePath == null) return result
+        val sub = subfolderFor(fileName) ?: return result
+        return runCatching {
+            when {
+                !result.contentUri.isNullOrEmpty() -> {
+                    val uri = Uri.parse(result.contentUri)
+                    if (Build.VERSION.SDK_INT >= 29 && uri.authority == MediaStore.AUTHORITY) {
+                        val values = ContentValues().apply {
+                            put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/$sub")
+                        }
+                        appContext.contentResolver.update(uri, values, null, null)
+                        result
+                    } else {
+                        val doc = DocumentFile.fromSingleUri(appContext, uri) ?: return result
+                        val parent = doc.parentFile ?: return result
+                        val subDir = parent.findFile(sub)
+                            ?: parent.createDirectory(sub)
+                            ?: return result
+                        val target = subDir.findFile(fileName)
+                            ?: subDir.createFile(MimeTypes.forFile(fileName), fileName)
+                            ?: return result
+                        val input = appContext.contentResolver.openInputStream(uri) ?: return result
+                        input.use { src ->
+                            val out = appContext.contentResolver.openOutputStream(target.uri, "wt")
+                                ?: return result
+                            out.use { dst -> src.copyTo(dst) }
+                        }
+                        appContext.contentResolver.delete(uri, null, null)
+                        PublishResult(contentUri = target.uri.toString())
+                    }
+                }
+                !result.filePath.isNullOrEmpty() -> {
+                    val file = File(result.filePath)
+                    val parent = file.parentFile ?: return result
+                    val subDir = File(parent, sub)
+                    if (!subDir.isDirectory && !subDir.mkdirs()) return result
+                    val target = File(subDir, file.name)
+                    if (target.exists()) target.delete()
+                    if (file.renameTo(target)) {
+                        PublishResult(filePath = target.absolutePath)
+                    } else {
+                        result
+                    }
+                }
+                else -> result
+            }
+        }.getOrDefault(result)
+    }
+
+    private fun subfolderFor(fileName: String): String? {
+        val kind = MediaLibrary.mediaKind(fileName) ?: return null
+        return when (kind) {
+            "video" -> "Videos"
+            "image" -> "Photos"
+            else -> null
+        }
+    }
+
 }

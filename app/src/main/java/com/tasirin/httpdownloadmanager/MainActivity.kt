@@ -52,7 +52,9 @@ import com.tasirin.httpdownloadmanager.remote.HttpControlServer
 import com.tasirin.httpdownloadmanager.ui.DownloadAdapter
 import com.tasirin.httpdownloadmanager.util.MimeTypes
 import com.tasirin.httpdownloadmanager.util.StoragePrefs
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
@@ -254,6 +256,27 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         tv.setTextColor(
             ContextCompat.getColor(this, if (alive) R.color.status_on else R.color.status_off)
         )
+        val urlTv = findViewById<TextView>(R.id.server_url)
+        val qrIv = findViewById<ImageView>(R.id.qr_preview)
+        if (urlTv != null && qrIv != null) {
+            if (alive) {
+                val urls = HttpControlServer.ipv4Addresses()
+                    .map { "http://$it:${App.httpServer.listeningPort}/" }
+                if (urls.isNotEmpty()) {
+                    urlTv.text = urls.joinToString("  ")
+                    urlTv.visibility = View.VISIBLE
+                    qrIv.visibility = View.VISIBLE
+                    qrIv.setImageBitmap(generateQrCode(urls[0], 256))
+                    qrIv.setOnClickListener { showRemoteDialog() }
+                } else {
+                    urlTv.visibility = View.GONE
+                    qrIv.visibility = View.GONE
+                }
+            } else {
+                urlTv.visibility = View.GONE
+                qrIv.visibility = View.GONE
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -380,38 +403,113 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             }
         }
 
+        val storageText = view.findViewById<TextView>(R.id.text_storage_remaining)
+        storageText.text = getString(R.string.storage_remaining, formatBytes(App.engine.freeSpaceBytes()))
+
+        fun addAll(
+            urls: List<String>,
+            name: String,
+            username: String,
+            password: String,
+            headers: String,
+            perSpeed: Int,
+            priority: Int,
+            checksum: String
+        ) {
+            urls.forEachIndexed { index, url ->
+                App.engine.addDownload(
+                    url,
+                    if (index == 0) name else null,
+                    username,
+                    password,
+                    headers,
+                    perSpeed,
+                    priority,
+                    if (index == 0) checksum else ""
+                )
+            }
+        }
+
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.add_download)
             .setView(view)
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton(R.string.download) { _, _ ->
                 val urls = urlInput.text?.toString()?.trim().orEmpty()
-                    .split(Regex("\\s+"))
+                    .split(Regex("[\\s,]+"))
                     .filter { it.startsWith("http://") || it.startsWith("https://") }
                 if (urls.isEmpty()) {
                     Snackbar.make(binding.root, R.string.invalid_url, Snackbar.LENGTH_SHORT).show()
-                } else {
-                    val name = nameInput.text?.toString()?.trim().orEmpty()
-                    val username = usernameInput.text?.toString()?.trim().orEmpty()
-                    val password = passwordInput.text?.toString()?.trim().orEmpty()
-                    val headers = headersInput.text?.toString()?.trim().orEmpty()
-                    val checksum = checksumInput.text?.toString()?.trim().orEmpty()
-                    val perSpeed = speedKbps[spinnerSpeedPer.selectedItemPosition]
-                    val priority = priorityValues[spinnerPriority.selectedItemPosition]
-                    urls.forEachIndexed { index, url ->
-                        App.engine.addDownload(
-                            url,
-                            if (index == 0) name else null,
-                            username,
-                            password,
-                            headers,
-                            perSpeed,
-                            priority,
-                            if (index == 0) checksum else ""
-                        )
+                    return@setPositiveButton
+                }
+                val name = nameInput.text?.toString()?.trim().orEmpty()
+                val username = usernameInput.text?.toString()?.trim().orEmpty()
+                val password = passwordInput.text?.toString()?.trim().orEmpty()
+                val headers = headersInput.text?.toString()?.trim().orEmpty()
+                val checksum = checksumInput.text?.toString()?.trim().orEmpty()
+                val perSpeed = speedKbps[spinnerSpeedPer.selectedItemPosition]
+                val priority = priorityValues[spinnerPriority.selectedItemPosition]
+                if (urls.size == 1 && urls[0].contains("m3u8", ignoreCase = true)) {
+                    lifecycleScope.launch {
+                        val variants = withContext(Dispatchers.IO) {
+                            runCatching { App.engine.probeHlsVariants(urls[0]) }.getOrNull()
+                        }
+                        if (variants.isNullOrEmpty()) {
+                            addAll(urls, name, username, password, headers, perSpeed, priority, checksum)
+                        } else {
+                            showHlsPicker(
+                                variants = variants,
+                                originalUrl = urls[0],
+                                name = name,
+                                username = username,
+                                password = password,
+                                headers = headers,
+                                perSpeed = perSpeed,
+                                priority = priority,
+                                checksum = checksum
+                            )
+                        }
                     }
+                } else {
+                    addAll(urls, name, username, password, headers, perSpeed, priority, checksum)
                 }
             }
+            .show()
+    }
+
+    private fun showHlsPicker(
+        variants: List<com.tasirin.httpdownloadmanager.download.HlsVariant>,
+        originalUrl: String,
+        name: String,
+        username: String,
+        password: String,
+        headers: String,
+        perSpeed: Int,
+        priority: Int,
+        checksum: String
+    ) {
+        val labels = variants.map { it.name } + getString(R.string.hls_direct)
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.hls_quality_title)
+            .setItems(labels.toTypedArray()) { _, which ->
+                val target = if (which < variants.size) variants[which].url else originalUrl
+                val chosenName = if (which < variants.size) {
+                    variants[which].name.replace(' ', '_') + ".m3u8"
+                } else {
+                    name
+                }
+                App.engine.addDownload(
+                    target,
+                    chosenName,
+                    username,
+                    password,
+                    headers,
+                    perSpeed,
+                    priority,
+                    checksum
+                )
+            }
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 
@@ -473,6 +571,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             DownloadAdapter.Action.CANCEL -> App.engine.cancel(item.id)
             DownloadAdapter.Action.DELETE -> App.engine.remove(item.id)
             DownloadAdapter.Action.OPEN -> openDownload(item)
+            DownloadAdapter.Action.OPEN_FOLDER -> openFolder(item)
         }
     }
 
@@ -480,6 +579,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val options = mutableListOf<Pair<String, () -> Unit>>()
         if (item.state == DownloadState.COMPLETED) {
             options.add(getString(R.string.open) to { openDownload(item) })
+            options.add(getString(R.string.open_folder) to { openFolder(item) })
             options.add(getString(R.string.action_rename) to { showRenameDialog(item) })
             options.add(getString(R.string.action_move) to {
                 pendingMoveId = item.id
@@ -744,6 +844,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val checkServerBackground = view.findViewById<CheckBox>(R.id.check_server_background)
         val checkServerAutostart = view.findViewById<CheckBox>(R.id.check_server_autostart)
         val checkBattery = view.findViewById<CheckBox>(R.id.check_battery)
+        val checkAutoSort = view.findViewById<CheckBox>(R.id.check_auto_sort)
         val pinInput = view.findViewById<EditText>(R.id.input_pin)
         wireStorageSection(view)
         checkBackground.isChecked = StoragePrefs.isBackgroundEnabled(this)
@@ -751,6 +852,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         checkServerBackground.isChecked = StoragePrefs.isServerBackgroundEnabled(this)
         checkServerAutostart.isChecked = StoragePrefs.isServerAutoStartEnabled(this)
         checkBattery.isChecked = StoragePrefs.isBatteryExemptEnabled(this)
+        checkAutoSort.isChecked = StoragePrefs.isAutoSortEnabled(this)
         pinInput.setText(StoragePrefs.getServerPin(this).orEmpty())
 
         val concurrentOptions = resources.getStringArray(R.array.concurrent_options)
@@ -813,6 +915,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 StoragePrefs.setServerBackgroundEnabled(this, checkServerBackground.isChecked)
                 StoragePrefs.setServerAutoStartEnabled(this, checkServerAutostart.isChecked)
                 StoragePrefs.setBatteryExemptEnabled(this, checkBattery.isChecked)
+                StoragePrefs.setAutoSortEnabled(this, checkAutoSort.isChecked)
                 StoragePrefs.setServerPin(
                     this,
                     pinInput.text?.toString()?.trim().orEmpty()
@@ -1126,6 +1229,50 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             } catch (_: Exception) {
                 Snackbar.make(binding.root, R.string.no_app_to_open, Snackbar.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    private fun openFolder(item: DownloadItem) {
+        val intent = folderIntent(item)
+        if (intent == null) {
+            Snackbar.make(binding.root, R.string.open_folder_unavailable, Snackbar.LENGTH_LONG)
+                .show()
+            return
+        }
+        runCatching { startActivity(intent) }.onFailure {
+            Snackbar.make(binding.root, R.string.open_folder_unavailable, Snackbar.LENGTH_LONG)
+                .show()
+        }
+    }
+
+    private fun folderIntent(item: DownloadItem): Intent? {
+        return when {
+            !item.filePath.isNullOrEmpty() -> {
+                val parent = File(item.filePath).parentFile ?: return null
+                val rel = parent.absolutePath.removePrefix("/storage/emulated/0/")
+                if (rel != parent.absolutePath) {
+                    Intent(Intent.ACTION_VIEW).setDataAndType(
+                        DocumentsContract.buildDocumentUri(
+                            "com.android.externalstorage.documents", "primary:$rel"
+                        ),
+                        "vnd.android.document/directory"
+                    )
+                } else if (Build.VERSION.SDK_INT < 24) {
+                    Intent(Intent.ACTION_VIEW)
+                        .setDataAndType(Uri.fromFile(parent), "resource/folder")
+                } else {
+                    null
+                }
+            }
+            !item.contentUri.isNullOrEmpty() -> {
+                Intent(Intent.ACTION_VIEW).setDataAndType(
+                    DocumentsContract.buildDocumentUri(
+                        "com.android.externalstorage.documents", "primary:Download"
+                    ),
+                    "vnd.android.document/directory"
+                )
+            }
+            else -> null
         }
     }
 

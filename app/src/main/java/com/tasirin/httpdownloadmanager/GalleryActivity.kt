@@ -35,10 +35,14 @@ import java.io.File
 class GalleryActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityGalleryBinding
+    private var fullList: List<MediaLibrary.MediaEntry> = emptyList()
+    private var filter = GalleryFilter.ALL
     private val adapter = GalleryAdapter(
         loader = { e -> loadThumb(this, e, THUMB_SIZE) },
         onClick = { e -> openEntry(e) }
     )
+
+    private enum class GalleryFilter { ALL, IMAGE, VIDEO }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         runCatching { installSplashScreen() }
@@ -51,13 +55,59 @@ class GalleryActivity : AppCompatActivity() {
         binding.recycler.layoutManager = GridLayoutManager(this, SPAN_COUNT)
         binding.recycler.adapter = adapter
 
+        setupFilters()
+
         lifecycleScope.launch {
             binding.progress.visibility = View.VISIBLE
-            val list = withContext(Dispatchers.IO) { MediaLibrary.scan(this@GalleryActivity) }
+            fullList = withContext(Dispatchers.IO) { MediaLibrary.scan(this@GalleryActivity) }
             binding.progress.visibility = View.GONE
-            adapter.submit(list)
-            binding.emptyView.visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
+            applyFilterUi()
         }
+    }
+
+    private fun setupFilters() {
+        val map = listOf(
+            R.id.gfilter_all to GalleryFilter.ALL,
+            R.id.gfilter_image to GalleryFilter.IMAGE,
+            R.id.gfilter_video to GalleryFilter.VIDEO
+        )
+        map.forEach { (id, f) ->
+            findViewById<TextView>(id)?.setOnClickListener {
+                filter = f
+                updateFilterColors()
+                applyFilterUi()
+            }
+        }
+        updateFilterColors()
+    }
+
+    private fun updateFilterColors() {
+        val map = listOf(
+            R.id.gfilter_all to GalleryFilter.ALL,
+            R.id.gfilter_image to GalleryFilter.IMAGE,
+            R.id.gfilter_video to GalleryFilter.VIDEO
+        )
+        map.forEach { (id, f) ->
+            val tv = findViewById<TextView>(id) ?: return@forEach
+            val selected = f == filter
+            tv.setTextColor(
+                androidx.core.content.ContextCompat.getColor(
+                    this,
+                    if (selected) R.color.primary else R.color.text_secondary
+                )
+            )
+            tv.typeface = if (selected) android.graphics.Typeface.DEFAULT_BOLD else null
+        }
+    }
+
+    private fun applyFilterUi() {
+        val filtered = when (filter) {
+            GalleryFilter.ALL -> fullList
+            GalleryFilter.IMAGE -> fullList.filter { !it.isVideo }
+            GalleryFilter.VIDEO -> fullList.filter { it.isVideo }
+        }
+        adapter.submit(filtered)
+        binding.emptyView.visibility = if (filtered.isEmpty()) View.VISIBLE else View.GONE
     }
 
     private fun openEntry(e: MediaLibrary.MediaEntry) {
@@ -166,6 +216,21 @@ private class GalleryAdapter(
     private val items = mutableListOf<MediaLibrary.MediaEntry>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    private fun formatSize(bytes: Long): String {
+        if (bytes < 1024) return "$bytes B"
+        val kb = bytes / 1024.0
+        if (kb < 1024) return "%.1f KB".format(kb)
+        val mb = kb / 1024.0
+        if (mb < 1024) return "%.1f MB".format(mb)
+        return "%.2f GB".format(mb / 1024.0)
+    }
+
+    private fun formatDate(ms: Long): String {
+        if (ms <= 0) return ""
+        return java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
+            .format(java.util.Date(ms))
+    }
+
     fun submit(list: List<MediaLibrary.MediaEntry>) {
         items.clear()
         items.addAll(list)
@@ -188,6 +253,7 @@ private class GalleryAdapter(
         val b = holder.binding
         b.textName.text = e.name
         b.textExt.text = e.name.substringAfterLast('.', "").uppercase()
+        b.textInfo.text = formatSize(e.size) + " · " + formatDate(e.modified)
         b.imageThumb.setImageDrawable(null)
         val pos = position
         holder.itemView.setOnClickListener { onClick(e) }

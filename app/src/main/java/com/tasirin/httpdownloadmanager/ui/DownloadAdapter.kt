@@ -16,7 +16,7 @@ import java.util.Locale
 class DownloadAdapter(private val listener: Listener) :
     ListAdapter<DownloadItem, DownloadAdapter.ViewHolder>(DIFF) {
 
-    enum class Action { PAUSE, RESUME, CANCEL, DELETE, OPEN }
+    enum class Action { PAUSE, RESUME, CANCEL, DELETE, OPEN, OPEN_FOLDER }
 
     interface Listener {
         fun onAction(item: DownloadItem, action: Action)
@@ -91,6 +91,8 @@ class DownloadAdapter(private val listener: Listener) :
             }
         b.buttonOpen.visibility =
             if (item.state == DownloadState.COMPLETED) View.VISIBLE else View.GONE
+        b.buttonFolder.visibility =
+            if (item.state == DownloadState.COMPLETED) View.VISIBLE else View.GONE
         b.buttonCancel.visibility =
             if (item.state == DownloadState.DOWNLOADING ||
                 item.state == DownloadState.PENDING ||
@@ -114,6 +116,7 @@ class DownloadAdapter(private val listener: Listener) :
         b.buttonResume.setOnClickListener { listener.onAction(item, Action.RESUME) }
         b.buttonCancel.setOnClickListener { listener.onAction(item, Action.CANCEL) }
         b.buttonOpen.setOnClickListener { listener.onAction(item, Action.OPEN) }
+        b.buttonFolder.setOnClickListener { listener.onAction(item, Action.OPEN_FOLDER) }
         b.buttonDelete.setOnClickListener { listener.onAction(item, Action.DELETE) }
         b.root.setOnLongClickListener {
             listener.onLongPress(item)

@@ -106,6 +106,16 @@
                 android:textSize="13sp" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_folder"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="0dp"
+                android:paddingHorizontal="12dp"
+                android:text="@string/open_folder"
+                android:textSize="13sp" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_open"
                 style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="wrap_content"

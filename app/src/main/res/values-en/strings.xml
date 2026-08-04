@@ -6,7 +6,7 @@
     <string name="name_hint_optional">File name (optional, for 1 URL)</string>
     <string name="username_hint_optional">Username (optional)</string>
     <string name="password_hint_optional">Password (optional)</string>
-    <string name="headers_hint_optional">Extra headers (optional)\nExample:\nReferer: https://…</string>
+    <string name="headers_hint_optional">Extra headers (optional)\nExample:\nReferer: https://&#8230;</string>
     <string name="recent_urls">Recent URLs</string>
     <string name="download">Download</string>
     <string name="cancel">Cancel</string>
@@ -25,8 +25,8 @@
     <string name="action_rename">Rename</string>
     <string name="action_move">Move</string>
 
-    <string name="status_pending">Pending…</string>
-    <string name="status_downloading">Downloading…</string>
+    <string name="status_pending">Pending&#8230;</string>
+    <string name="status_downloading">Downloading&#8230;</string>
     <string name="status_paused">Paused</string>
     <string name="status_completed">Completed</string>
     <string name="status_cancelled">Cancelled</string>
@@ -36,7 +36,7 @@
     <string name="storage_current">Current location: %1$s</string>
     <string name="storage_default_folder">Downloads folder (default)</string>
     <string name="storage_custom_folder">Custom folder</string>
-    <string name="storage_choose_folder">Choose folder…</string>
+    <string name="storage_choose_folder">Choose folder&#8230;</string>
     <string name="storage_use_default">Use default</string>
     <string name="storage_picker_error">Failed to use folder: %1$s</string>
     <string name="storage_picker_unavailable">No app available to pick a folder on this device</string>
@@ -48,8 +48,8 @@
     <string name="storage_onboarding_title">Choose storage location</string>
     <string name="storage_onboarding_message">Where should downloaded files be saved?</string>
     <string name="storage_onboarding_default">Downloads folder (default)</string>
-    <string name="storage_onboarding_custom">Choose folder…</string>
-    <string name="storage_onboarding_text">Type folder path…</string>
+    <string name="storage_onboarding_custom">Choose folder&#8230;</string>
+    <string name="storage_onboarding_text">Type folder path&#8230;</string>
 
     <string name="action_remote">Remote (HTTP)</string>
     <string name="remote_start">Start server</string>
@@ -83,28 +83,34 @@
     <string name="about_version">Version %1$s</string>
     <string name="ok">OK</string>
     <string name="about_changelog">Changelog:
-• Full-background remote server + QR code
-• Remote server PIN + login page
-• Configurable remote server port
-• Pause all / Resume all / Retry failed buttons
-• Auto retry with backoff (5s → 30s → 2m)
-• Sort list (date, name, size, status)
-• Parallel multi-segment downloads (configurable)
-• Battery &amp; storage status on remote page
-• URL history with quick search
-• Photo/video gallery (app &amp; remote page)
-• Per-download speed limit &amp; priority
-• Stream &amp; download files via remote browser
-• MD5/SHA1/SHA256 checksum verification
-• Full storage detection + .part cleanup
-• Crash logger ("Log error" button on remote page)</string>
-    <string name="checksum_hint_optional">Optional checksum (md5:/sha1:/sha256:) — e.g. md5:abcdef…</string>
+&#8226; Full-background remote server + QR code (URL shown on home screen)
+&#8226; Remote server PIN + login page
+&#8226; Configurable remote server port
+&#8226; Upload files from a browser on another device to device storage
+&#8226; List filters in the app and remote page (Active/Done/Failed)
+&#8226; Gallery with Photo/Video filter + file size and date
+&#8226; Open-folder button for finished downloads
+&#8226; Video quality picker for m3u8 (HLS) playlists
+&#8226; Automatic "unduhan_date_time" filename when the server sends no name
+&#8226; Auto-move finished files to Video/Photo subfolders (setting)
+&#8226; Pause all / Resume all / Retry failed buttons
+&#8226; Automatic retry with gradual backoff (5s &#8594; 10s &#8594; 20s &#8594; &#8230;)
+&#8226; Sort list (date, name, size, status)
+&#8226; Parallel multi-segment downloads (segment count configurable)
+&#8226; Battery and storage status on the remote page
+&#8226; Recent URL history with quick search
+&#8226; Per-download speed limit and priority
+&#8226; Stream and download files via remote browser
+&#8226; MD5/SHA1/SHA256 checksum verification
+&#8226; Full-storage detection + automatic .part cleanup
+&#8226; Crash logger ("Log error" button on the remote page)</string>
+    <string name="checksum_hint_optional">Optional checksum (md5:/sha1:/sha256:) — e.g. md5:abcdef&#8230;</string>
     <string name="shortcut_add_download">Add Download</string>
     <string name="filter_all">All</string>
     <string name="filter_active">Active</string>
     <string name="filter_completed">Completed</string>
     <string name="filter_failed">Failed</string>
-    <string name="search_hint">Search…</string>
+    <string name="search_hint">Search&#8230;</string>
     <string name="storage_remaining">Storage available: %1$s</string>
     <string name="checksum_ok">✓ Checksum OK</string>
     <string name="location_label">Location: %1$s</string>
@@ -117,7 +123,7 @@
     <string name="retry_failed">Retry failed</string>
 
     <string name="sort_by">Sort</string>
-    <string name="recent_search_hint">Search history URLs…</string>
+    <string name="recent_search_hint">Search history URLs&#8230;</string>
     <string name="clear_history">Clear history</string>
     <string name="settings_port_label">Remote server port</string>
     <string name="settings_port_hint">Port (1024–65535)</string>
@@ -130,10 +136,18 @@
     <string name="fatal_error_message">An error occurred while opening the app. Copy the message below for reporting:</string>
 
     <string name="gallery">Gallery</string>
+
+    <string name="open_folder">Folder</string>
+    <string name="open_folder_unavailable">No file-manager app available to open the folder</string>
+    <string name="settings_auto_sort">Auto-move to type subfolder (Video/Photos)</string>
+    <string name="filter_images">Photos</string>
+    <string name="filter_videos">Videos</string>
+    <string name="hls_quality_title">Pick video quality</string>
+    <string name="hls_direct">Download original playlist (no pick)</string>
     <string name="gallery_empty">No photos/videos in the download folder yet.</string>
     <string name="gallery_open_error">No app found to open this file</string>
     <string name="settings_storage_label">Storage (destination folder)</string>
-    <string name="change_storage">Change storage…</string>
+    <string name="change_storage">Change storage&#8230;</string>
     <string name="change_storage_short">Change</string>
     <string name="storage_home_info">%1$s · Free %2$s</string>
 
@@ -184,7 +198,7 @@
 
     <string name="notification_channel">Download progress</string>
     <string name="notification_title">Download Manager</string>
-    <string name="notification_active_files">Downloading %d file(s)…</string>
+    <string name="notification_active_files">Downloading %d file(s)&#8230;</string>
     <string name="notification_done">%d download(s) completed</string>
 
     <string name="widget_active">%1$d active download(s)</string>

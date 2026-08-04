@@ -25,6 +25,7 @@ object StoragePrefs {
     private const val KEY_SERVER_PORT = "server_port"
     private const val KEY_SEGMENTS = "segments"
     private const val KEY_SORT_MODE = "sort_mode"
+    private const val KEY_AUTO_SORT = "auto_sort"
 
     fun getFolderUri(context: Context): Uri? {
         val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -150,6 +151,16 @@ object StoragePrefs {
     fun setMaxRetries(context: Context, value: Int) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putInt(KEY_MAX_RETRIES, value.coerceIn(0, 5))
+            .apply()
+    }
+
+    fun isAutoSortEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_AUTO_SORT, false)
+
+    fun setAutoSortEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_AUTO_SORT, enabled)
             .apply()
     }
 

@@ -45,6 +45,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     session.method == Method.GET && session.uri == "/api/gallery" -> galleryJson()
                     session.method == Method.GET && session.uri == "/api/media" -> serveMedia(session)
                     session.method == Method.POST && session.uri == "/api/add" -> addDownload(session)
+                    session.method == Method.POST && session.uri == "/api/upload" -> handleUpload(session)
                     session.method == Method.POST && session.uri == "/api/action" -> runAction(session)
                     session.method == Method.GET && session.uri.startsWith("/file/") -> serveFile(session)
                     session.method == Method.GET && session.uri == "/api/log" -> crashLog()
@@ -200,6 +201,46 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             checksum = checksum
         )
         return jsonResponse(JSONObject().put("ok", true))
+    }
+
+    private fun handleUpload(session: IHTTPSession): Response {
+        val name = session.parms["name"]?.trim()
+            ?.replace("/", "_")?.replace("\\", "_")?.replace("\"", "_")
+            ?.takeIf { it.isNotEmpty() }
+            ?: "upload_${System.currentTimeMillis()}"
+        val length = (session.headers["content-length"]?.toLongOrNull() ?: 0L)
+        if (length <= 0 || length > MAX_UPLOAD_BYTES) {
+            return jsonResponse(
+                JSONObject().put("ok", false)
+                    .put("error", "Ukuran tidak valid (maks ${MAX_UPLOAD_MB} MB)")
+            )
+        }
+        if (App.engine.freeSpaceBytes() < length) {
+            return jsonResponse(
+                JSONObject().put("ok", false)
+                    .put("error", "Penyimpanan tidak cukup untuk upload")
+            )
+        }
+        return runCatching {
+            val tmp = File.createTempFile("upload", ".tmp", context.cacheDir)
+            session.inputStream.use { input ->
+                tmp.outputStream().use { out ->
+                    val buffer = ByteArray(64 * 1024)
+                    var remaining = length
+                    while (remaining > 0) {
+                        val chunk = minOf(buffer.size.toLong(), remaining).toInt()
+                        val read = input.read(buffer, 0, chunk)
+                        if (read == -1) break
+                        out.write(buffer, 0, read)
+                        remaining -= read
+                    }
+                }
+            }
+            App.engine.importFile(name, tmp)
+            jsonResponse(JSONObject().put("ok", true).put("name", name))
+        }.getOrElse {
+            jsonResponse(JSONObject().put("ok", false).put("error", it.message ?: "gagal upload"))
+        }
     }
 
     private fun runAction(session: IHTTPSession): Response {
@@ -482,6 +523,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     companion object {
         const val DEFAULT_PORT = StoragePrefs.DEFAULT_PORT
         private const val MAX_BODY_SIZE = 1_048_576L
+        private const val MAX_UPLOAD_BYTES = 2L * 1024 * 1024 * 1024
+        private const val MAX_UPLOAD_MB = 2048
 
         fun ipv4Addresses(): List<String> = runCatching {
             NetworkInterface.getNetworkInterfaces().toList().flatMap { ni ->

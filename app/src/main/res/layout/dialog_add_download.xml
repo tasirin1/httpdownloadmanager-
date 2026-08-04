@@ -16,6 +16,14 @@
         android:maxLines="4" />
 
     <TextView
+        android:id="@+id/text_storage_remaining"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="@color/text_secondary" />
+
+    <TextView
         android:id="@+id/recent_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

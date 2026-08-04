@@ -49,6 +49,12 @@
   #mediaModal img, #mediaModal video { max-width: 100%; max-height: 82vh; border-radius: 8px; }
   #mediaModal .m-actions { display: flex; gap: 10px; margin-top: 12px; }
   .gal-empty { padding: 24px; text-align: center; color: #666; }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .filters button { padding: 5px 12px; font-size: 13px; background: #eef1f6; color: #1c1c1c; border: 1px solid #cbd2dd; }
+  .filters button.on { background: #0D47A1; color: #fff; border-color: #0D47A1; }
+  #uploadBox { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+  #uploadBox input[type=file] { font-size: 13px; }
+  #uploadStatus { font-size: 13px; color: #1b5e20; }
 </style>
 </head>
 <body>
@@ -64,6 +70,17 @@
   <button id="resumeAllBtn" type="button">Lanjut semua</button>
   <button id="retryFailedBtn" type="button">Ulangi gagal</button>
   <button id="clearCompletedBtn" type="button">Bersihkan selesai</button>
+  <button id="uploadBtn" type="button">&#8679; Upload file ke device</button>
+</div>
+<div id="uploadBox" class="hidden">
+  <input id="uploadFile" type="file">
+  <span id="uploadStatus"></span>
+</div>
+<div class="filters">
+  <button id="webFilterAll" type="button" class="on">Semua</button>
+  <button id="webFilterActive" type="button">Aktif</button>
+  <button id="webFilterCompleted" type="button">Selesai</button>
+  <button id="webFilterFailed" type="button">Gagal</button>
 </div>
 <div id="logBox" class="hidden">
   <pre id="logText"></pre>
@@ -111,6 +128,49 @@
 <script>
 const API = '';
 let failCount = 0;
+let webFilter = 'ALL';
+const WEB_FILTERS = {ALL:'webFilterAll', ACTIVE:'webFilterActive', COMPLETED:'webFilterCompleted', FAILED:'webFilterFailed'};
+Object.entries(WEB_FILTERS).forEach(function (e) {
+  document.getElementById(e[1]).addEventListener('click', function () {
+    webFilter = e[0];
+    Object.entries(WEB_FILTERS).forEach(function (f) {
+      document.getElementById(f[1]).classList.toggle('on', f[0] === webFilter);
+    });
+    refresh();
+  });
+});
+
+const uploadBtn = document.getElementById('uploadBtn');
+const uploadBox = document.getElementById('uploadBox');
+const uploadFile = document.getElementById('uploadFile');
+const uploadStatus = document.getElementById('uploadStatus');
+uploadBtn.addEventListener('click', function () {
+  uploadBox.classList.toggle('hidden');
+});
+uploadFile.addEventListener('change', async function () {
+  const file = uploadFile.files[0];
+  if (!file) return;
+  uploadStatus.textContent = 'Mengunggah ' + file.name + ' …';
+  uploadBtn.disabled = true;
+  try {
+    const res = await fetch(API + '/api/upload?name=' + encodeURIComponent(file.name), {
+      method: 'POST',
+      body: file
+    });
+    const data = await res.json();
+    if (data.ok) {
+      uploadStatus.textContent = 'Selesai: ' + data.name;
+      uploadFile.value = '';
+      refresh();
+    } else {
+      uploadStatus.textContent = 'Gagal: ' + (data.error || '?');
+    }
+  } catch (e) {
+    uploadStatus.textContent = 'Gagal upload: ' + e;
+  } finally {
+    uploadBtn.disabled = false;
+  }
+});
 
 const addForm = document.getElementById('addForm');
 const newBtn = document.getElementById('newBtn');
@@ -311,11 +371,17 @@ function stateLabel(s) {
 function render(items) {
   const list = document.getElementById('list');
   list.innerHTML = '';
-  if (!items.length) {
-    list.innerHTML = '<li>Belum ada download.</li>';
+  const filtered = items.filter(function (it) {
+    if (webFilter === 'ALL') return true;
+    if (webFilter === 'ACTIVE') return it.state === 'DOWNLOADING' || it.state === 'PENDING';
+    if (webFilter === 'COMPLETED') return it.state === 'COMPLETED';
+    return it.state === 'FAILED' || it.state === 'CANCELLED';
+  });
+  if (!filtered.length) {
+    list.innerHTML = '<li>' + (items.length ? 'Tidak ada item di filter ini.' : 'Belum ada download.') + '</li>';
     return;
   }
-  for (const it of items) {
+  for (const it of filtered) {
     const li = document.createElement('li');
     const prog = it.totalBytes > 0 ? Math.round(it.bytesDownloaded * 100 / it.totalBytes) : 0;
     let meta = it.totalBytes > 0

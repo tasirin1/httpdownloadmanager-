@@ -3,6 +3,9 @@ package com.tasirin.httpdownloadmanager.remote
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Base64
 import android.os.BatteryManager
@@ -20,6 +23,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
 import java.io.InputStream
+import java.io.FileOutputStream
 import java.net.Inet4Address
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
@@ -43,6 +47,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     session.method == Method.GET && session.uri == "/api/downloads" -> downloadsJson()
                     session.method == Method.GET && session.uri == "/api/status" -> statusJson()
                     session.method == Method.GET && session.uri == "/api/gallery" -> galleryJson()
+                    session.method == Method.GET && session.uri == "/api/thumb" -> serveThumb(session)
                     session.method == Method.GET && session.uri == "/api/media" -> serveMedia(session)
                     session.method == Method.POST && session.uri == "/api/add" -> addDownload(session)
                     session.method == Method.POST && session.uri == "/api/upload" -> handleUpload(session)
@@ -307,6 +312,130 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             rangeHeader = session.headers["range"] ?: session.headers["Range"],
             download = download
         )
+    }
+
+    private fun serveThumb(session: IHTTPSession): Response {
+        val token = session.parms["token"].orEmpty()
+        if (token.isEmpty()) return notFound()
+        val raw = MediaLibrary.decodeToken(token) ?: return notFound()
+        return runCatching {
+            val thumb = getOrCreateThumb(raw)
+            if (thumb == null) {
+                notFound()
+            } else {
+                newFixedLengthResponse(
+                    Response.Status.OK,
+                    "image/jpeg",
+                    FileInputStream(thumb),
+                    thumb.length()
+                ).also { it.addHeader("Cache-Control", "public, max-age=86400") }
+            }
+        }.getOrElse { notFound() }
+    }
+
+    private fun getOrCreateThumb(raw: String): File? {
+        val key = sha256(raw).take(16)
+        val dir = File(context.cacheDir, "thumbs").apply { runCatching { mkdirs() } }
+        if (!dir.isDirectory) return null
+        val cached = File(dir, "$key.jpg")
+        if (cached.isFile && cached.length() > 0) return cached
+        val bmp = generateThumb(raw) ?: return null
+        return runCatching {
+            val out = FileOutputStream(cached)
+            bmp.compress(Bitmap.CompressFormat.JPEG, 72, out)
+            out.close()
+            bmp.recycle()
+            cached
+        }.getOrNull()
+    }
+
+    private fun generateThumb(raw: String): Bitmap? {
+        return runCatching {
+            when {
+                raw.startsWith("f:") -> {
+                    val file = File(raw.substring(2))
+                    if (!file.isFile) return null
+                    if (MediaLibrary.mediaKind(file.name) == "video") {
+                        videoThumb(path = file.absolutePath)
+                    } else {
+                        imageThumb(path = file.absolutePath)
+                    }
+                }
+                raw.startsWith("u:") -> {
+                    val uri = Uri.parse(raw.substring(2))
+                    val name = DocumentFile.fromSingleUri(context, uri)?.name.orEmpty()
+                    if (MediaLibrary.mediaKind(name) == "video") {
+                        videoThumb(uri = uri)
+                    } else {
+                        imageThumb(uri = uri)
+                    }
+                }
+                else -> null
+            }
+        }.getOrNull()
+    }
+
+    private fun videoThumb(path: String? = null, uri: Uri? = null): Bitmap? {
+        if (path == null && uri == null) return null
+        val mmr = MediaMetadataRetriever()
+        return try {
+            if (path != null) {
+                mmr.setDataSource(path)
+            } else {
+                mmr.setDataSource(context, uri)
+            }
+            val frame = mmr.getFrameAtTime(
+                1_000_000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+            ) ?: return null
+            scaleDown(frame, 480)
+        } catch (_: Exception) {
+            null
+        } finally {
+            runCatching { mmr.release() }
+        }
+    }
+
+    private fun imageThumb(path: String? = null, uri: Uri? = null): Bitmap? {
+        return runCatching {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            if (path != null) {
+                BitmapFactory.decodeFile(path, bounds)
+            } else {
+                uri?.let {
+                    context.contentResolver.openInputStream(it)?.use { s ->
+                        BitmapFactory.decodeStream(s, null, bounds)
+                    }
+                }
+            }
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+            var sample = 1
+            while (bounds.outWidth / (sample * 2) >= 480 &&
+                bounds.outHeight / (sample * 2) >= 480
+            ) {
+                sample *= 2
+            }
+            val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+            val bmp = if (path != null) {
+                BitmapFactory.decodeFile(path, opts)
+            } else {
+                uri?.let {
+                    context.contentResolver.openInputStream(it)?.use { s ->
+                        BitmapFactory.decodeStream(s, null, opts)
+                    }
+                }
+            } ?: return null
+            scaleDown(bmp, 480)
+        }.getOrNull()
+    }
+
+    private fun scaleDown(src: Bitmap, max: Int): Bitmap {
+        if (src.width <= max && src.height <= max) return src
+        val scale = max.toDouble() / maxOf(src.width, src.height)
+        val w = (src.width * scale).toInt().coerceAtLeast(1)
+        val h = (src.height * scale).toInt().coerceAtLeast(1)
+        val out = Bitmap.createScaledBitmap(src, w, h, true)
+        if (out !== src) src.recycle()
+        return out
     }
 
     private fun serveMedia(session: IHTTPSession): Response {

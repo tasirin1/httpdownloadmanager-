@@ -5,126 +5,205 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Download Manager Remote</title>
 <style>
+  :root {
+    --bg: #eef1f6;
+    --card: #ffffff;
+    --ink: #1b2430;
+    --muted: #5c6b7f;
+    --primary: #1a56db;
+    --primary-2: #0f3fae;
+    --accent: #ff6f00;
+    --green: #178a4c;
+    --green-bg: #e5f6ec;
+    --red: #c62828;
+    --red-bg: #fdecea;
+    --amber: #b45309;
+    --amber-bg: #fef3e2;
+    --blue-bg: #e8eefc;
+    --line: #dde3ec;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(16,24,40,.05), 0 4px 16px rgba(16,24,40,.06);
+  }
   * { box-sizing: border-box; }
-  body { font-family: system-ui, -apple-system, sans-serif; background: #f2f4f8; margin: 0; padding: 16px; color: #1c1c1c; }
-  .header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
-  .header h1 { font-size: 20px; margin: 0; }
-  .new-btn { white-space: nowrap; background: #FF6F00; }
-  .hidden { display: none !important; }
-  form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-  .form-row { display: flex; gap: 8px; }
-  .form-row button { flex: 1; }
-  .btn-ghost { background: #eef1f6; color: #1c1c1c; border: 1px solid #cbd2dd; }
-  input, button { font-size: 15px; padding: 10px; border-radius: 8px; border: 1px solid #cbd2dd; }
-  button { background: #0D47A1; color: #fff; border: none; cursor: pointer; }
-  button:active { opacity: .8; }
-  #status { color: #b00020; margin-bottom: 8px; font-size: 13px; }
-  ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-  li { background: #fff; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-  .name { font-weight: 600; word-break: break-all; }
-  .state { font-size: 13px; color: #555; margin: 4px 0 8px; }
-  .err { color: #b00020; margin-top: 4px; }
-  .bar { height: 8px; background: #e4e8ef; border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
-  .fill { height: 100%; background: #FF6F00; width: 0; }
-  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .actions a { padding: 6px 12px; font-size: 13px; text-decoration: none; border-radius: 8px; }
-  a.stream { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
-  a.dl { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
-  select { font-size: 15px; padding: 10px; border-radius: 8px; border: 1px solid #cbd2dd; background: #fff; }
-  #deviceStatus { background: #e8eaf6; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #283593; margin-bottom: 10px; }
-  .tools { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-  .tools button { padding: 6px 12px; font-size: 13px; background: #eef1f6; color: #1c1c1c; border: 1px solid #cbd2dd; }
-  #logBox { background: #fff; border-radius: 10px; padding: 12px; margin-bottom: 14px; }
-  #logBox pre { background: #f6f7f9; border-radius: 8px; padding: 10px; font-size: 12px; max-height: 300px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
-  #logBox button { margin-top: 8px; }
-  .actions button { padding: 6px 12px; font-size: 13px; background: #eef1f6; color: #1c1c1c; border: 1px solid #cbd2dd; }
-  .gal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-  .gal-cell { position: relative; aspect-ratio: 1 / 1; background: #111; border-radius: 10px; overflow: hidden; cursor: pointer; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 0 0 48px; color: var(--ink); }
+  .topbar { position: sticky; top: 0; z-index: 40; background: linear-gradient(135deg, #14213d 0%, #1a56db 100%); color: #fff; box-shadow: 0 2px 12px rgba(20,33,61,.25); }
+  .topbar-in { max-width: 860px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; margin-right: auto; }
+  .brand .logo { width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,.16); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .brand small { display: block; font-weight: 400; font-size: 11px; opacity: .75; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.12); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .pill:hover { background: rgba(255,255,255,.22); }
+  .pill.primary { background: var(--accent); border-color: transparent; }
+  .pill.primary:hover { background: #e65f00; }
+  .wrap { max-width: 860px; margin: 16px auto 0; padding: 0 16px; }
+  .status-card { display: flex; flex-wrap: wrap; gap: 8px 16px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; box-shadow: var(--shadow); margin-bottom: 14px; font-size: 13px; color: var(--muted); }
+  .status-card b { color: var(--ink); }
+  .status-card .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-right: 6px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .toolbar button { padding: 7px 13px; font-size: 13px; font-weight: 600; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+  .toolbar button:hover { border-color: var(--primary); color: var(--primary); }
+  .toolbar button.busy { opacity: .5; pointer-events: none; }
+  .seg { display: flex; gap: 4px; background: #e2e7f0; border-radius: 999px; padding: 4px; margin-bottom: 14px; flex-wrap: wrap; }
+  .seg button { border: 0; background: transparent; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+  .seg button.on { background: #fff; color: var(--primary); box-shadow: 0 1px 4px rgba(16,24,40,.12); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; margin-bottom: 14px; }
+  form { display: flex; flex-direction: column; gap: 10px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  input, select { font-size: 15px; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: #fbfcfe; color: var(--ink); width: 100%; }
+  input:focus, select:focus { outline: 2px solid #bcd0fb; border-color: var(--primary); }
+  .form-row { display: flex; gap: 10px; }
+  .form-row button { flex: 1; padding: 12px; border-radius: 10px; border: 0; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .btn-main { background: var(--primary); color: #fff; }
+  .btn-main:hover { background: var(--primary-2); }
+  .btn-ghost { background: #eef1f6; color: var(--ink); border: 1px solid var(--line) !important; }
+  .btn-ghost:hover { background: #e2e7f0; }
+  #status { color: var(--red); margin: 4px 0 10px; font-size: 13px; font-weight: 600; }
+  ul.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  li.item { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+  .item-top { display: flex; align-items: flex-start; gap: 10px; }
+  .icon { flex: 0 0 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: var(--blue-bg); }
+  .item-body { flex: 1; min-width: 0; }
+  .name { font-weight: 700; font-size: 14px; word-break: break-all; }
+  .meta { font-size: 12.5px; color: var(--muted); margin: 4px 0 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .b-done { background: var(--green-bg); color: var(--green); }
+  .b-active { background: var(--blue-bg); color: var(--primary); }
+  .b-paused { background: var(--amber-bg); color: var(--amber); }
+  .b-fail { background: var(--red-bg); color: var(--red); }
+  .err { color: var(--red); margin-top: 6px; font-size: 12.5px; word-break: break-word; }
+  .bar { height: 8px; background: #e7ebf2; border-radius: 999px; overflow: hidden; margin: 8px 0 10px; }
+  .fill { height: 100%; background: linear-gradient(90deg, #ff8f2b, var(--accent)); width: 0; border-radius: 999px; transition: width .5s ease; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .actions a, .actions button { padding: 6px 13px; font-size: 12.5px; font-weight: 600; text-decoration: none; border-radius: 999px; border: 1px solid transparent; cursor: pointer; }
+  a.stream { background: var(--green-bg); color: var(--green); }
+  a.stream:hover { border-color: var(--green); }
+  a.dl { background: var(--amber-bg); color: var(--amber); }
+  a.dl:hover { border-color: var(--amber); }
+  .actions button { background: #eef1f6; color: var(--ink); }
+  .actions button:hover { border-color: var(--muted); }
+  .actions button.danger { color: var(--red); }
+  .actions button.danger:hover { background: var(--red-bg); border-color: var(--red); }
+  #logBox pre { background: #141b29; color: #cfe3ff; border-radius: 10px; padding: 12px; font-size: 12px; max-height: 320px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+  #logBox .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: 700; }
+  /* Galeri */
+  .gal-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .gal-toolbar h2 { margin: 0; font-size: 16px; }
+  .gal-toolbar .count { font-size: 12px; color: var(--muted); }
+  .gal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .gal-cell { position: relative; aspect-ratio: 4 / 3; background: #20242c; border-radius: 12px; overflow: hidden; cursor: pointer; box-shadow: var(--shadow); transition: transform .15s ease, box-shadow .15s ease; }
+  .gal-cell:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(16,24,40,.18); }
   .gal-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .gal-cell .gal-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-  .gal-cell .gal-play span { width: 0; height: 0; border-top: 18px solid transparent; border-bottom: 18px solid transparent; border-left: 28px solid rgba(255,255,255,.9); filter: drop-shadow(0 1px 3px rgba(0,0,0,.5)); }
-  .gal-cell .gal-name { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 6px; font-size: 11px; color: #fff; background: rgba(0,0,0,.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #mediaModal { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 50; display: none; align-items: center; justify-content: center; flex-direction: column; padding: 16px; }
+  .gal-cell .gal-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.18); }
+  .gal-cell .gal-play span { width: 0; height: 0; border-top: 16px solid transparent; border-bottom: 16px solid transparent; border-left: 26px solid rgba(255,255,255,.95); filter: drop-shadow(0 1px 4px rgba(0,0,0,.6)); }
+  .gal-cell .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 8px 6px; font-size: 11px; color: #fff; background: linear-gradient(transparent, rgba(0,0,0,.78)); }
+  .cap .n { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cap .m { opacity: .8; margin-top: 2px; }
+  .gal-cell .ext { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #9aa4b2; font-size: 26px; font-weight: 800; text-transform: uppercase; }
+  .gal-empty { grid-column: 1 / -1; padding: 40px 16px; text-align: center; color: var(--muted); }
+  #galleryStatus { color: var(--red); font-size: 13px; margin-bottom: 8px; }
+  /* Modal */
+  #mediaModal { position: fixed; inset: 0; background: rgba(8,10,16,.94); z-index: 60; display: none; align-items: center; justify-content: center; flex-direction: column; padding: 20px; }
   #mediaModal.open { display: flex; }
-  #mediaModal img, #mediaModal video { max-width: 100%; max-height: 82vh; border-radius: 8px; }
-  #mediaModal .m-actions { display: flex; gap: 10px; margin-top: 12px; }
-  .gal-empty { padding: 24px; text-align: center; color: #666; }
-  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-  .filters button { padding: 5px 12px; font-size: 13px; background: #eef1f6; color: #1c1c1c; border: 1px solid #cbd2dd; }
-  .filters button.on { background: #0D47A1; color: #fff; border-color: #0D47A1; }
-  #uploadBox { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
-  #uploadBox input[type=file] { font-size: 13px; }
-  #uploadStatus { font-size: 13px; color: #1b5e20; }
+  #mediaModal img, #mediaModal video { max-width: 100%; max-height: 76vh; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+  #mmTitle { color: #fff; font-size: 14px; font-weight: 600; margin: 12px 0 4px; max-width: 90vw; text-align: center; word-break: break-all; }
+  #mmSub { color: rgba(255,255,255,.65); font-size: 12px; margin-bottom: 12px; }
+  .m-actions { display: flex; gap: 10px; }
+  .m-actions a, .m-actions button { padding: 9px 18px; border-radius: 999px; border: 0; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; }
+  #uploadBox { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+  #uploadBox input[type=file] { font-size: 13px; max-width: 100%; }
+  #uploadStatus { font-size: 13px; color: var(--green); font-weight: 600; }
+  .hidden { display: none !important; }
+  @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } .topbar-in { padding: 10px 12px; } }
 </style>
 </head>
 <body>
-<div class="header">
-  <h1>&#11015; Download Manager</h1>
-  <button id="logBtn" class="btn-ghost" type="button">Log error</button>
-  <button id="galleryBtn" class="btn-ghost" type="button">Galeri</button>
-  <button id="newBtn" class="new-btn" type="button">+ New Download</button>
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="brand"><span class="logo">&#11015;</span><span>Download Manager<small>Remote Control</small></span></div>
+    <button id="newBtn" class="pill primary" type="button">+ New Download</button>
+    <button id="galleryBtn" class="pill" type="button">&#128247; Galeri</button>
+    <button id="logBtn" class="pill" type="button">&#128241; Log error</button>
+  </div>
 </div>
-<div id="deviceStatus"></div>
-<div class="tools">
-  <button id="pauseAllBtn" type="button">Jeda semua</button>
-  <button id="resumeAllBtn" type="button">Lanjut semua</button>
-  <button id="retryFailedBtn" type="button">Ulangi gagal</button>
-  <button id="clearCompletedBtn" type="button">Bersihkan selesai</button>
-  <button id="uploadBtn" type="button">&#8679; Upload file ke device</button>
+
+<div class="wrap">
+  <div class="status-card" id="deviceStatus">
+    <span><span class="dot"></span>Menghubungkan ke device…</span>
+  </div>
+
+  <div class="toolbar">
+    <button id="pauseAllBtn" type="button">&#9209; Jeda semua</button>
+    <button id="resumeAllBtn" type="button">&#9654; Lanjut semua</button>
+    <button id="retryFailedBtn" type="button">&#8635; Ulangi gagal</button>
+    <button id="clearCompletedBtn" type="button">&#128465; Bersihkan selesai</button>
+    <button id="uploadBtn" type="button">&#8679; Upload ke device</button>
+  </div>
+
+  <div id="uploadBox" class="hidden">
+    <input id="uploadFile" type="file">
+    <span id="uploadStatus"></span>
+  </div>
+
+  <div class="seg" id="filters">
+    <button id="webFilterAll" type="button" class="on">Semua</button>
+    <button id="webFilterActive" type="button">Aktif</button>
+    <button id="webFilterCompleted" type="button">Selesai</button>
+    <button id="webFilterFailed" type="button">Gagal</button>
+  </div>
+
+  <div id="logBox" class="card hidden">
+    <div class="row"><span>Log error device</span><button id="logClose" type="button" class="btn-ghost">Tutup</button></div>
+    <pre id="logText"></pre>
+  </div>
+
+  <form id="addForm" class="card hidden">
+    <input id="url" type="url" placeholder="URL file (https://…)" required>
+    <input id="name" type="text" placeholder="Nama file (opsional)">
+    <input id="checksum" type="text" placeholder="Checksum opsional (md5:/sha1:/sha256:)">
+    <div class="grid2">
+      <select id="speed">
+        <option value="0">Kecepatan: global</option>
+        <option value="128">128 KB/s</option>
+        <option value="256">256 KB/s</option>
+        <option value="512">512 KB/s</option>
+        <option value="1024">1 MB/s</option>
+        <option value="2048">2 MB/s</option>
+        <option value="5120">5 MB/s</option>
+      </select>
+      <select id="priority">
+        <option value="-1">Prioritas: Rendah</option>
+        <option value="0" selected>Prioritas: Normal</option>
+        <option value="1">Prioritas: Tinggi</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <button type="submit" class="btn-main">Tambah Download</button>
+      <button id="cancelAdd" type="button" class="btn-ghost">Batal</button>
+    </div>
+  </form>
+
+  <div id="galleryView" class="hidden">
+    <div class="gal-toolbar"><h2>&#128247; Galeri Device</h2><span class="count" id="galleryCount"></span></div>
+    <div id="galleryStatus"></div>
+    <div id="galleryGrid" class="gal-grid"></div>
+  </div>
+
+  <div id="status"></div>
+  <ul id="list" class="list"></ul>
 </div>
-<div id="uploadBox" class="hidden">
-  <input id="uploadFile" type="file">
-  <span id="uploadStatus"></span>
-</div>
-<div class="filters">
-  <button id="webFilterAll" type="button" class="on">Semua</button>
-  <button id="webFilterActive" type="button">Aktif</button>
-  <button id="webFilterCompleted" type="button">Selesai</button>
-  <button id="webFilterFailed" type="button">Gagal</button>
-</div>
-<div id="logBox" class="hidden">
-  <pre id="logText"></pre>
-  <button id="logClose" type="button" class="btn-ghost">Tutup</button>
-</div>
+
 <div id="mediaModal">
   <img id="mmImage" class="hidden">
   <video id="mmVideo" class="hidden" controls autoplay playsinline></video>
+  <div id="mmTitle"></div>
+  <div id="mmSub"></div>
   <div class="m-actions">
-    <a id="mmDownload" class="dl" href="#" download>Download</a>
+    <a id="mmDownload" class="dl" href="#" download>&#11015; Download</a>
     <button id="mmClose" type="button" class="btn-ghost">Tutup</button>
   </div>
 </div>
-<form id="addForm" class="hidden">
-  <input id="url" type="url" placeholder="URL file (https://…)" required>
-  <input id="name" type="text" placeholder="Nama file (opsional)">
-  <input id="checksum" type="text" placeholder="Checksum opsional (md5:/sha1:/sha256:)">
-  <div class="form-row">
-    <select id="speed">
-      <option value="0">Kecepatan: global</option>
-      <option value="128">128 KB/s</option>
-      <option value="256">256 KB/s</option>
-      <option value="512">512 KB/s</option>
-      <option value="1024">1 MB/s</option>
-      <option value="2048">2 MB/s</option>
-      <option value="5120">5 MB/s</option>
-    </select>
-    <select id="priority">
-      <option value="-1">Prioritas: Rendah</option>
-      <option value="0" selected>Prioritas: Normal</option>
-      <option value="1">Prioritas: Tinggi</option>
-    </select>
-  </div>
-  <div class="form-row">
-    <button type="submit">Tambah Download</button>
-    <button id="cancelAdd" type="button" class="btn-ghost">Batal</button>
-  </div>
-</form>
-<div id="galleryView" class="hidden">
-  <div id="galleryStatus"></div>
-  <div id="galleryGrid" class="gal-grid"></div>
-</div>
-<div id="status"></div>
-<ul id="list"></ul>
+
 <script>
 const API = '';
 let failCount = 0;
@@ -140,47 +219,13 @@ Object.entries(WEB_FILTERS).forEach(function (e) {
   });
 });
 
-const uploadBtn = document.getElementById('uploadBtn');
-const uploadBox = document.getElementById('uploadBox');
-const uploadFile = document.getElementById('uploadFile');
-const uploadStatus = document.getElementById('uploadStatus');
-uploadBtn.addEventListener('click', function () {
-  uploadBox.classList.toggle('hidden');
-});
-uploadFile.addEventListener('change', async function () {
-  const file = uploadFile.files[0];
-  if (!file) return;
-  uploadStatus.textContent = 'Mengunggah ' + file.name + ' …';
-  uploadBtn.disabled = true;
-  try {
-    const res = await fetch(API + '/api/upload?name=' + encodeURIComponent(file.name), {
-      method: 'POST',
-      body: file
-    });
-    const data = await res.json();
-    if (data.ok) {
-      uploadStatus.textContent = 'Selesai: ' + data.name;
-      uploadFile.value = '';
-      refresh();
-    } else {
-      uploadStatus.textContent = 'Gagal: ' + (data.error || '?');
-    }
-  } catch (e) {
-    uploadStatus.textContent = 'Gagal upload: ' + e;
-  } finally {
-    uploadBtn.disabled = false;
-  }
-});
-
 const addForm = document.getElementById('addForm');
 const newBtn = document.getElementById('newBtn');
-
 function toggleAddForm(show) {
   addForm.classList.toggle('hidden', !show);
   newBtn.textContent = show ? '\u2715 Tutup' : '+ New Download';
   if (show) document.getElementById('url').focus();
 }
-
 newBtn.addEventListener('click', function () {
   toggleAddForm(addForm.classList.contains('hidden'));
 });
@@ -204,26 +249,57 @@ document.getElementById('cancelAdd').addEventListener('click', function () {
   toggleAddForm(false);
 });
 
+const uploadBtn = document.getElementById('uploadBtn');
+const uploadBox = document.getElementById('uploadBox');
+const uploadFile = document.getElementById('uploadFile');
+const uploadStatus = document.getElementById('uploadStatus');
+uploadBtn.addEventListener('click', function () {
+  uploadBox.classList.toggle('hidden');
+});
+uploadFile.addEventListener('change', async function () {
+  const file = uploadFile.files[0];
+  if (!file) return;
+  uploadStatus.textContent = 'Mengunggah ' + file.name + ' \u2026';
+  uploadBtn.disabled = true;
+  try {
+    const res = await fetch(API + '/api/upload?name=' + encodeURIComponent(file.name), {
+      method: 'POST',
+      body: file
+    });
+    const data = await res.json();
+    if (data.ok) {
+      uploadStatus.textContent = 'Selesai: ' + data.name;
+      uploadFile.value = '';
+      refresh();
+    } else {
+      uploadStatus.textContent = 'Gagal: ' + (data.error || '?');
+    }
+  } catch (e) {
+    uploadStatus.textContent = 'Gagal upload: ' + e;
+  } finally {
+    uploadBtn.disabled = false;
+  }
+});
+
 async function refreshStatus() {
   try {
     const res = await fetch(API + '/api/status');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const st = await res.json();
     const el = document.getElementById('deviceStatus');
-    let text = '';
+    let text = '<span><span class="dot"></span><b>Device terhubung</b></span>';
     if (st.batteryPercent >= 0) {
-      text += '\ud83d\udd0b ' + st.batteryPercent + '%';
-      text += st.batteryCharging ? ' (mengisi)' : '';
+      text += '<span>&#128267; Baterai <b>' + st.batteryPercent + '%</b>' + (st.batteryCharging ? ' (mengisi)' : '') + '</span>';
     } else {
-      text += '\ud83d\udd0b ?';
+      text += '<span>&#128267; Baterai ?</span>';
     }
     if (typeof st.storageFree === 'number') {
-      text += ' \u00b7 \ud83d\udcbe Sisa ' + fmt(st.storageFree);
+      text += '<span>&#128190; Sisa <b>' + fmt(st.storageFree) + '</b></span>';
     }
-    text += ' \u00b7 Port ' + st.port;
-    el.textContent = text;
+    text += '<span>&#128424; Port <b>' + st.port + '</b></span>';
+    el.innerHTML = text;
   } catch (e) {
-    /* server off: biarkan kosong */
+    document.getElementById('deviceStatus').innerHTML = '<span><span class="dot"></span><b>Server tidak terhubung</b> — mulai server dari aplikasi</span>';
   }
 }
 
@@ -231,16 +307,19 @@ let galleryOpen = false;
 const galleryView = document.getElementById('galleryView');
 const galleryBtn = document.getElementById('galleryBtn');
 const galleryGrid = document.getElementById('galleryGrid');
+const galleryCount = document.getElementById('galleryCount');
 const galleryStatus = document.getElementById('galleryStatus');
 const mediaModal = document.getElementById('mediaModal');
 const mmImage = document.getElementById('mmImage');
 const mmVideo = document.getElementById('mmVideo');
+const mmTitle = document.getElementById('mmTitle');
+const mmSub = document.getElementById('mmSub');
 const mmDownload = document.getElementById('mmDownload');
 
 galleryBtn.addEventListener('click', function () {
   galleryOpen = !galleryOpen;
   galleryView.classList.toggle('hidden', !galleryOpen);
-  galleryBtn.textContent = galleryOpen ? '\u2715 Tutup galeri' : 'Galeri';
+  galleryBtn.textContent = galleryOpen ? '\u2715 Tutup galeri' : '\u{1F4F7} Galeri';
   if (galleryOpen) {
     loadGallery();
   } else {
@@ -274,6 +353,7 @@ async function loadGallery() {
     galleryStatus.textContent = '';
     const grid = galleryGrid;
     grid.innerHTML = '';
+    galleryCount.textContent = data.items && data.items.length ? data.items.length + ' file' : '';
     if (!data.items || !data.items.length) {
       grid.innerHTML = '<div class="gal-empty">Belum ada foto/video di folder download.</div>';
       return;
@@ -281,18 +361,16 @@ async function loadGallery() {
     for (const it of data.items) {
       const cell = document.createElement('div');
       cell.className = 'gal-cell';
-      const src = API + '/api/media?token=' + encodeURIComponent(it.token);
-      if (it.isVideo) {
-        cell.innerHTML =
-          '<div class="gal-play"><span></span></div>' +
-          '<div class="gal-name">' + escapeHtml(it.name) + '</div>';
-      } else {
-        cell.innerHTML =
-          '<img loading="lazy" src="' + src + '" alt="' + escapeHtml(it.name) + '">' +
-          '<div class="gal-name">' + escapeHtml(it.name) + '</div>';
-      }
+      const thumb = API + '/api/thumb?token=' + encodeURIComponent(it.token);
+      const media = API + '/api/media?token=' + encodeURIComponent(it.token);
+      cell.innerHTML =
+        '<div class="ext">' + escapeHtml(extOf(it.name)) + '</div>' +
+        '<img loading="lazy" src="' + thumb + '" alt="' + escapeHtml(it.name) + '" onerror="this.remove()">' +
+        (it.isVideo ? '<div class="gal-play"><span></span></div>' : '') +
+        '<div class="cap"><div class="n">' + escapeHtml(it.name) + '</div>' +
+        '<div class="m">' + fmt(it.size) + (it.modified > 0 ? ' \u00b7 ' + fmtDate(it.modified) : '') + '</div></div>';
       cell.addEventListener('click', function () {
-        openMedia(it, src);
+        openMedia(it, media, thumb);
       });
       grid.appendChild(cell);
     }
@@ -301,11 +379,23 @@ async function loadGallery() {
   }
 }
 
-function openMedia(it, src) {
+function extOf(name) {
+  const i = name.lastIndexOf('.');
+  return i >= 0 ? name.slice(i + 1).slice(0, 6) : '\u2699';
+}
+
+function fmtDate(ms) {
+  const d = new Date(ms);
+  return d.getDate() + ' ' + ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][d.getMonth()] + ' ' + d.getFullYear();
+}
+
+function openMedia(it, src, thumb) {
   mmImage.classList.add('hidden');
   mmVideo.classList.add('hidden');
   mmImage.removeAttribute('src');
   mmVideo.removeAttribute('src');
+  mmTitle.textContent = it.name;
+  mmSub.textContent = fmt(it.size) + (it.modified > 0 ? ' \u00b7 ' + fmtDate(it.modified) : '') + (it.isVideo ? ' \u00b7 video' : ' \u00b7 foto');
   if (it.isVideo) {
     mmVideo.src = src;
     mmVideo.classList.remove('hidden');
@@ -359,13 +449,30 @@ function fmtEta(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
-  if (h > 0) return h + 'h ' + String(m).padStart(2, '0') + 'm';
+  if (h > 0) return h + 'j ' + String(m).padStart(2, '0') + 'm';
   if (m > 0) return m + 'm ' + String(s).padStart(2, '0') + 's';
   return s + 's';
 }
 
 function stateLabel(s) {
   return {PENDING:'Menunggu', DOWNLOADING:'Mendownload', PAUSED:'Dijeda', COMPLETED:'Selesai', FAILED:'Gagal', CANCELLED:'Dibatalkan'}[s] || s;
+}
+
+function stateBadge(s) {
+  const map = {PENDING:'b-paused', DOWNLOADING:'b-active', PAUSED:'b-paused', COMPLETED:'b-done', FAILED:'b-fail', CANCELLED:'b-fail'};
+  return '<span class="badge ' + (map[s] || 'b-paused') + '">' + stateLabel(s) + '</span>';
+}
+
+function fileIcon(name) {
+  const e = extOf(name).toLowerCase();
+  if (['mp4','mkv','webm','avi','mov','3gp','m4v'].indexOf(e) >= 0) return '\u{1F3AC}';
+  if (['jpg','jpeg','png','gif','webp','bmp'].indexOf(e) >= 0) return '\u{1F5BC}';
+  if (['mp3','m4a','aac','wav','ogg','flac'].indexOf(e) >= 0) return '\u{1F3B5}';
+  if (e === 'apk') return '\u{1F4E6}';
+  if (e === 'pdf') return '\u{1F4C4}';
+  if (['zip','rar','7z','tar','gz','xz'].indexOf(e) >= 0) return '\u{1F4E6}';
+  if (['txt','md','log','csv'].indexOf(e) >= 0) return '\u{1F4C4}';
+  return '\u{1F4CE}';
 }
 
 function render(items) {
@@ -378,25 +485,29 @@ function render(items) {
     return it.state === 'FAILED' || it.state === 'CANCELLED';
   });
   if (!filtered.length) {
-    list.innerHTML = '<li>' + (items.length ? 'Tidak ada item di filter ini.' : 'Belum ada download.') + '</li>';
+    list.innerHTML = '<li class="item" style="text-align:center;color:var(--muted)">' +
+      (items.length ? 'Tidak ada item di filter ini.' : 'Belum ada download. Ketuk + New Download untuk mulai.') + '</li>';
     return;
   }
   for (const it of filtered) {
     const li = document.createElement('li');
+    li.className = 'item';
     const prog = it.totalBytes > 0 ? Math.round(it.bytesDownloaded * 100 / it.totalBytes) : 0;
     let meta = it.totalBytes > 0
-      ? prog + '% &#183; ' + fmt(it.bytesDownloaded) + ' / ' + fmt(it.totalBytes)
+      ? prog + '% \u00b7 ' + fmt(it.bytesDownloaded) + ' / ' + fmt(it.totalBytes)
       : fmt(it.bytesDownloaded);
     if (it.state === 'DOWNLOADING' && it.speedBps > 0) {
-      meta += ' &#183; ' + fmtSpeed(it.speedBps);
-      if (it.etaSeconds > 0) meta += ' &#183; ETA ' + fmtEta(it.etaSeconds);
+      meta += ' \u00b7 ' + fmtSpeed(it.speedBps);
+      if (it.etaSeconds > 0) meta += ' \u00b7 ETA ' + fmtEta(it.etaSeconds);
     }
     const err = it.error ? '<div class="err">' + escapeHtml(it.error) + '</div>' : '';
     li.innerHTML =
+      '<div class="item-top"><div class="icon">' + fileIcon(it.fileName) + '</div><div class="item-body">' +
       '<div class="name">' + escapeHtml(it.fileName) + '</div>' +
-      '<div class="state">' + stateLabel(it.state) + ' &#183; ' + meta + err + '</div>' +
+      '<div class="meta">' + stateBadge(it.state) + '<span>' + meta + '</span></div>' + err +
       '<div class="bar"><div class="fill" style="width:' + prog + '%"></div></div>' +
-      '<div class="actions">' + actionButtons(it) + '</div>';
+      '<div class="actions">' + actionButtons(it) + '</div>' +
+      '</div></div>';
     li.querySelectorAll('[data-action]').forEach(b =>
       b.addEventListener('click', () => doAction(it.id, b.dataset.action))
     );
@@ -408,13 +519,13 @@ function actionButtons(it) {
   let s = '';
   const encId = encodeURIComponent(it.id);
   if (it.state === 'COMPLETED') {
-    s += '<a class="stream" href="' + API + '/file/' + encId + '" target="_blank">Stream</a>';
-    s += '<a class="dl" href="' + API + '/file/' + encId + '?dl=1" download>Download</a>';
+    s += '<a class="stream" href="' + API + '/file/' + encId + '" target="_blank">&#9654; Stream</a>';
+    s += '<a class="dl" href="' + API + '/file/' + encId + '?dl=1" download>&#11015; Download</a>';
   }
-  if (it.state === 'DOWNLOADING') s += '<button data-action="pause">Jeda</button>';
-  if (it.state === 'PAUSED' || it.state === 'FAILED') s += '<button data-action="resume">Lanjut</button>';
-  if (it.state === 'DOWNLOADING' || it.state === 'PENDING' || it.state === 'PAUSED') s += '<button data-action="cancel">Batal</button>';
-  if (it.state === 'COMPLETED' || it.state === 'FAILED' || it.state === 'CANCELLED') s += '<button data-action="delete">Hapus</button>';
+  if (it.state === 'DOWNLOADING') s += '<button data-action="pause">&#9209; Jeda</button>';
+  if (it.state === 'PAUSED' || it.state === 'FAILED') s += '<button data-action="resume">&#9654; Lanjut</button>';
+  if (it.state === 'DOWNLOADING' || it.state === 'PENDING' || it.state === 'PAUSED') s += '<button data-action="cancel" class="danger">&#10005; Batal</button>';
+  if (it.state === 'COMPLETED' || it.state === 'FAILED' || it.state === 'CANCELLED') s += '<button data-action="delete" class="danger">&#128465; Hapus</button>';
   return s;
 }
 
@@ -433,18 +544,10 @@ function globalAction(action) {
   doAction('', action);
 }
 
-document.getElementById('pauseAllBtn').addEventListener('click', function () {
-  globalAction('pause_all');
-});
-document.getElementById('resumeAllBtn').addEventListener('click', function () {
-  globalAction('resume_all');
-});
-document.getElementById('retryFailedBtn').addEventListener('click', function () {
-  globalAction('retry_failed');
-});
-document.getElementById('clearCompletedBtn').addEventListener('click', function () {
-  globalAction('clear_completed');
-});
+document.getElementById('pauseAllBtn').addEventListener('click', function () { globalAction('pause_all'); });
+document.getElementById('resumeAllBtn').addEventListener('click', function () { globalAction('resume_all'); });
+document.getElementById('retryFailedBtn').addEventListener('click', function () { globalAction('retry_failed'); });
+document.getElementById('clearCompletedBtn').addEventListener('click', function () { globalAction('clear_completed'); });
 
 document.getElementById('addForm').addEventListener('submit', async (e) => {
   e.preventDefault();

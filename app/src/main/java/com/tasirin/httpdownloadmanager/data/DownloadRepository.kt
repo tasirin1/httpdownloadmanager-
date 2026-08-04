@@ -39,6 +39,7 @@ class DownloadRepository(context: Context) {
                             username = o.optString("username"),
                             password = o.optString("password"),
                             headers = o.optString("headers"),
+                            destination = o.optString("destination"),
                             speedLimitKbps = o.optInt("speedLimitKbps", 0),
                             priority = o.optInt("priority", 0),
                             checksum = o.optString("checksum"),
@@ -70,6 +71,7 @@ class DownloadRepository(context: Context) {
             o.put("username", item.username)
             o.put("password", item.password)
             o.put("headers", item.headers)
+            o.put("destination", item.destination)
             o.put("speedLimitKbps", item.speedLimitKbps)
             o.put("priority", item.priority)
             o.put("checksum", item.checksum)

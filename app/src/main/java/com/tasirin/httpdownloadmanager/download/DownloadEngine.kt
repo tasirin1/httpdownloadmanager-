@@ -62,7 +62,8 @@ class DownloadEngine(private val context: Context) {
         headers: String = "",
         speedLimitKbps: Int = 0,
         priority: Int = 0,
-        checksum: String = ""
+        checksum: String = "",
+        destination: String = ""
     ) {
         val cleanUrl = url.trim()
         if (cleanUrl.isEmpty()) return
@@ -80,6 +81,7 @@ class DownloadEngine(private val context: Context) {
             username = username,
             password = password,
             headers = headers,
+            destination = destination,
             speedLimitKbps = speedLimitKbps,
             priority = priority,
             checksum = checksum
@@ -140,11 +142,11 @@ class DownloadEngine(private val context: Context) {
         update(_items.value.filterNot { ids.contains(it.id) })
     }
 
-    fun importFile(fileName: String, source: File) {
+    fun importFile(fileName: String, source: File, destination: String = "") {
         val name = sanitizeFileName(fileName)
         val size = source.length()
         val saver = FileSaver(context)
-        val published = saver.publish(source, name)
+        val published = saver.publish(source, name, destination)
         val item = DownloadItem(
             id = UUID.randomUUID().toString(),
             url = "upload://$name",
@@ -512,7 +514,7 @@ class DownloadEngine(private val context: Context) {
 
         verifySize(item.id, downloaded, total)
 
-        val published0 = saver.publish(partialFile, fileName)
+        val published0 = saver.publish(partialFile, fileName, item.destination)
         verifyChecksum(item.id, fileName, published0, saver)?.let {
             throw IOException(it)
         }
@@ -577,7 +579,7 @@ class DownloadEngine(private val context: Context) {
         verifySize(item.id, current.bytesDownloaded, current.totalBytes)
 
         val merged = saver.mergeSegments(fileName, segments.size)
-        val published0 = saver.publish(merged, fileName)
+        val published0 = saver.publish(merged, fileName, item.destination)
         verifyChecksum(item.id, fileName, published0, saver)?.let {
             throw IOException(it)
         }

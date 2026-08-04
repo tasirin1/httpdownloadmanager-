@@ -114,7 +114,28 @@
   #uploadBox input[type=file] { font-size: 13px; max-width: 100%; }
   #uploadStatus { font-size: 13px; color: var(--green); font-weight: 600; }
   .hidden { display: none !important; }
-  @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } .topbar-in { padding: 10px 12px; } }
+  @media (max-width: 600px) {
+    .wrap { padding: 0 12px; margin-top: 10px; }
+    .topbar-in { padding: 10px 12px; gap: 8px; }
+    .brand { font-size: 15px; }
+    .brand small { display: none; }
+    .brand .logo { width: 30px; height: 30px; font-size: 15px; }
+    .pill { padding: 7px 11px; font-size: 12px; }
+    .toolbar button { flex: 1 1 44%; }
+    .seg { width: 100%; }
+    .seg button { flex: 1; padding: 7px 6px; font-size: 12.5px; }
+    .card { padding: 12px; }
+    input, select { font-size: 16px; padding: 12px; }
+    .gal-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+    .gal-cell { aspect-ratio: 4 / 3; }
+    .item { padding: 12px; }
+    .name { font-size: 13.5px; }
+    .icon { flex-basis: 34px; height: 34px; font-size: 17px; }
+    .actions a, .actions button { padding: 7px 11px; font-size: 12px; }
+    .grid2 { grid-template-columns: 1fr; }
+    .status-card { font-size: 12px; padding: 10px 12px; }
+    #mediaModal { padding: 12px; }
+  }
 </style>
 </head>
 <body>
@@ -142,6 +163,11 @@
 
   <div id="uploadBox" class="hidden">
     <input id="uploadFile" type="file">
+    <select id="uploadStorage">
+      <option value="">Penyimpanan: Default</option>
+      <option value="download">Folder Downloads</option>
+      <option value="internal">Internal app</option>
+    </select>
     <span id="uploadStatus"></span>
   </div>
 
@@ -177,6 +203,11 @@
         <option value="1">Prioritas: Tinggi</option>
       </select>
     </div>
+    <select id="storage">
+      <option value="">Penyimpanan: Default (sesuai aplikasi)</option>
+      <option value="download">Folder Downloads (Android)</option>
+      <option value="internal">Internal app</option>
+    </select>
     <div class="form-row">
       <button type="submit" class="btn-main">Tambah Download</button>
       <button id="cancelAdd" type="button" class="btn-ghost">Batal</button>
@@ -262,7 +293,8 @@ uploadFile.addEventListener('change', async function () {
   uploadStatus.textContent = 'Mengunggah ' + file.name + ' \u2026';
   uploadBtn.disabled = true;
   try {
-    const res = await fetch(API + '/api/upload?name=' + encodeURIComponent(file.name), {
+    const res = await fetch(API + '/api/upload?name=' + encodeURIComponent(file.name) +
+      '&storage=' + encodeURIComponent(document.getElementById('uploadStorage').value), {
       method: 'POST',
       body: file
     });
@@ -560,6 +592,7 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
   body.append('priority', document.getElementById('priority').value);
   const checksum = document.getElementById('checksum').value.trim();
   if (checksum) body.append('checksum', checksum);
+  body.append('storage', document.getElementById('storage').value);
   await fetch(API + '/api/add', {method: 'POST', body});
   document.getElementById('url').value = '';
   document.getElementById('name').value = '';

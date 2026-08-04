@@ -199,11 +199,13 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         val speed = params["speedLimitKbps"]?.toIntOrNull()?.coerceIn(0, 100_000) ?: 0
         val priority = params["priority"]?.toIntOrNull()?.coerceIn(-1, 1) ?: 0
         val checksum = params["checksum"]?.trim().orEmpty()
+        val storage = params["storage"]?.trim().orEmpty()
         App.engine.addDownload(
             url, params["name"],
             speedLimitKbps = speed,
             priority = priority,
-            checksum = checksum
+            checksum = checksum,
+            destination = storage
         )
         return jsonResponse(JSONObject().put("ok", true))
     }
@@ -213,6 +215,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             ?.replace("/", "_")?.replace("\\", "_")?.replace("\"", "_")
             ?.takeIf { it.isNotEmpty() }
             ?: "upload_${System.currentTimeMillis()}"
+        val storage = session.parms["storage"]?.trim().orEmpty()
         val length = (session.headers["content-length"]?.toLongOrNull() ?: 0L)
         if (length <= 0 || length > MAX_UPLOAD_BYTES) {
             return jsonResponse(
@@ -241,7 +244,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     }
                 }
             }
-            App.engine.importFile(name, tmp)
+            App.engine.importFile(name, tmp, storage)
             jsonResponse(JSONObject().put("ok", true).put("name", name))
         }.getOrElse {
             jsonResponse(JSONObject().put("ok", false).put("error", it.message ?: "gagal upload"))

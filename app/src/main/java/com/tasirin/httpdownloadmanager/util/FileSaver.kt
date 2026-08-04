@@ -46,7 +46,17 @@ class FileSaver(context: Context) {
         return target
     }
 
-    fun publish(partial: File, fileName: String): PublishResult {
+    fun publish(partial: File, fileName: String, destination: String? = null): PublishResult {
+        when (destination) {
+            "download" -> {
+                return if (Build.VERSION.SDK_INT >= 29) {
+                    publishToMediaStore(partial, fileName)
+                } else {
+                    publishToPublicDir(partial, fileName)
+                }
+            }
+            "internal" -> return publishToInternal(partial, fileName)
+        }
         val folderUri = customFolderUri
         if (folderUri != null) {
             val result = publishToCustomFolder(partial, fileName, folderUri)

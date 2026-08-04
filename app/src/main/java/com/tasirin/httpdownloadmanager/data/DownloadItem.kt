@@ -27,6 +27,7 @@ data class DownloadItem(
     val username: String = "",
     val password: String = "",
     val headers: String = "",
+    val destination: String = "",
     val speedLimitKbps: Int = 0,
     val priority: Int = 0,
     val checksum: String = "",

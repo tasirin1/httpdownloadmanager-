@@ -63,6 +63,7 @@
     <string name="settings_speed_limit">Speed limit</string>
     <string name="settings_retry">Retry attempts on failure</string>
     <string name="settings_battery">No battery optimization (keep downloads running in background)</string>
+    <string name="settings_small_first">Download small files first (smart queue)</string>
     <string name="settings_section_download">Downloads</string>
     <string name="settings_section_server">Remote server</string>
     <string name="settings_section_network">Network</string>
@@ -78,6 +79,10 @@
     <string name="about_repo">GitHub: github.com/tasirin1/httpdownloadmanager-</string>
     <string name="ok">OK</string>
     <string name="about_changelog">Changelog (main features):
+&#8226; Automatic file info before download starts (real name, size, type) + warning when larger than available storage
+&#8226; Stable ETA &amp; speed (moving average, no more jumping)
+&#8226; Smart queue: small files first (optional, in settings)
+&#8226; Downloads interrupted by lost connection auto-resume when connectivity returns
 &#8226; Remote HTTP from browser: PIN login, QR code, custom port, background server + auto-start
 &#8226; YouTube-style remote gallery: 16:9 thumbnails, real video durations (cached), progressive loading
 &#8226; YouTube-style video player: seekbar + buffered, auto-landscape fullscreen, double-tap &#177;10s, brightness/volume gestures, resume from last position, related videos
@@ -101,6 +106,12 @@
     <string name="filter_failed">Failed</string>
     <string name="search_hint">Search&#8230;</string>
     <string name="storage_remaining">Storage available: %1$s</string>
+    <string name="file_info_checking">Checking file info…</string>
+    <string name="file_info_unknown">Could not read file info from server</string>
+    <string name="file_info_size_unknown">unknown size</string>
+    <string name="file_info_type_unknown">unknown type</string>
+    <string name="file_info_format">%1$s · %2$s · %3$s</string>
+    <string name="file_info_large_warning">⚠ File size %1$s is larger than available storage</string>
     <string name="checksum_ok">✓ Checksum OK</string>
     <string name="location_label">Location: %1$s</string>
     <string name="location_media_store">MediaStore / Custom folder</string>

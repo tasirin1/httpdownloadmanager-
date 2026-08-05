@@ -255,6 +255,37 @@ class DownloadEngine(private val context: Context) {
         }.getOrNull()
     }
 
+    fun probeUrl(
+        url: String,
+        username: String = "",
+        password: String = "",
+        headers: String = ""
+    ): UrlProbe? {
+        val clean = url.trim()
+        if (clean.isEmpty()) return null
+        if (!clean.startsWith("http://") && !clean.startsWith("https://")) return null
+        return runCatching {
+            val conn = URL(clean).openConnection() as HttpURLConnection
+            try {
+                conn.requestMethod = "HEAD"
+                conn.connectTimeout = 8_000
+                conn.readTimeout = 8_000
+                conn.setRequestProperty("User-Agent", "HttpDownloadManager/1.0")
+                applyAuthHeaders(conn, username, password, headers)
+                conn.connect()
+                val code = conn.responseCode
+                if (code !in 200..299) return null
+                UrlProbe(
+                    fileName = contentDispositionName(conn.getHeaderField("Content-Disposition")),
+                    sizeBytes = contentLength(conn),
+                    contentType = conn.getHeaderField("Content-Type")
+                )
+            } finally {
+                conn.disconnect()
+            }
+        }.getOrNull()
+    }
+
     private fun resolveHlsUrl(base: String, relative: String): String {
         if (relative.startsWith("http://") || relative.startsWith("https://")) return relative
         if (relative.startsWith("/")) {
@@ -282,6 +313,21 @@ class DownloadEngine(private val context: Context) {
 
     fun retryFailed() {
         val ids = _items.value.filter { it.state == DownloadState.FAILED }.map { it.id }
+        ids.forEach { id ->
+            retryAttempts.remove(id)
+            updateItem(id) {
+                it.copy(state = DownloadState.PENDING, autoResume = true, error = null)
+            }
+        }
+        startQueued()
+    }
+
+    fun resumeAutoPaused() {
+        if (!StoragePrefs.isBackgroundEnabled(context)) return
+        val ids = _items.value.filter {
+            it.autoResume && it.state == DownloadState.PAUSED
+        }.map { it.id }
+        if (ids.isEmpty()) return
         ids.forEach { id ->
             retryAttempts.remove(id)
             updateItem(id) {
@@ -335,9 +381,15 @@ class DownloadEngine(private val context: Context) {
 
     private fun startQueued() {
         val max = StoragePrefs.maxConcurrent(context)
+        val smallFirst = StoragePrefs.isSmallFirstEnabled(context)
         val pending = _items.value
             .filter { it.state == DownloadState.PENDING }
-            .sortedByDescending { it.priority }
+            .sortedWith(
+                compareByDescending<DownloadItem> { it.priority }
+                    .thenBy {
+                        if (smallFirst && it.totalBytes > 0) it.totalBytes else Long.MAX_VALUE
+                    }
+            )
         var active = jobs.values.count { it.isActive }
         if (active < max && pending.isNotEmpty()) {
             ensureServiceRunning()
@@ -411,6 +463,20 @@ class DownloadEngine(private val context: Context) {
                     attemptStart(id)
                 }
             }
+        } else if (item.autoResume && isNetworkError(message)) {
+            // Gagal karena jaringan (mati/sinyal hilang): jangan tandai FAILED,
+            // biarkan PAUSED agar otomatis lanjut saat koneksi pulih.
+            retryAttempts.remove(id)
+            updateItem(id) {
+                it.copy(
+                    state = DownloadState.PAUSED,
+                    error = message,
+                    autoResume = true,
+                    speedBps = 0,
+                    etaSeconds = 0
+                )
+            }
+            flushSave()
         } else {
             retryAttempts.remove(id)
             updateItem(id) {
@@ -424,6 +490,17 @@ class DownloadEngine(private val context: Context) {
             }
             flushSave()
         }
+    }
+
+    private fun isNetworkError(message: String?): Boolean {
+        if (message.isNullOrBlank()) return false
+        val m = message.lowercase()
+        return m.contains("unknownhost") ||
+            m.contains("timeout") ||
+            m.contains("failed to connect") ||
+            m.contains("connect exception") ||
+            m.contains("network") ||
+            m.contains("socket")
     }
 
     private suspend fun runDownload(item: DownloadItem) {
@@ -743,12 +820,21 @@ class DownloadEngine(private val context: Context) {
     }
 
     private fun applyAuthHeaders(conn: HttpURLConnection, item: DownloadItem) {
-        if (item.username.isNotEmpty()) {
-            val raw = "${item.username}:${item.password}"
+        applyAuthHeaders(conn, item.username, item.password, item.headers)
+    }
+
+    private fun applyAuthHeaders(
+        conn: HttpURLConnection,
+        username: String,
+        password: String,
+        headers: String
+    ) {
+        if (username.isNotEmpty()) {
+            val raw = "$username:$password"
             val encoded = Base64.encodeToString(raw.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
             conn.setRequestProperty("Authorization", "Basic $encoded")
         }
-        item.headers.split("\n".toRegex()).forEach { line ->
+        headers.split("\n".toRegex()).forEach { line ->
             val idx = line.indexOf(':')
             if (idx > 0) {
                 val key = line.substring(0, idx).trim()
@@ -961,6 +1047,12 @@ data class HlsVariant(
     val bandwidth: Long
 )
 
+data class UrlProbe(
+    val fileName: String?,
+    val sizeBytes: Long,
+    val contentType: String?
+)
+
 private class SpeedThrottle(private val limitKbps: Int) {
     private val lock = Any()
     private var startTime = System.currentTimeMillis()
@@ -990,6 +1082,7 @@ private class SpeedThrottle(private val limitKbps: Int) {
 private class SpeedTracker {
     private val lastBytes = HashMap<String, Long>()
     private val lastTime = HashMap<String, Long>()
+    private val emaSpeed = HashMap<String, Double>()
 
     @Synchronized
     fun sample(id: String, bytes: Long, total: Long): Pair<Long, Long> {
@@ -998,7 +1091,17 @@ private class SpeedTracker {
         val prevT = lastTime[id] ?: now
         lastBytes[id] = bytes
         lastTime[id] = now
-        val speed = if (now > prevT) ((bytes - prevB) * 1000L) / (now - prevT) else 0L
+        val instant = if (now > prevT) ((bytes - prevB) * 1000L) / (now - prevT) else 0L
+        // EMA: kecepatan rata-rata bergerak supaya ETA tidak melompat-lompat
+        // akibat lonjakan kecepatan sesaat.
+        val smoothed = if (instant > 0L) {
+            val prev = emaSpeed[id] ?: instant.toDouble()
+            prev * (1.0 - EMA_ALPHA) + instant * EMA_ALPHA
+        } else {
+            emaSpeed[id] ?: 0.0
+        }
+        emaSpeed[id] = smoothed
+        val speed = smoothed.toLong()
         val eta = if (speed > 0 && total > bytes) (total - bytes) / speed else 0L
         return speed to eta
     }
@@ -1007,5 +1110,10 @@ private class SpeedTracker {
     fun reset(id: String) {
         lastBytes.remove(id)
         lastTime.remove(id)
+        emaSpeed.remove(id)
+    }
+
+    private companion object {
+        const val EMA_ALPHA = 0.2
     }
 }

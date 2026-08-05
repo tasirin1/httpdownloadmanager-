@@ -5,12 +5,16 @@ Aplikasi download manager + remote control untuk **Android 5.0 (API 21) ke atas*
 ## Fitur
 
 - Tambah download via URL (nama file opsional, checksum MD5/SHA1/SHA256 opsional)
+- **Info file otomatis sebelum download mulai**: HEAD ke server → nama asli, ukuran & tipe file ditampilkan di dialog tambah; peringatan merah bila ukuran file melebihi penyimpanan tersisa
 - Progress per file (persentase, ukuran, kecepatan KB/s–MB/s, ETA) + grafik kecepatan real-time
+- **Kecepatan & ETA stabil** (rata-rata bergerak — tidak melompat-lompat saat kecepatan sesaat naik/turun)
 - Jeda, lanjutkan (resume dengan HTTP Range), batalkan, hapus, ulangi gagal
 - Unduhan paralel dengan antrean (jumlah maks. bisa diatur), **multi-segmen** untuk file besar yang mendukung Range
+- **Antrean pintar**: unduh file kecil lebih dulu (opsional, di pengaturan) selain prioritas manual
 - **Batas kecepatan & prioritas per-download** (dialog tambah / long-press item)
 - Daftar download tersimpan otomatis (bertahan setelah app ditutup), filter & urutkan daftar
 - Foreground service: tetap berjalan saat app ditutup; retry otomatis (jeda bertahap); **auto-start saat boot**
+- **Lanjut otomatis saat koneksi pulih**: download yang terputus karena jaringan hilang dijeda otomatis, lalu dilanjutkan sendiri begitu internet kembali (Android 5–6 via broadcast, Android 7+ via NetworkCallback)
 - Notifikasi foreground progress + **widget homescreen**
 - **Share URL** langsung dari aplikasi lain (Share → Download Manager)
 - Auth HTTP Basic + custom header (Referer, Cookie, dll.), tempel banyak URL sekaligus, riwayat URL
@@ -68,6 +72,7 @@ Menu **⋮ → Pengaturan**:
 - Unduhan bersamaan (1–5) — sisanya antre; jumlah segmen multi-download
 - Batas kecepatan (Tanpa batas / 128 KB/s … 5 MB/s)
 - Percobaan ulang saat gagal (0–5)
+- Unduh file kecil lebih dulu (antrean pintar)
 - Jalankan server remote di latar belakang + auto start server saat boot
 
 Catatan: beberapa vendor (MIUI, dll.) punya pembatasan baterai ketat — aktifkan *auto-start* di pengaturan sistem agar service tidak dimatikan. Download yang Anda jeda manual tidak dilanjutkan otomatis.

@@ -25,6 +25,7 @@ object StoragePrefs {
     private const val KEY_SEGMENTS = "segments"
     private const val KEY_SORT_MODE = "sort_mode"
     private const val KEY_AUTO_SORT = "auto_sort"
+    private const val KEY_SMALL_FIRST = "small_first"
 
     fun getFolderUri(context: Context): Uri? {
         val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -150,6 +151,16 @@ object StoragePrefs {
     fun setAutoSortEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putBoolean(KEY_AUTO_SORT, enabled)
+            .apply()
+    }
+
+    fun isSmallFirstEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_SMALL_FIRST, false)
+
+    fun setSmallFirstEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_SMALL_FIRST, enabled)
             .apply()
     }
 

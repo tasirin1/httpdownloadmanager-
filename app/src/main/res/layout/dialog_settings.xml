@@ -39,6 +39,12 @@
             android:text="@string/settings_auto_sort" />
 
         <CheckBox
+            android:id="@+id/check_small_first"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_small_first" />
+
+        <CheckBox
             android:id="@+id/check_battery"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

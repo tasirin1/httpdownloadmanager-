@@ -53,6 +53,8 @@ import com.tasirin.httpdownloadmanager.ui.DownloadAdapter
 import com.tasirin.httpdownloadmanager.util.MimeTypes
 import com.tasirin.httpdownloadmanager.util.StoragePrefs
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -392,6 +394,70 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
         val storageText = view.findViewById<TextView>(R.id.text_storage_remaining)
         storageText.text = getString(R.string.storage_remaining, formatBytes(App.engine.freeSpaceBytes()))
+
+        val fileInfoText = view.findViewById<TextView>(R.id.text_file_info)
+        var probeJob: Job? = null
+        fun probeFileInfo() {
+            probeJob?.cancel()
+            val allUrls = urlInput.text?.toString().orEmpty()
+            val probeTarget = allUrls
+                .split(Regex("[\\s,]+"))
+                .firstOrNull { it.startsWith("http://") || it.startsWith("https://") }
+                ?.trim().orEmpty()
+            if (probeTarget.isEmpty()) {
+                fileInfoText.visibility = View.GONE
+                return
+            }
+            probeJob = lifecycleScope.launch {
+                delay(600)
+                fileInfoText.text = getString(R.string.file_info_checking)
+                fileInfoText.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.primary))
+                fileInfoText.visibility = View.VISIBLE
+                val probe = withContext(Dispatchers.IO) {
+                    runCatching {
+                        App.engine.probeUrl(
+                            probeTarget,
+                            usernameInput.text?.toString()?.trim().orEmpty(),
+                            passwordInput.text?.toString().orEmpty(),
+                            headersInput.text?.toString()?.trim().orEmpty()
+                        )
+                    }.getOrNull()
+                }
+                if (probe == null) {
+                    fileInfoText.text = getString(R.string.file_info_unknown)
+                    return@launch
+                }
+                val guessedName = probeTarget.substringAfterLast('/').substringBefore('?')
+                val name = probe.fileName?.takeIf { it.isNotBlank() } ?: guessedName
+                val size = if (probe.sizeBytes > 0) {
+                    formatBytes(probe.sizeBytes)
+                } else {
+                    getString(R.string.file_info_size_unknown)
+                }
+                val type = probe.contentType?.takeIf { it.isNotBlank() }
+                    ?: getString(R.string.file_info_type_unknown)
+                fileInfoText.text = getString(R.string.file_info_format, name, size, type)
+                if (probe.sizeBytes > 0 && probe.sizeBytes > App.engine.freeSpaceBytes()) {
+                    fileInfoText.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_off))
+                    fileInfoText.append("\n" + getString(
+                        R.string.file_info_large_warning,
+                        formatBytes(probe.sizeBytes)
+                    ))
+                }
+            }
+        }
+        val fileInfoWatcher = object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {
+                probeFileInfo()
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        }
+        urlInput.addTextChangedListener(fileInfoWatcher)
+        usernameInput.addTextChangedListener(fileInfoWatcher)
+        passwordInput.addTextChangedListener(fileInfoWatcher)
+        headersInput.addTextChangedListener(fileInfoWatcher)
+        probeFileInfo()
 
         fun addAll(
             urls: List<String>,
@@ -774,12 +840,14 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val checkAutoStart = view.findViewById<CheckBox>(R.id.check_autostart)
         val checkBattery = view.findViewById<CheckBox>(R.id.check_battery)
         val checkAutoSort = view.findViewById<CheckBox>(R.id.check_auto_sort)
+        val checkSmallFirst = view.findViewById<CheckBox>(R.id.check_small_first)
         val pinInput = view.findViewById<EditText>(R.id.input_pin)
         wireStorageSection(view)
         checkBackground.isChecked = StoragePrefs.isBackgroundEnabled(this)
         checkAutoStart.isChecked = StoragePrefs.isAutoStartEnabled(this)
         checkBattery.isChecked = StoragePrefs.isBatteryExemptEnabled(this)
         checkAutoSort.isChecked = StoragePrefs.isAutoSortEnabled(this)
+        checkSmallFirst.isChecked = StoragePrefs.isSmallFirstEnabled(this)
         pinInput.setText(StoragePrefs.getServerPin(this).orEmpty())
 
         val concurrentOptions = resources.getStringArray(R.array.concurrent_options)
@@ -841,6 +909,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 StoragePrefs.setAutoStartEnabled(this, checkAutoStart.isChecked)
                 StoragePrefs.setBatteryExemptEnabled(this, checkBattery.isChecked)
                 StoragePrefs.setAutoSortEnabled(this, checkAutoSort.isChecked)
+                StoragePrefs.setSmallFirstEnabled(this, checkSmallFirst.isChecked)
                 StoragePrefs.setServerPin(
                     this,
                     pinInput.text?.toString()?.trim().orEmpty()

@@ -63,6 +63,7 @@
     <string name="settings_speed_limit">Batas kecepatan</string>
     <string name="settings_retry">Percobaan ulang saat gagal</string>
     <string name="settings_battery">Tanpa optimasi baterai (download tetap jalan di latar belakang)</string>
+    <string name="settings_small_first">Unduh file kecil lebih dulu (antrean pintar)</string>
     <string name="settings_section_download">Unduhan</string>
     <string name="settings_section_server">Server Remote</string>
     <string name="settings_section_network">Jaringan</string>
@@ -78,6 +79,10 @@
     <string name="about_repo">GitHub: github.com/tasirin1/httpdownloadmanager-</string>
     <string name="ok">OK</string>
     <string name="about_changelog">Catatan perubahan (fitur utama):
+&#8226; Info file otomatis sebelum download mulai (nama asli, ukuran, tipe) + peringatan jika lebih besar dari penyimpanan
+&#8226; ETA &amp; kecepatan stabil (rata-rata bergerak, tidak melompat-lompat)
+&#8226; Antrean pintar: unduh file kecil lebih dulu (opsional, di pengaturan)
+&#8226; Download yang terputus karena jaringan hilang lanjut otomatis saat koneksi pulih
 &#8226; Remote HTTP dari browser: PIN login, QR code, port custom, server latar belakang + auto-start
 &#8226; Galeri remote ala YouTube: thumbnail 16:9, durasi video asli (cache), load bertahap
 &#8226; Player video ala YouTube: seekbar + buffered, fullscreen otomatis landscape, double-tap &#177;10 dtk, gesture kecerahan/volume, lanjut dari posisi terakhir, saran video
@@ -101,6 +106,12 @@
     <string name="filter_failed">Gagal</string>
     <string name="search_hint">Cari&#8230;</string>
     <string name="storage_remaining">Penyimpanan tersisa: %1$s</string>
+    <string name="file_info_checking">Mengecek info file…</string>
+    <string name="file_info_unknown">Info file tidak dapat dibaca dari server</string>
+    <string name="file_info_size_unknown">ukuran tidak diketahui</string>
+    <string name="file_info_type_unknown">tipe tidak diketahui</string>
+    <string name="file_info_format">%1$s · %2$s · %3$s</string>
+    <string name="file_info_large_warning">⚠ Ukuran file %1$s melebihi penyimpanan tersisa</string>
     <string name="checksum_ok">✓ Checksum OK</string>
     <string name="location_label">Lokasi: %1$s</string>
     <string name="location_media_store">MediaStore / Folder kustom</string>

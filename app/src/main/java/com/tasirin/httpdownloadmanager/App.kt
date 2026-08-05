@@ -3,6 +3,10 @@ package com.tasirin.httpdownloadmanager
 import android.app.Application
 import android.content.Context
 import android.content.ContentValues
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.provider.MediaStore
 import android.os.Build
 import android.util.Log
@@ -25,6 +29,26 @@ class App : Application() {
         // walau halaman utama gagal terbuka (mis. crash di Activity).
         if (StoragePrefs.isServerBackgroundEnabled(this)) {
             runCatching { httpServer.startServer() }
+        }
+        if (Build.VERSION.SDK_INT >= 24) {
+            registerNetworkCallback()
+        }
+    }
+
+    // Android 7+ tidak menerima broadcast CONNECTIVITY_CHANGE untuk receiver
+    // statis di manifest, jadi pakai NetworkCallback untuk fitur lanjutkan
+    // download otomatis saat koneksi pulih.
+    private fun registerNetworkCallback() {
+        runCatching {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val request = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+            cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    runCatching { engine.resumeAutoPaused() }
+                }
+            })
         }
     }
 

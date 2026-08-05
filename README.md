@@ -35,9 +35,13 @@ Server remote bawaan untuk mengontrol dari browser di perangkat lain dalam satu 
 
 Fitur halaman remote:
 
+- **Tampilan mobile**: tombol FAB "+" untuk tambah download, menu aksi item ala bottom-sheet (anti salah pencet), topbar lebih ringkas
 - Manajemen download: tambah URL, pantau progress, jeda/lanjut/batalkan/hapus, filter & urutkan
 - **Item aktif otomatis di urutan atas** + **total kecepatan live di bar atas** (jumlah download aktif)
 - Di layar HP, tombol aksi item dipadatkan ke menu **"⋯"**; hapus item & bersihkan daftar kini memakai dialog konfirmasi
+- **Filter Semua/Aktif/Selesai/Gagal menempel (sticky)** saat scroll, **skeleton loading** saat memuat data, dan **empty state** yang lebih informatif di daftar, galeri, dan file manager
+- **Indikator koneksi**: "diperbarui X dtk lalu" + tombol refresh di status card; titik status berkedip merah saat koneksi ke server putus
+- **Animasi halus** saat pindah tab & item baru muncul, **favicon + theme-color** di browser
 - **Upload file ke device** dari browser: banyak file sekaligus, dipecah per potongan 2 MB dengan retry otomatis (koneksi putus tidak mulai dari nol), upload folder utuh + drag & drop, nama duplikat otomatis (`nama (1).ext`), konfirmasi sebelum halaman ditutup saat upload berjalan
 - **File manager remote**: jelajah folder, buat folder, rename, pindah, hapus (massal), download folder sebagai ZIP
   - Folder menampilkan info isinya: jumlah item + total ukuran

@@ -158,11 +158,13 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                     adapter.submitList(filtered)
                     binding.emptyView.visibility =
                         if (filtered.isEmpty()) View.VISIBLE else View.GONE
+                    updateBulkButtons()
                 }
             }
         }
 
         setupFilterViews()
+        findViewById<TextView>(R.id.server_status)?.setOnClickListener { showRemoteDialog() }
 
         requestPermissionsIfNeeded()
         runCatching {
@@ -257,27 +259,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         tv.setTextColor(
             ContextCompat.getColor(this, if (alive) R.color.status_on else R.color.status_off)
         )
-        val urlTv = findViewById<TextView>(R.id.server_url)
-        val qrIv = findViewById<ImageView>(R.id.qr_preview)
-        if (urlTv != null && qrIv != null) {
-            if (alive) {
-                val urls = HttpControlServer.ipv4Addresses()
-                    .map { "http://$it:${App.httpServer.listeningPort}/" }
-                if (urls.isNotEmpty()) {
-                    urlTv.text = urls.joinToString("  ")
-                    urlTv.visibility = View.VISIBLE
-                    qrIv.visibility = View.VISIBLE
-                    qrIv.setImageBitmap(generateQrCode(urls[0], 256))
-                    qrIv.setOnClickListener { showRemoteDialog() }
-                } else {
-                    urlTv.visibility = View.GONE
-                    qrIv.visibility = View.GONE
-                }
-            } else {
-                urlTv.visibility = View.GONE
-                qrIv.visibility = View.GONE
-            }
-        }
     }
 
     /** Stop DownloadService bila tidak ada download aktif (server juga mati). */
@@ -852,16 +833,12 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val view = layoutInflater.inflate(R.layout.dialog_settings, null)
         val checkBackground = view.findViewById<CheckBox>(R.id.check_background)
         val checkAutoStart = view.findViewById<CheckBox>(R.id.check_autostart)
-        val checkServerBackground = view.findViewById<CheckBox>(R.id.check_server_background)
-        val checkServerAutostart = view.findViewById<CheckBox>(R.id.check_server_autostart)
         val checkBattery = view.findViewById<CheckBox>(R.id.check_battery)
         val checkAutoSort = view.findViewById<CheckBox>(R.id.check_auto_sort)
         val pinInput = view.findViewById<EditText>(R.id.input_pin)
         wireStorageSection(view)
         checkBackground.isChecked = StoragePrefs.isBackgroundEnabled(this)
         checkAutoStart.isChecked = StoragePrefs.isAutoStartEnabled(this)
-        checkServerBackground.isChecked = StoragePrefs.isServerBackgroundEnabled(this)
-        checkServerAutostart.isChecked = StoragePrefs.isServerAutoStartEnabled(this)
         checkBattery.isChecked = StoragePrefs.isBatteryExemptEnabled(this)
         checkAutoSort.isChecked = StoragePrefs.isAutoSortEnabled(this)
         pinInput.setText(StoragePrefs.getServerPin(this).orEmpty())
@@ -923,22 +900,12 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 applyStoragePath(view.findViewById(R.id.input_storage_path))
                 StoragePrefs.setBackgroundEnabled(this, checkBackground.isChecked)
                 StoragePrefs.setAutoStartEnabled(this, checkAutoStart.isChecked)
-                StoragePrefs.setServerBackgroundEnabled(this, checkServerBackground.isChecked)
-                StoragePrefs.setServerAutoStartEnabled(this, checkServerAutostart.isChecked)
                 StoragePrefs.setBatteryExemptEnabled(this, checkBattery.isChecked)
                 StoragePrefs.setAutoSortEnabled(this, checkAutoSort.isChecked)
                 StoragePrefs.setServerPin(
                     this,
                     pinInput.text?.toString()?.trim().orEmpty()
                 )
-                // Sinkronkan server: mati otomatis bila "latar belakang" dimatikan
-                val wantServer = checkServerBackground.isChecked
-                if (wantServer && !App.httpServer.isAlive) {
-                    runCatching { App.httpServer.startServer() }
-                } else if (!wantServer && App.httpServer.isAlive) {
-                    App.httpServer.stopServer()
-                    stopServiceIfIdle()
-                }
                 if (checkBattery.isChecked) {
                     requestBatteryExemption()
                 }
@@ -1149,14 +1116,32 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         map.forEach { (id, filter) ->
             val tv = findViewById<TextView>(id) ?: return@forEach
             val selected = filter == currentFilter
+            tv.isSelected = selected
             tv.setTextColor(
                 ContextCompat.getColor(
                     this,
-                    if (selected) R.color.primary else R.color.text_secondary
+                    if (selected) R.color.white else R.color.text_secondary
                 )
             )
             tv.typeface = if (selected) android.graphics.Typeface.DEFAULT_BOLD else null
         }
+    }
+
+    private fun updateBulkButtons() {
+        val items = App.engine.items.value
+        val hasActive = items.any {
+            it.state == DownloadState.DOWNLOADING || it.state == DownloadState.PENDING
+        }
+        val hasResumable = items.any {
+            it.state == DownloadState.PAUSED || it.state == DownloadState.FAILED
+        }
+        val hasFailed = items.any { it.state == DownloadState.FAILED }
+        findViewById<View>(R.id.btn_pause_all)?.visibility =
+            if (hasActive) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.btn_resume_all)?.visibility =
+            if (hasResumable) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.btn_retry_failed)?.visibility =
+            if (hasFailed) View.VISIBLE else View.GONE
     }
 
     private fun refreshList() {
@@ -1165,6 +1150,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             adapter.submitList(filtered)
             binding.emptyView.visibility =
                 if (filtered.isEmpty()) View.VISIBLE else View.GONE
+            updateBulkButtons()
         }
     }
 

@@ -68,9 +68,11 @@
     <string name="settings_concurrent">Concurrent downloads (queue)</string>
     <string name="settings_speed_limit">Speed limit</string>
     <string name="settings_retry">Retry attempts on failure</string>
-    <string name="settings_server_background">Run remote server in background</string>
-    <string name="settings_server_autostart">Auto start server on boot</string>
     <string name="settings_battery">No battery optimization (keep downloads running in background)</string>
+    <string name="settings_section_download">Downloads</string>
+    <string name="settings_section_server">Remote server</string>
+    <string name="settings_section_network">Network</string>
+    <string name="more_actions">More actions</string>
     <string name="battery_request_failed">Failed to open battery settings</string>
     <string name="notification_server_active">Remote server active (HTTP) — reachable from other devices</string>
     <string name="server_status_running">Server: active</string>

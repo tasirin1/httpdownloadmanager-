@@ -3,6 +3,7 @@ package com.tasirin.httpdownloadmanager.ui
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.widget.PopupMenu
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -81,43 +82,39 @@ class DownloadAdapter(private val listener: Listener) :
             b.textLocation.visibility = View.GONE
         }
 
-        b.buttonPause.visibility =
-            if (item.state == DownloadState.DOWNLOADING) View.VISIBLE else View.GONE
-        b.buttonResume.visibility =
-            if (item.state == DownloadState.PAUSED || item.state == DownloadState.FAILED) {
-                View.VISIBLE
-            } else {
-                View.GONE
+        b.buttonActions.setOnClickListener { v ->
+            val menu = PopupMenu(v.context, v)
+            menu.menuInflater.inflate(R.menu.item_actions, menu.menu)
+            val m = menu.menu
+            m.findItem(R.id.action_item_pause).isVisible =
+                item.state == DownloadState.DOWNLOADING
+            m.findItem(R.id.action_item_resume).isVisible =
+                item.state == DownloadState.PAUSED || item.state == DownloadState.FAILED
+            m.findItem(R.id.action_item_open).isVisible =
+                item.state == DownloadState.COMPLETED
+            m.findItem(R.id.action_item_folder).isVisible =
+                item.state == DownloadState.COMPLETED
+            m.findItem(R.id.action_item_cancel).isVisible =
+                item.state == DownloadState.DOWNLOADING ||
+                    item.state == DownloadState.PENDING ||
+                    item.state == DownloadState.PAUSED
+            m.findItem(R.id.action_item_delete).isVisible =
+                item.state == DownloadState.COMPLETED ||
+                    item.state == DownloadState.FAILED ||
+                    item.state == DownloadState.CANCELLED
+            menu.setOnMenuItemClickListener { mi ->
+                when (mi.itemId) {
+                    R.id.action_item_pause -> listener.onAction(item, Action.PAUSE)
+                    R.id.action_item_resume -> listener.onAction(item, Action.RESUME)
+                    R.id.action_item_cancel -> listener.onAction(item, Action.CANCEL)
+                    R.id.action_item_open -> listener.onAction(item, Action.OPEN)
+                    R.id.action_item_folder -> listener.onAction(item, Action.OPEN_FOLDER)
+                    R.id.action_item_delete -> listener.onAction(item, Action.DELETE)
+                }
+                true
             }
-        b.buttonOpen.visibility =
-            if (item.state == DownloadState.COMPLETED) View.VISIBLE else View.GONE
-        b.buttonFolder.visibility =
-            if (item.state == DownloadState.COMPLETED) View.VISIBLE else View.GONE
-        b.buttonCancel.visibility =
-            if (item.state == DownloadState.DOWNLOADING ||
-                item.state == DownloadState.PENDING ||
-                item.state == DownloadState.PAUSED
-            ) {
-                View.VISIBLE
-            } else {
-                View.GONE
-            }
-        b.buttonDelete.visibility =
-            if (item.state == DownloadState.COMPLETED ||
-                item.state == DownloadState.FAILED ||
-                item.state == DownloadState.CANCELLED
-            ) {
-                View.VISIBLE
-            } else {
-                View.GONE
-            }
-
-        b.buttonPause.setOnClickListener { listener.onAction(item, Action.PAUSE) }
-        b.buttonResume.setOnClickListener { listener.onAction(item, Action.RESUME) }
-        b.buttonCancel.setOnClickListener { listener.onAction(item, Action.CANCEL) }
-        b.buttonOpen.setOnClickListener { listener.onAction(item, Action.OPEN) }
-        b.buttonFolder.setOnClickListener { listener.onAction(item, Action.OPEN_FOLDER) }
-        b.buttonDelete.setOnClickListener { listener.onAction(item, Action.DELETE) }
+            menu.show()
+        }
         b.root.setOnLongClickListener {
             listener.onLongPress(item)
             true

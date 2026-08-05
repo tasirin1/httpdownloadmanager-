@@ -68,9 +68,11 @@
     <string name="settings_concurrent">Unduhan bersamaan (antrean)</string>
     <string name="settings_speed_limit">Batas kecepatan</string>
     <string name="settings_retry">Percobaan ulang saat gagal</string>
-    <string name="settings_server_background">Jalankan server remote di latar belakang</string>
-    <string name="settings_server_autostart">Auto start server saat boot</string>
     <string name="settings_battery">Tanpa optimasi baterai (download tetap jalan di latar belakang)</string>
+    <string name="settings_section_download">Unduhan</string>
+    <string name="settings_section_server">Server Remote</string>
+    <string name="settings_section_network">Jaringan</string>
+    <string name="more_actions">Aksi lainnya</string>
     <string name="battery_request_failed">Gagal membuka pengaturan baterai</string>
     <string name="notification_server_active">Server remote aktif (HTTP) — bisa diakses dari perangkat lain</string>
     <string name="server_status_running">Server: aktif</string>

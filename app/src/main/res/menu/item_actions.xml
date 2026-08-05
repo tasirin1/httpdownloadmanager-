@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_item_pause"
+        android:title="@string/pause" />
+    <item
+        android:id="@+id/action_item_resume"
+        android:title="@string/resume" />
+    <item
+        android:id="@+id/action_item_open"
+        android:title="@string/open" />
+    <item
+        android:id="@+id/action_item_folder"
+        android:title="@string/open_folder" />
+    <item
+        android:id="@+id/action_item_cancel"
+        android:title="@string/cancel" />
+    <item
+        android:id="@+id/action_item_delete"
+        android:title="@string/delete" />
+</menu>

@@ -108,6 +108,7 @@
   .gal-info { padding: 9px 11px 11px; }
   .gal-info .n { font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.35; min-height: 2.7em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .gal-info .m { margin-top: 3px; font-size: 11.5px; color: var(--muted); }
+  .gal-sentinel { grid-column: 1 / -1; height: 24px; }
   .gal-empty { grid-column: 1 / -1; padding: 44px 16px; text-align: center; color: var(--muted); }
   #galleryStatus { color: var(--red); font-size: 13px; margin-bottom: 8px; }
   .fs-path { font-size: 12px; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 6px 10px; margin-bottom: 8px; word-break: break-all; }
@@ -384,15 +385,31 @@
 <script>
 const API = '';
 const themeBtn = document.getElementById('themeBtn');
-function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('dm_theme', theme);
-  themeBtn.textContent = theme === 'dark' ? '\u2600\uFE0F' : '\u{1F319}';
+const THEME_ORDER = ['auto', 'light', 'dark'];
+function systemDark() {
+  return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
 }
-applyTheme(localStorage.getItem('dm_theme') || 'light');
+function applyTheme(theme) {
+  const resolved = (theme === 'dark' || (theme === 'auto' && systemDark())) ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', resolved);
+  localStorage.setItem('dm_theme', theme);
+  themeBtn.textContent = theme === 'light' ? '\u{1F31E}' : (theme === 'dark' ? '\u{1F319}' : '\u{1F317}');
+  themeBtn.title = theme === 'auto' ? 'Tema: otomatis' : (theme === 'dark' ? 'Tema: gelap' : 'Tema: terang');
+}
+applyTheme(localStorage.getItem('dm_theme') || 'auto');
 themeBtn.addEventListener('click', function () {
-  applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  const cur = localStorage.getItem('dm_theme') || 'auto';
+  applyTheme(THEME_ORDER[(THEME_ORDER.indexOf(cur) + 1) % THEME_ORDER.length]);
 });
+(function () {
+  const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+  if (!mq) return;
+  const on = function () {
+    if ((localStorage.getItem('dm_theme') || 'auto') === 'auto') applyTheme('auto');
+  };
+  if (mq.addEventListener) mq.addEventListener('change', on);
+  else if (mq.addListener) mq.addListener(on);
+})();
 
 let failCount = 0;
 let webFilter = 'ALL';
@@ -456,6 +473,9 @@ const galleryGrid = document.getElementById('galleryGrid');
 const galleryCount = document.getElementById('galleryCount');
 const galleryStatus = document.getElementById('galleryStatus');
 let galleryItems = [];
+const GALLERY_CHUNK = 24;
+let galleryLoaded = 0;
+let gallerySentinel = null;
 const mediaModal = document.getElementById('mediaModal');
 const mmBody = document.getElementById('mmBody');
 const mmImage = document.getElementById('mmImage');
@@ -586,41 +606,66 @@ async function loadGallery() {
       grid.innerHTML = '<div class="gal-empty">Belum ada foto/video di folder download.</div>';
       return;
     }
-    for (const it of data.items) {
-      const cell = document.createElement('div');
-      cell.className = 'gal-cell';
-      const thumb = API + '/api/thumb?token=' + encodeURIComponent(it.token);
-      const media = API + '/api/media?token=' + encodeURIComponent(it.token);
-      cell.innerHTML =
-        '<div class="gal-thumb">' +
-          '<button class="del" title="Hapus" type="button">&#128465;</button>' +
-          '<div class="ext">' + escapeHtml(extOf(it.name)) + '</div>' +
-          '<img loading="lazy" src="' + thumb + '" alt="' + escapeHtml(it.name) + '" onerror="this.remove()">' +
-          (it.isVideo ? '<div class="gal-play"><span></span></div>' : '') +
-          (it.isVideo ? '<div class="gal-badge">' + escapeHtml(extOf(it.name)) + '</div>' : '') +
-        '</div>' +
-        '<div class="gal-info">' +
-          '<div class="n">' + escapeHtml(it.name) + '</div>' +
-          '<div class="m">' + fmt(it.size) + (it.modified > 0 ? ' \u00b7 ' + fmtDate(it.modified) : '') + '</div>' +
-        '</div>';
-      cell.addEventListener('click', function () {
-        openMedia(it, media, thumb);
-      });
-      cell.querySelector('.del').addEventListener('click', function (ev) {
-        ev.stopPropagation();
-        if (!confirm('Hapus file ini?\n' + it.name)) return;
-        doDeleteMedia(it.token, function () {
-          cell.remove();
-          const c = parseInt(galleryCount.textContent, 10);
-          if (!isNaN(c)) galleryCount.textContent = Math.max(0, c - 1) + ' file';
-        });
-      });
-      grid.appendChild(cell);
-    }
+    loadMoreGallery();
   } catch (e) {
     galleryStatus.textContent = 'Gagal memuat galeri: ' + e;
   }
 }
+
+function loadMoreGallery() {
+  const next = galleryItems.slice(galleryLoaded, galleryLoaded + GALLERY_CHUNK);
+  for (const it of next) renderGalleryCell(it);
+  galleryLoaded += next.length;
+  if (galleryLoaded < galleryItems.length) {
+    if (!gallerySentinel) {
+      gallerySentinel = document.createElement('div');
+      gallerySentinel.className = 'gal-sentinel';
+      galleryGrid.appendChild(gallerySentinel);
+    }
+  } else if (gallerySentinel) {
+    gallerySentinel.remove();
+    gallerySentinel = null;
+  }
+}
+
+function renderGalleryCell(it) {
+  const cell = document.createElement('div');
+  cell.className = 'gal-cell';
+  const thumb = API + '/api/thumb?token=' + encodeURIComponent(it.token);
+  const media = API + '/api/media?token=' + encodeURIComponent(it.token);
+  cell.innerHTML =
+    '<div class="gal-thumb">' +
+      '<button class="del" title="Hapus" type="button">&#128465;</button>' +
+      '<div class="ext">' + escapeHtml(extOf(it.name)) + '</div>' +
+      '<img loading="lazy" src="' + thumb + '" alt="' + escapeHtml(it.name) + '" onerror="this.remove()">' +
+      (it.isVideo ? '<div class="gal-play"><span></span></div>' : '') +
+      (it.isVideo ? '<div class="gal-badge">' + (it.durationMs > 0 ? mmFmtTime(it.durationMs / 1000) : escapeHtml(extOf(it.name))) + '</div>' : '') +
+    '</div>' +
+    '<div class="gal-info">' +
+      '<div class="n">' + escapeHtml(it.name) + '</div>' +
+      '<div class="m">' + fmt(it.size) + (it.modified > 0 ? ' \u00b7 ' + fmtDate(it.modified) : '') + '</div>' +
+    '</div>';
+  cell.addEventListener('click', function () {
+    openMedia(it, media, thumb);
+  });
+  cell.querySelector('.del').addEventListener('click', function (ev) {
+    ev.stopPropagation();
+    if (!confirm('Hapus file ini?\n' + it.name)) return;
+    doDeleteMedia(it.token, function () {
+      cell.remove();
+      const c = parseInt(galleryCount.textContent, 10);
+      if (!isNaN(c)) galleryCount.textContent = Math.max(0, c - 1) + ' file';
+    });
+  });
+  galleryGrid.insertBefore(cell, gallerySentinel);
+}
+
+window.addEventListener('scroll', function () {
+  if (gallerySentinel && gallerySentinel.offsetParent !== null) {
+    const r = gallerySentinel.getBoundingClientRect();
+    if (r.top < window.innerHeight + 300) loadMoreGallery();
+  }
+});
 
 // File manager
 let fsPath = '';
@@ -765,6 +810,9 @@ function renderFs(items) {
     if (it.kind === 'file') {
       meta = fmt(it.size);
       if (it.modified > 0) meta += ' \u00b7 ' + fmtDate(it.modified);
+    } else if (it.itemCount >= 0) {
+      meta = it.itemCount + ' item';
+      if (it.totalSize > 0) meta += ' \u00b7 ' + fmt(it.totalSize);
     }
     const selIdx = fsSelected.indexOf(it);
     const check = fsSelectMode

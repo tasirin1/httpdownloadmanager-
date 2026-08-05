@@ -700,6 +700,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
 
     private fun galleryJson(): Response {
         val arr = JSONArray()
+        val cache = loadVideoDurations()
+        var extracted = 0
         MediaLibrary.scan(context).forEach { e ->
             val o = JSONObject()
             o.put("name", e.name)
@@ -707,9 +709,48 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             o.put("modified", e.modified)
             o.put("isVideo", e.isVideo)
             o.put("token", e.token)
+            if (e.isVideo) {
+                var d = cache.optLong(e.token, 0L)
+                if (d <= 0 && extracted < 20) {
+                    d = videoDurationMs(e.token)
+                    if (d > 0) cache.put(e.token, d)
+                    extracted++
+                }
+                o.put("durationMs", d)
+            }
             arr.put(o)
         }
+        saveVideoDurations(cache)
         return jsonResponse(JSONObject().put("items", arr))
+    }
+
+    private fun videoDurationMs(token: String): Long {
+        val raw = MediaLibrary.decodeToken(token) ?: return 0L
+        return runCatching {
+            val mmr = MediaMetadataRetriever()
+            try {
+                when {
+                    raw.startsWith("f:") -> mmr.setDataSource(File(raw.substring(2)).absolutePath)
+                    raw.startsWith("u:") -> mmr.setDataSource(context, Uri.parse(raw.substring(2)))
+                    else -> return 0L
+                }
+                mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+            } finally {
+                runCatching { mmr.release() }
+            }
+        }.getOrDefault(0L)
+    }
+
+    private fun loadVideoDurations(): JSONObject {
+        val f = File(context.filesDir, "video_durations.json")
+        return runCatching { JSONObject(f.readText()) }.getOrDefault(JSONObject())
+    }
+
+    private fun saveVideoDurations(cache: JSONObject) {
+        if (cache.length() == 0) return
+        runCatching {
+            File(context.filesDir, "video_durations.json").writeText(cache.toString())
+        }
     }
 
     // ---------- File manager ----------
@@ -765,7 +806,19 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     o.put("kind", if (f.isDirectory) "dir" else "file")
                     o.put("size", if (f.isFile) f.length() else 0L)
                     o.put("modified", f.lastModified())
-                    if (!f.isDirectory) o.put("token", MediaLibrary.tokenForPath(f.absolutePath))
+                    if (f.isDirectory) {
+                        val children = runCatching { f.listFiles() }.getOrNull() ?: emptyArray()
+                        var itemCount = 0
+                        var totalSize = 0L
+                        for (c in children) {
+                            itemCount++
+                            if (c.isFile) totalSize += c.length()
+                        }
+                        o.put("itemCount", itemCount)
+                        o.put("totalSize", totalSize)
+                    } else {
+                        o.put("token", MediaLibrary.tokenForPath(f.absolutePath))
+                    }
                     items.put(o)
                 }
         }

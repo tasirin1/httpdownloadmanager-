@@ -1993,7 +1993,7 @@ function doAction(id, action) {
   if (action === 'delete') {
     const it = currentItems.find(function (x) { return x.id === id; });
     const label = it && it.fileName ? it.fileName : 'item ini';
-    showConfirm('Hapus item?', 'Hapus \"' + label + '\" dari daftar download? File di device TIDAK ikut terhapus.', 'Hapus', function () { doActionNow(id, action); });
+    showConfirm('Hapus item?', 'Hapus \"' + label + '\" dari daftar download? File di device juga ikut terhapus.', 'Hapus', function () { doActionNow(id, action); });
     return;
   }
   if (action === 'clear_completed') {

@@ -75,37 +75,20 @@
     <string name="about_title">About Download Manager</string>
     <string name="about_version">Version %1$s</string>
     <string name="about_author">Created by: Julius Rudi Tasirin</string>
+    <string name="about_repo">GitHub: github.com/tasirin1/httpdownloadmanager-</string>
     <string name="ok">OK</string>
-    <string name="about_changelog">Changelog:
-&#8226; Full-background remote server + QR code (URL shown on home screen)
-&#8226; Remote server PIN + login page
-&#8226; Configurable remote server port
-&#8226; Upload files from a browser on another device to device storage
-&#8226; List filters in the app and remote page (Active/Done/Failed)
-&#8226; Gallery with Photo/Video filter + file size and date
-&#8226; Open-folder button for finished downloads
-&#8226; Video quality picker for m3u8 (HLS) playlists
-&#8226; Automatic "unduhan_date_time" filename when the server sends no name
-&#8226; Auto-move finished files to Video/Photo subfolders (setting)
-&#8226; Pause all / Resume all / Retry failed buttons
-&#8226; Automatic retry with gradual backoff (5s &#8594; 10s &#8594; 20s &#8594; &#8230;)
-&#8226; Sort list (date, name, size, status)
-&#8226; Parallel multi-segment downloads (segment count configurable)
-&#8226; Battery and storage status on the remote page
-&#8226; Recent URL history with quick search
-&#8226; Per-download speed limit and priority
-&#8226; Stream and download files via remote browser
-&#8226; MD5/SHA1/SHA256 checksum verification
-&#8226; Full-storage detection + automatic .part cleanup
-&#8226; Crash logger ("Log error" button on the remote page)
-&#8226; Remote file manager: browse folders, upload, download, rename, move &amp; delete files
+    <string name="about_changelog">Changelog (main features):
+&#8226; Remote HTTP from browser: PIN login, QR code, custom port, background server + auto-start
+&#8226; YouTube-style remote gallery: 16:9 thumbnails, real video durations (cached), progressive loading
+&#8226; YouTube-style video player: seekbar + buffered, fullscreen, double-tap &#177;10s, related videos
+&#8226; Remote file manager: folder info, create folder, rename, move, bulk delete, ZIP
 &#8226; Upload multiple files at once with progress &amp; speed
-&#8226; Download folders as ZIP in the file manager
-&#8226; Multi-select mode (bulk delete/move) in the file manager
-&#8226; Search &amp; sort files in the file manager
-&#8226; Dark mode for the remote page
-&#8226; Real-time download speed graph
-&#8226; Upload streams directly to the destination folder (saves RAM &amp; cache space)</string>
+&#8226; Stream &amp; download files via browser (HTTP Range)
+&#8226; Parallel multi-segment downloads, resume, per-download speed limit &amp; priority
+&#8226; Automatic retry with gradual backoff, auto-start on boot
+&#8226; MD5/SHA1/SHA256 checksum verification
+&#8226; Theme follows system (auto/light/dark)
+&#8226; Indonesian/English, homescreen widget, direct URL sharing</string>
     <string name="checksum_hint_optional">Optional checksum (md5:/sha1:/sha256:) — e.g. md5:abcdef&#8230;</string>
     <string name="shortcut_add_download">Add Download</string>
     <string name="filter_all">All</string>

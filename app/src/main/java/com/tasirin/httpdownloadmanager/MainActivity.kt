@@ -1163,7 +1163,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             .setTitle(R.string.about_title)
             .setMessage(
                 getString(R.string.about_version, version) + "\n" +
-                    getString(R.string.about_author) + "\n\n" +
+                    getString(R.string.about_author) + "\n" +
+                    getString(R.string.about_repo) + "\n\n" +
                     getString(R.string.about_changelog)
             )
             .setPositiveButton(R.string.ok, null)

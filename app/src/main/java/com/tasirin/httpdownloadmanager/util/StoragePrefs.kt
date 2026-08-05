@@ -66,7 +66,7 @@ object StoragePrefs {
 
     fun isServerBackgroundEnabled(context: Context): Boolean =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getBoolean(KEY_SERVER_BACKGROUND, true)
+            .getBoolean(KEY_SERVER_BACKGROUND, false)
 
     fun setServerBackgroundEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()

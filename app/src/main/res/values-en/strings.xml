@@ -136,6 +136,8 @@
     <string name="clear_history">Clear history</string>
     <string name="settings_port_label">Remote server port</string>
     <string name="settings_port_hint">Port (1024–65535)</string>
+    <string name="settings_port_invalid">Invalid port (1024–65535)</string>
+    <string name="server_switch">Server</string>
     <string name="settings_segments">Parallel segments per download</string>
 
     <string name="previous_crash_title">Error log from previous launch</string>

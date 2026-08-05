@@ -33,6 +33,7 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.content.FileProvider
@@ -66,6 +67,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     private var activeStorageInput: EditText? = null
     private var storagePathEdited = false
     private var updatingStorageInput = false
+    private var updatingServerSwitch = false
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -134,6 +136,10 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         binding.recycler.adapter = adapter
 
         binding.fabAdd.setOnClickListener { showAddDialog() }
+
+        findViewById<SwitchCompat>(R.id.server_switch)?.setOnCheckedChangeListener { _, checked ->
+            if (!updatingServerSwitch) onServerSwitch(checked)
+        }
 
         binding.btnChangeStorageHome.setOnClickListener { showStorageDialog() }
 
@@ -250,6 +256,12 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     private fun updateServerStatus() {
         val tv = findViewById<TextView>(R.id.server_status) ?: return
         val alive = App.httpServer.isAlive
+        val sw = findViewById<SwitchCompat>(R.id.server_switch)
+        if (sw != null) {
+            updatingServerSwitch = true
+            sw.isChecked = alive
+            updatingServerSwitch = false
+        }
         tv.text = getString(
             if (alive) R.string.server_status_running else R.string.server_status_stopped
         )
@@ -276,6 +288,47 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 urlTv.visibility = View.GONE
                 qrIv.visibility = View.GONE
             }
+        }
+    }
+
+    /** On/off server remote dari switch di halaman utama. */
+    private fun onServerSwitch(enable: Boolean) {
+        if (enable) {
+            StoragePrefs.setServerBackgroundEnabled(this, true)
+            runCatching { App.httpServer.startServer() }
+                .onSuccess {
+                    Snackbar.make(
+                        binding.root,
+                        getString(R.string.remote_started, App.httpServer.listeningPort),
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                }
+                .onFailure {
+                    Snackbar.make(
+                        binding.root,
+                        getString(
+                            R.string.remote_start_failed,
+                            App.httpServer.lastError ?: it.message ?: "?"
+                        ),
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                }
+        } else {
+            StoragePrefs.setServerBackgroundEnabled(this, false)
+            App.httpServer.stopServer()
+            stopServiceIfIdle()
+            Snackbar.make(binding.root, R.string.remote_stopped, Snackbar.LENGTH_SHORT).show()
+        }
+        updateServerStatus()
+    }
+
+    /** Stop DownloadService bila tidak ada download aktif (server juga mati). */
+    private fun stopServiceIfIdle() {
+        val anyActive = App.engine.items.value.any {
+            it.state == DownloadState.DOWNLOADING || it.state == DownloadState.PENDING
+        }
+        if (!anyActive) {
+            runCatching { stopService(Intent(this, DownloadService::class.java)) }
         }
     }
 
@@ -920,8 +973,13 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                     this,
                     pinInput.text?.toString()?.trim().orEmpty()
                 )
-                if (checkServerBackground.isChecked && !App.httpServer.isAlive) {
+                // Sinkronkan server: mati otomatis bila "latar belakang" dimatikan
+                val wantServer = checkServerBackground.isChecked
+                if (wantServer && !App.httpServer.isAlive) {
                     runCatching { App.httpServer.startServer() }
+                } else if (!wantServer && App.httpServer.isAlive) {
+                    App.httpServer.stopServer()
+                    stopServiceIfIdle()
                 }
                 if (checkBattery.isChecked) {
                     requestBatteryExemption()
@@ -933,15 +991,21 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                     this,
                     segmentValues[spinnerSegments.selectedItemPosition]
                 )
-                val oldPort = App.httpServer.listeningPort
                 val newPort = portInput.text?.toString()?.trim()?.toIntOrNull()
-                    ?: StoragePrefs.DEFAULT_PORT
-                StoragePrefs.setServerPort(this, newPort)
-                if (App.httpServer.isAlive && newPort != oldPort) {
-                    runCatching { App.httpServer.stopServer() }
-                    runCatching { App.httpServer.startServer() }
-                    updateServerStatus()
+                if (newPort == null || newPort !in 1024..65535) {
+                    Toast.makeText(
+                        this, R.string.settings_port_invalid, Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    val oldPort = App.httpServer.listeningPort
+                    StoragePrefs.setServerPort(this, newPort)
+                    if (newPort != oldPort) {
+                        // NanoHTTPD mengunci port saat konstruksi, jadi server
+                        // dibuat ulang agar port baru benar-benar terpakai.
+                        App.restartHttpServer()
+                    }
                 }
+                updateServerStatus()
             }
             .show()
         dialog.setOnDismissListener { clearActiveStorageUi() }
@@ -974,18 +1038,15 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             .setNegativeButton(R.string.cancel, null)
         if (server.isAlive) {
             builder.setPositiveButton(R.string.remote_stop) { _, _ ->
+                StoragePrefs.setServerBackgroundEnabled(this, false)
                 server.stopServer()
                 updateServerStatus()
-                val anyActive = App.engine.items.value.any {
-                    it.state == DownloadState.DOWNLOADING || it.state == DownloadState.PENDING
-                }
-                if (!anyActive) {
-                    runCatching { stopService(Intent(this, DownloadService::class.java)) }
-                }
+                stopServiceIfIdle()
                 Snackbar.make(binding.root, R.string.remote_stopped, Snackbar.LENGTH_SHORT).show()
             }
         } else {
             builder.setPositiveButton(R.string.remote_start) { _, _ ->
+                StoragePrefs.setServerBackgroundEnabled(this, true)
                 runCatching { server.startServer() }
                     .onSuccess {
                         updateServerStatus()

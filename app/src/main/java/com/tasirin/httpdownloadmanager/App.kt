@@ -27,6 +27,18 @@ class App : Application() {
         }
     }
 
+    /** Buat ulang server remote dengan port terbaru dari prefs.
+     *  NanoHTTPD mengunci port saat konstruksi, jadi ganti port = instance baru.
+     *  Server tetap hidup bila sebelumnya hidup. */
+    fun restartHttpServer() {
+        val wasAlive = httpServer.isAlive
+        runCatching { httpServer.stopServer() }
+        httpServer = HttpControlServer(this)
+        if (wasAlive) {
+            runCatching { httpServer.startServer() }
+        }
+    }
+
     private fun installCrashLogger() {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->

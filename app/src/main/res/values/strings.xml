@@ -85,6 +85,7 @@
 &#8226; Upload banyak file sekaligus: dipecah per potongan, retry otomatis, upload folder utuh + drag &amp; drop, nama duplikat otomatis (file (1).ext), konfirmasi saat tutup halaman
 &#8226; Nama duplikat di folder tujuan otomatis diganti saat download selesai (file (1).ext, file (2).ext, dst.) di semua lokasi simpan
 &#8226; Halaman remote: item aktif di urutan atas, total kecepatan live di bar atas, menu aksi &#8220;&#8943;&#8221; di layar HP, konfirmasi sebelum hapus/bersihkan daftar
+&#8226; File manager remote: breadcrumb tap-able, menu aksi &#8220;&#8943;&#8221; (bottom-sheet di HP), dialog rename/pindah/hapus yang rapi, long-press untuk pilih massal, ketuk file media langsung pratinjau
 &#8226; Streaming &amp; download file via browser (HTTP Range)
 &#8226; Download multi-segmen paralel, resume, batas kecepatan &amp; prioritas per-download
 &#8226; Retry otomatis dengan jeda bertahap, auto-start saat boot

@@ -85,6 +85,7 @@
 &#8226; Upload multiple files at once: chunked with automatic retry, whole-folder upload + drag &amp; drop, automatic duplicate rename (file (1).ext), close-page confirmation
 &#8226; Duplicate names in the destination are auto-renamed on download completion (file (1).ext, file (2).ext, etc.) for every save location
 &#8226; Remote page: active downloads pinned to the top, live total speed in the top bar, &#8220;&#8943;&#8221; action menu on phones, confirmation before delete/clear list
+&#8226; Remote file manager: tappable breadcrumbs, &#8220;&#8943;&#8221; action menu (bottom sheet on phones), neat rename/move/delete dialogs, long-press for multi-select, tap media files to preview
 &#8226; Stream &amp; download files via browser (HTTP Range)
 &#8226; Parallel multi-segment downloads, resume, per-download speed limit &amp; priority
 &#8226; Automatic retry with gradual backoff, auto-start on boot

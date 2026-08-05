@@ -37,7 +37,6 @@ Fitur halaman remote:
 
 - **Tampilan mobile**: tombol FAB "+" untuk tambah download, menu aksi item ala bottom-sheet (anti salah pencet), topbar lebih ringkas
 - **Update real-time (SSE)**: halaman remote tidak lagi polling tiap 1,5 detik — progress & status datang langsung dari device lewat event stream; fallback polling otomatis jika jaringan memblokir streaming
-- **Atur kecepatan global dari browser**: slider "Kecepatan global" di halaman remote langsung mempengaruhi semua download yang berjalan (berlaku instan, tanpa buka aplikasi)
 - Manajemen download: tambah URL, pantau progress, jeda/lanjut/batalkan/hapus, filter & urutkan
 - **Item aktif otomatis di urutan atas** + **total kecepatan live di bar atas** (jumlah download aktif)
 - Di layar HP, tombol aksi item dipadatkan ke menu **"⋯"**; hapus item & bersihkan daftar kini memakai dialog konfirmasi

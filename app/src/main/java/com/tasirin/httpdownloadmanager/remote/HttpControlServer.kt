@@ -83,8 +83,6 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     session.method == Method.GET && session.uri == "/api/downloads" -> downloadsJson()
                     session.method == Method.GET && session.uri == "/api/status" -> statusJson()
                     session.method == Method.GET && session.uri == "/api/events" -> sseResponse()
-                    session.method == Method.GET && session.uri == "/api/settings" -> settingsJson()
-                    session.method == Method.POST && session.uri == "/api/speed" -> setSpeed(session)
                     session.method == Method.POST && session.uri == "/api/share" -> createShare(session)
                     session.method == Method.GET && session.uri == "/api/qr" -> qrPngResponse(session)
                     session.method == Method.GET && session.uri == "/api/gallery" -> galleryJson()
@@ -1155,29 +1153,6 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             status == BatteryManager.BATTERY_STATUS_FULL
         pct to charging
     }.getOrDefault(-1 to false)
-
-    // ---------- Pengaturan & batas kecepatan global ----------
-
-    private fun settingsJson(): Response {
-        val obj = JSONObject()
-        obj.put("speedLimitKbps", StoragePrefs.speedLimitKbps(context))
-        obj.put("maxConcurrent", StoragePrefs.maxConcurrent(context))
-        obj.put("segments", StoragePrefs.segmentCount(context))
-        obj.put("port", listeningPort)
-        return jsonResponse(obj)
-    }
-
-    private fun setSpeed(session: IHTTPSession): Response {
-        val params = readForm(session)
-        val kbps = params["kbps"]?.toIntOrNull()
-        if (kbps == null || kbps < 0 || kbps > 100_000) {
-            return jsonResponse(
-                JSONObject().put("ok", false).put("error", "nilai tidak valid (0-100000)")
-            )
-        }
-        App.engine.setGlobalSpeedLimitKbps(kbps)
-        return jsonResponse(JSONObject().put("ok", true).put("speedLimitKbps", kbps))
-    }
 
     // ---------- SSE: update real-time ----------
 

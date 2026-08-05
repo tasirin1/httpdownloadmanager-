@@ -265,11 +265,6 @@
   .status-card .refresh-btn:hover { color: var(--primary); border-color: var(--primary); }
   #lastUpd { font-size: 11px; opacity: .85; }
   .status-card.offline .dot { background: var(--red); box-shadow: 0 0 0 3px var(--red-bg); animation: dotBlink 1.1s ease-in-out infinite; }
-  .speed-ctl { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding: 12px 16px; }
-  .speed-ctl .sc-lbl { font-size: 13px; font-weight: 700; white-space: nowrap; }
-  .speed-ctl input[type="range"] { flex: 1; min-width: 150px; padding: 0; border: 0; background: transparent; box-shadow: none; accent-color: var(--primary); }
-  .speed-ctl input[type="range"]:focus { box-shadow: none; }
-  .speed-ctl .sc-val { font-size: 12.5px; color: var(--muted); white-space: nowrap; min-width: 78px; text-align: right; font-variant-numeric: tabular-nums; }
   @keyframes dotBlink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
   .empty { padding: 46px 16px; text-align: center; color: var(--muted); }
   .empty .ico { font-size: 46px; line-height: 1; display: block; }
@@ -355,12 +350,6 @@
 <div class="wrap">
   <div class="status-card" id="deviceStatus">
     <span><span class="dot"></span>Menghubungkan ke device…</span>
-  </div>
-
-  <div class="speed-ctl card" id="speedCtl">
-    <span class="sc-lbl">&#9889; Kecepatan global</span>
-    <input id="speedRange" type="range" min="0" max="10000" step="128" value="0">
-    <span class="sc-val" id="speedVal">Tanpa batas</span>
   </div>
 
   <div class="toolbar" id="downloadsToolbar">
@@ -636,35 +625,6 @@ async function refreshStatus() {
     el.classList.add('offline');
     el.innerHTML = '<span><span class="dot"></span><b>Server tidak terhubung</b> — mulai server dari aplikasi</span>';
   }
-}
-
-const speedRange = document.getElementById('speedRange');
-const speedVal = document.getElementById('speedVal');
-function fmtKbps(k) {
-  if (k <= 0) return 'Tanpa batas';
-  if (k >= 1024) return (k / 1024).toFixed(1) + ' MB/s';
-  return k + ' KB/s';
-}
-function updateSpeedLabel() {
-  speedVal.textContent = fmtKbps(parseInt(speedRange.value, 10) || 0);
-}
-let speedTimer = null;
-speedRange.addEventListener('input', function () {
-  updateSpeedLabel();
-  clearTimeout(speedTimer);
-  speedTimer = setTimeout(function () {
-    const body = new URLSearchParams({kbps: speedRange.value});
-    fetch(API + '/api/speed', {method: 'POST', body}).catch(function () {});
-  }, 400);
-});
-async function loadSettings() {
-  try {
-    const res = await fetch(API + '/api/settings');
-    if (!res.ok) return;
-    const st = await res.json();
-    speedRange.value = st.speedLimitKbps || 0;
-    updateSpeedLabel();
-  } catch (e) {}
 }
 
 const galleryView = document.getElementById('galleryView');
@@ -2357,7 +2317,6 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
 window.addEventListener('hashchange', applyRoute);
 applyRoute();
 refreshStatus();
-loadSettings();
 let sse = null;
 let sseFailCount = 0;
 function connectEvents() {

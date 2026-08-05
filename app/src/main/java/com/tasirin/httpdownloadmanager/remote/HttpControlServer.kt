@@ -51,8 +51,11 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         return try {
             when {
                 session.method == Method.POST && session.uri == "/api/login" -> login(session)
+                session.method == Method.GET && session.uri == "/api/logout" -> logout()
                 pinOk(session) -> when {
                     session.method == Method.GET && session.uri == "/" -> htmlPage()
+                    session.method == Method.GET && session.uri == "/api/pin_enabled" ->
+                        jsonResponse(JSONObject().put("enabled", pinEnabled()))
                     session.method == Method.GET && session.uri == "/api/downloads" -> downloadsJson()
                     session.method == Method.GET && session.uri == "/api/status" -> statusJson()
                     session.method == Method.GET && session.uri == "/api/gallery" -> galleryJson()
@@ -156,6 +159,17 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         } else {
             loginPage("PIN salah, coba lagi.")
         }
+    }
+
+    private fun logout(): Response {
+        val r = newFixedLengthResponse(
+            Response.Status.REDIRECT,
+            "text/html",
+            "<html><body>OK</body></html>"
+        )
+        r.addHeader("Set-Cookie", "dm_pin=; Max-Age=0; Path=/")
+        r.addHeader("Location", "/")
+        return r
     }
 
     private fun loginPage(error: String): Response {
@@ -274,14 +288,29 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     .put("error", "Penyimpanan tidak cukup untuk upload")
             )
         }
+        val finalName = uploadUniqueName(name, folderPath)
         return runCatching {
-            App.engine.importStream(name, storage, folderPath, length) { out ->
+            App.engine.importStream(finalName, storage, folderPath, length) { out ->
                 copyUploadBody(session, length, out)
             }
-            jsonResponse(JSONObject().put("ok", true).put("name", name))
+            jsonResponse(JSONObject().put("ok", true).put("name", finalName))
         }.getOrElse {
             jsonResponse(JSONObject().put("ok", false).put("error", it.message ?: "gagal upload"))
         }
+    }
+
+    private fun uploadUniqueName(name: String, folderPath: String): String {
+        val clean = folderPath.trim().removePrefix("f:")
+        if (clean.isBlank() || clean.startsWith("m:")) return name
+        val dir = File(clean)
+        if (!dir.isDirectory) return name
+        if (!File(dir, name).exists()) return name
+        val dot = name.lastIndexOf('.')
+        val base = if (dot > 0) name.substring(0, dot) else name
+        val ext = if (dot > 0) name.substring(dot) else ""
+        var i = 1
+        while (File(dir, "$base ($i)$ext").exists()) i++
+        return "$base ($i)$ext"
     }
 
     private fun handleUploadChunk(
@@ -338,8 +367,9 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                         JSONObject().put("ok", false).put("error", "Penyimpanan tidak cukup untuk upload")
                     )
                 }
+                val finalName = uploadUniqueName(name, folderPath)
                 try {
-                    App.engine.importStream(name, storage, folderPath, tmp.length()) { out ->
+                    App.engine.importStream(finalName, storage, folderPath, tmp.length()) { out ->
                         tmp.inputStream().use { it.copyTo(out) }
                     }
                 } finally {

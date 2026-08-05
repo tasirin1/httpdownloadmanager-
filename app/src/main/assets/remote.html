@@ -627,9 +627,11 @@ document.getElementById('mmBack').addEventListener('click', closeMedia);
 
 document.addEventListener('fullscreenchange', function () {
   mmFsBtn.innerHTML = document.fullscreenElement ? ICONS.fsx : ICONS.fs;
+  if (!document.fullscreenElement) mmUnlockOrientation();
 });
 document.addEventListener('webkitfullscreenchange', function () {
   mmFsBtn.innerHTML = document.webkitFullscreenElement ? ICONS.fsx : ICONS.fs;
+  if (!document.webkitFullscreenElement) mmUnlockOrientation();
 });
 
 async function loadGallery() {
@@ -999,7 +1001,10 @@ document.getElementById('fsMkdirBtn').addEventListener('click', async function (
 
 const UPLOAD_CHUNK = 2 * 1024 * 1024;
 
+let fsUploading = false;
+
 function uploadFiles(files, path, statusEl, progressBox, progressText, progressPct, progressBar, done) {
+  fsUploading = true;
   const jobs = Array.from(files).map(function (f) {
     return (f && f.file) ? f : { file: f, path: path };
   });
@@ -1095,6 +1100,7 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
     idx++;
     if (idx >= total) {
       progressBox.classList.add('hidden');
+      fsUploading = false;
       if (done) done(failed.length === 0, failed);
       return;
     }
@@ -1103,6 +1109,38 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
 
   uploadOne(jobs[0], 1);
 }
+
+window.addEventListener('beforeunload', function (e) {
+  if (!fsUploading) return;
+  e.preventDefault();
+  e.returnValue = '';
+  return '';
+});
+
+// Auto-lock: minta PIN lagi setelah 10 menit tanpa aktivitas
+(function () {
+  const LOCK_MS = 10 * 60 * 1000;
+  let timer = null;
+  let lastMove = 0;
+  function arm() {
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      window.location.href = API + '/api/logout';
+    }, LOCK_MS);
+  }
+  fetch(API + '/api/pin_enabled').then(function (r) { return r.json(); }).then(function (d) {
+    if (!d || !d.enabled) return;
+    arm();
+    document.addEventListener('click', arm, { passive: true });
+    document.addEventListener('touchstart', arm, { passive: true });
+    document.addEventListener('keydown', arm, { passive: true });
+    document.addEventListener('scroll', arm, { passive: true });
+    document.addEventListener('mousemove', function () {
+      const now = Date.now();
+      if (now - lastMove > 1000) { lastMove = now; arm(); }
+    }, { passive: true });
+  }).catch(function () {});
+})();
 
 function fsUploadJobsFrom(files) {
   return Array.from(files).map(function (f) {
@@ -1329,14 +1367,36 @@ mmMuteBtn.addEventListener('click', function () {
   mmMuteBtn.innerHTML = mmVideo.muted ? ICONS.mute : ICONS.sound;
 });
 
+function mmLockLandscape() {
+  try {
+    if (screen.orientation && screen.orientation.lock) {
+      const p = screen.orientation.lock('landscape');
+      if (p && p.catch) p.catch(function () {});
+    } else if (screen.lockOrientation) {
+      screen.lockOrientation('landscape');
+    }
+  } catch (e) {}
+}
+function mmUnlockOrientation() {
+  try {
+    if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+    else if (screen.unlockOrientation) screen.unlockOrientation();
+  } catch (e) {}
+}
 mmFsBtn.addEventListener('click', function () {
   const el = mmPlayer;
   const req = el.requestFullscreen || el.webkitRequestFullscreen;
   const exit = document.exitFullscreen || document.webkitExitFullscreen;
   if (document.fullscreenElement || document.webkitFullscreenElement) {
+    mmUnlockOrientation();
     if (exit) exit.call(document);
   } else if (req) {
-    req.call(el);
+    const p = req.call(el);
+    if (p && p.then) {
+      p.then(function () { mmLockLandscape(); }).catch(function () {});
+    } else {
+      mmLockLandscape();
+    }
   }
 });
 

@@ -80,14 +80,15 @@
     <string name="about_changelog">Catatan perubahan (fitur utama):
 &#8226; Remote HTTP dari browser: PIN login, QR code, port custom, server latar belakang + auto-start
 &#8226; Galeri remote ala YouTube: thumbnail 16:9, durasi video asli (cache), load bertahap
-&#8226; Player video ala YouTube: seekbar + buffered, fullscreen, double-tap &#177;10 dtk, gesture kecerahan/volume, lanjut dari posisi terakhir, saran video
+&#8226; Player video ala YouTube: seekbar + buffered, fullscreen otomatis landscape, double-tap &#177;10 dtk, gesture kecerahan/volume, lanjut dari posisi terakhir, saran video
 &#8226; File manager remote: info isi folder, buat folder, rename, pindah, hapus massal, ZIP
-&#8226; Upload banyak file sekaligus: dipecah per potongan, retry otomatis saat koneksi putus, upload folder utuh + drag &amp; drop, progress &amp; kecepatan
+&#8226; Upload banyak file sekaligus: dipecah per potongan, retry otomatis, upload folder utuh + drag &amp; drop, nama duplikat otomatis (file (1).ext), konfirmasi saat tutup halaman
 &#8226; Streaming &amp; download file via browser (HTTP Range)
 &#8226; Download multi-segmen paralel, resume, batas kecepatan &amp; prioritas per-download
 &#8226; Retry otomatis dengan jeda bertahap, auto-start saat boot
 &#8226; Verifikasi checksum MD5/SHA1/SHA256
 &#8226; Tema ikuti sistem (otomatis/terang/gelap)
+&#8226; Kunci otomatis halaman remote setelah 10 menit idle (PIN diminta lagi)
 &#8226; Bahasa Indonesia/Inggris, widget homescreen, share URL langsung</string>
     <string name="checksum_hint_optional">Checksum opsional (md5:/sha1:/sha256:) — contoh md5:abcdef&#8230;</string>
     <string name="shortcut_add_download">Tambah Download</string>

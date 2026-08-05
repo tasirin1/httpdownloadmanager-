@@ -470,6 +470,7 @@ const ICONS = {
 };
 let mmType = 'image';
 let mmTimer = null;
+let mmTapTimer = null;
 let mmLastTap = 0;
 let mmLastTapX = 0;
 
@@ -1068,10 +1069,6 @@ mmPlayBtn.addEventListener('click', function () {
   if (mmVideo.paused) mmVideo.play(); else mmVideo.pause();
 });
 
-mmBigPlay.addEventListener('click', function () {
-  if (mmVideo.paused) mmVideo.play(); else mmVideo.pause();
-});
-
 mmSeek.addEventListener('input', function () {
   const d = mmVideo.duration || 0;
   if (!d) return;
@@ -1102,8 +1099,11 @@ mmPlayer.addEventListener('click', function (e) {
   if (e.target.closest('#mmCtrl')) return;
   const now = Date.now();
   const dt = now - mmLastTap;
+  const prevX = mmLastTapX;
   mmLastTap = now;
-  if (dt < 350 && Math.abs(e.clientX - mmLastTapX) < 80) {
+  mmLastTapX = e.clientX;
+  if (dt < 350 && Math.abs(e.clientX - prevX) < 80 && !mmVideo.paused) {
+    clearTimeout(mmTapTimer);
     const d = mmVideo.duration || 0;
     if (d) {
       const delta = e.clientX < window.innerWidth / 2 ? -10 : 10;
@@ -1111,11 +1111,19 @@ mmPlayer.addEventListener('click', function (e) {
       mmShowToast((delta > 0 ? '+10' : '-10') + ' dtk');
       mmSeekUI();
     }
+    mmShowCtrl();
     return;
   }
-  mmLastTapX = e.clientX;
-  if (mmVideo.paused) mmVideo.play(); else mmVideo.pause();
-  mmShowCtrl();
+  if (mmVideo.paused) {
+    mmVideo.play();
+    mmShowCtrl();
+  } else {
+    clearTimeout(mmTapTimer);
+    mmTapTimer = setTimeout(function () {
+      mmVideo.pause();
+      mmShowCtrl();
+    }, 220);
+  }
 });
 
 mmPlayer.addEventListener('mousemove', mmShowCtrl);

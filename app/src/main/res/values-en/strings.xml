@@ -80,9 +80,9 @@
     <string name="about_changelog">Changelog (main features):
 &#8226; Remote HTTP from browser: PIN login, QR code, custom port, background server + auto-start
 &#8226; YouTube-style remote gallery: 16:9 thumbnails, real video durations (cached), progressive loading
-&#8226; YouTube-style video player: seekbar + buffered, fullscreen, double-tap &#177;10s, related videos
+&#8226; YouTube-style video player: seekbar + buffered, fullscreen, double-tap &#177;10s, brightness/volume gestures, resume from last position, related videos
 &#8226; Remote file manager: folder info, create folder, rename, move, bulk delete, ZIP
-&#8226; Upload multiple files at once: chunked with automatic retry on disconnect, progress &amp; speed
+&#8226; Upload multiple files at once: chunked with automatic retry on disconnect, whole-folder upload + drag &amp; drop, progress &amp; speed
 &#8226; Stream &amp; download files via browser (HTTP Range)
 &#8226; Parallel multi-segment downloads, resume, per-download speed limit &amp; priority
 &#8226; Automatic retry with gradual backoff, auto-start on boot

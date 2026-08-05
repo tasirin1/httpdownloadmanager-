@@ -80,9 +80,9 @@
     <string name="about_changelog">Catatan perubahan (fitur utama):
 &#8226; Remote HTTP dari browser: PIN login, QR code, port custom, server latar belakang + auto-start
 &#8226; Galeri remote ala YouTube: thumbnail 16:9, durasi video asli (cache), load bertahap
-&#8226; Player video ala YouTube: seekbar + buffered, fullscreen, double-tap &#177;10 dtk, saran video
+&#8226; Player video ala YouTube: seekbar + buffered, fullscreen, double-tap &#177;10 dtk, gesture kecerahan/volume, lanjut dari posisi terakhir, saran video
 &#8226; File manager remote: info isi folder, buat folder, rename, pindah, hapus massal, ZIP
-&#8226; Upload banyak file sekaligus: dipecah per potongan, retry otomatis saat koneksi putus, progress &amp; kecepatan
+&#8226; Upload banyak file sekaligus: dipecah per potongan, retry otomatis saat koneksi putus, upload folder utuh + drag &amp; drop, progress &amp; kecepatan
 &#8226; Streaming &amp; download file via browser (HTTP Range)
 &#8226; Download multi-segmen paralel, resume, batas kecepatan &amp; prioritas per-download
 &#8226; Retry otomatis dengan jeda bertahap, auto-start saat boot

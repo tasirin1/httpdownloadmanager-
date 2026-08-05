@@ -138,6 +138,12 @@
   .fs-tools { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; margin-bottom: 8px; }
   .fs-tools button { flex: 1 1 0; min-width: 0; padding: 8px 12px; font-size: 12.5px; font-weight: 600; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; transition: all .15s ease; }
   .fs-tools button:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+  .fs-up-wrap { position: relative; flex: 1 1 0; min-width: 0; display: flex; }
+  .fs-up-wrap > button { width: 100%; }
+  #fsUpMenu { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px; box-shadow: var(--shadow); }
+  #fsUpMenu button { display: block; width: 100%; padding: 9px 10px; font-size: 12.5px; font-weight: 600; border: 0; border-radius: 8px; background: transparent; color: var(--ink); cursor: pointer; text-align: left; }
+  #fsUpMenu button:hover { background: var(--bg-soft); color: var(--primary); }
+  .fs-drag { outline: 2px dashed var(--primary); outline-offset: -3px; border-radius: 10px; }
   .fs-upload { margin: 0 0 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); box-shadow: var(--shadow-sm); }
   .fs-upload-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
   .fs-upload-head span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -327,10 +333,17 @@
   <div id="fsPath" class="fs-path"></div>
   <div class="fs-tools" id="fsToolsRow">
     <button id="fsMkdirBtn" type="button">&#128193; Folder</button>
-    <button id="fsUploadBtn" type="button">&#11014; Upload</button>
+    <span class="fs-up-wrap">
+      <button id="fsUploadBtn" type="button">&#11014; Upload</button>
+      <div id="fsUpMenu" class="hidden">
+        <button type="button" data-up="file">&#128196; Upload file&hellip;</button>
+        <button type="button" data-up="dir">&#128193; Upload folder&hellip;</button>
+      </div>
+    </span>
     <button id="fsSelectBtn" type="button">&#9989; Pilih</button>
   </div>
   <input id="fsUploadFile" type="file" class="hidden" multiple>
+  <input id="fsUploadDir" type="file" class="hidden" webkitdirectory multiple>
     <div id="fsBatch" class="fs-batch hidden">
       <span id="fsBatchCount"></span>
       <button id="fsBatchMove" type="button">&#10145; Pindah</button>
@@ -508,6 +521,9 @@ let mmTimer = null;
 let mmTapTimer = null;
 let mmLastTap = 0;
 let mmLastTapX = 0;
+let mmCurrentToken = '';
+let mmLastSave = 0;
+let mmGesture = null;
 
 galleryBtn.addEventListener('click', function () {
   location.hash = (currentRoute() === 'gallery') ? '#/' : '#/gallery';
@@ -542,6 +558,31 @@ function mmHideCtrl() {
   clearTimeout(mmTimer);
 }
 
+function vposKey(token) {
+  return 'dm_vpos_' + token;
+}
+
+function saveVideoPos(token) {
+  if (!token || mmType !== 'video') return;
+  const d = mmVideo.duration || 0;
+  const t = mmVideo.currentTime || 0;
+  if (d <= 0) return;
+  if (t < 5 || d - t < 10) {
+    try { localStorage.removeItem(vposKey(token)); } catch (e) {}
+    return;
+  }
+  try { localStorage.setItem(vposKey(token), JSON.stringify({ t: t, d: d })); } catch (e) {}
+}
+
+function loadVideoPos(token) {
+  try {
+    const raw = localStorage.getItem(vposKey(token));
+    if (!raw) return 0;
+    const o = JSON.parse(raw);
+    return (o && typeof o.t === 'number' && o.t > 0) ? o.t : 0;
+  } catch (e) { return 0; }
+}
+
 function mmSeekUI() {
   const d = mmVideo.duration || 0;
   const t = mmVideo.currentTime || 0;
@@ -559,6 +600,9 @@ function mmUpdateBuffer() {
 }
 
 function closeMedia() {
+  saveVideoPos(mmCurrentToken);
+  mmPlayer.style.filter = '';
+  mmGesture = null;
   mediaModal.classList.remove('open');
   document.body.style.overflow = '';
   mmVideo.pause();
@@ -683,6 +727,7 @@ const fsSelectBtn = document.getElementById('fsSelectBtn');
 const fsBatch = document.getElementById('fsBatch');
 const fsToolsRow = document.getElementById('fsToolsRow');
 const fsUploadFile = document.getElementById('fsUploadFile');
+const fsUploadDir = document.getElementById('fsUploadDir');
 
 fsBtn.addEventListener('click', function () {
   location.hash = (currentRoute() === 'files') ? '#/' : '#/files';
@@ -955,19 +1000,24 @@ document.getElementById('fsMkdirBtn').addEventListener('click', async function (
 const UPLOAD_CHUNK = 2 * 1024 * 1024;
 
 function uploadFiles(files, path, statusEl, progressBox, progressText, progressPct, progressBar, done) {
-  const total = files.length;
+  const jobs = Array.from(files).map(function (f) {
+    return (f && f.file) ? f : { file: f, path: path };
+  });
+  const total = jobs.length;
   if (!total) return;
   const failed = [];
   let idx = 0;
   let sentBytes = 0;
   let totalBytes = 0;
-  for (const f of files) totalBytes += f.size;
+  for (const j of jobs) totalBytes += j.file.size;
   let lastBytes = 0;
   let lastTime = Date.now();
   let speed = 0;
   progressBox.classList.remove('hidden');
 
-  function uploadOne(file, attempt) {
+  function uploadOne(job, attempt) {
+    const file = job.file;
+    const target = job.path;
     statusEl.textContent = 'Mengunggah ' + file.name + ' (' + (idx + 1) + '/' + total + ')' +
       (attempt > 1 ? ' \u00b7 coba ke-' + attempt : '') + ' \u2026';
     progressText.textContent = file.name + (attempt > 1 ? ' (coba ' + attempt + ')' : '');
@@ -986,7 +1036,7 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
       const end = Math.min(start + UPLOAD_CHUNK, file.size);
       const xhr = new XMLHttpRequest();
       xhr.open('POST', API + '/api/upload?name=' + encodeURIComponent(file.name) +
-        '&path=' + encodeURIComponent(path) +
+        '&path=' + encodeURIComponent(target) +
         '&id=' + encodeURIComponent(id) +
         '&chunk=' + chunkIdx + '&chunks=' + chunks);
       xhr.upload.onprogress = function (e) {
@@ -1030,7 +1080,7 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
         return;
       }
       if (attempt < 3) {
-        setTimeout(function () { uploadOne(file, attempt + 1); }, 800);
+        setTimeout(function () { uploadOne(job, attempt + 1); }, 800);
         return;
       }
       failed.push(file.name);
@@ -1048,28 +1098,27 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
       if (done) done(failed.length === 0, failed);
       return;
     }
-    uploadOne(files[idx], 1);
+    uploadOne(jobs[idx], 1);
   }
 
-  uploadOne(files[0], 1);
+  uploadOne(jobs[0], 1);
 }
 
-document.getElementById('fsUploadBtn').addEventListener('click', function () {
-  if (!fsPath) {
-    fsMsg('Buka folder tujuan dulu', true);
-    return;
-  }
-  fsUploadFile.value = '';
-  fsUploadFile.click();
-});
+function fsUploadJobsFrom(files) {
+  return Array.from(files).map(function (f) {
+    const rel = f.webkitRelativePath || '';
+    const idx = rel.lastIndexOf('/');
+    const sub = idx > 0 ? rel.slice(0, idx) : '';
+    return { file: f, path: sub ? (fsPath ? fsPath + '/' + sub : sub) : fsPath };
+  });
+}
 
-fsUploadFile.addEventListener('change', function () {
-  const files = Array.from(fsUploadFile.files);
-  if (!files.length) return;
+function startFsUpload(jobs) {
+  if (!jobs.length) return;
   const btn = document.getElementById('fsUploadBtn');
   btn.disabled = true;
   uploadFiles(
-    files,
+    jobs,
     fsPath,
     fsStatus,
     document.getElementById('fsProgressBox'),
@@ -1079,14 +1128,76 @@ fsUploadFile.addEventListener('change', function () {
     function (ok, failed) {
       btn.disabled = false;
       fsUploadFile.value = '';
+      fsUploadDir.value = '';
       if (ok) {
-        fsMsg('Selesai: ' + files.length + ' file diunggah');
+        fsMsg('Selesai: ' + jobs.length + ' file diunggah');
       } else {
-        fsMsg(files.length - failed.length + ' berhasil, ' + failed.length + ' gagal: ' + failed.join(', '), true);
+        fsMsg(jobs.length - failed.length + ' berhasil, ' + failed.length + ' gagal: ' + failed.join(', '), true);
       }
       loadFs();
     }
   );
+}
+
+document.getElementById('fsUploadBtn').addEventListener('click', function () {
+  if (!fsPath) {
+    fsMsg('Buka folder tujuan dulu', true);
+    return;
+  }
+  document.getElementById('fsUpMenu').classList.toggle('hidden');
+});
+
+document.getElementById('fsUpMenu').addEventListener('click', function (e) {
+  const item = e.target.closest('button[data-up]');
+  if (!item) return;
+  this.classList.add('hidden');
+  if (!fsPath) {
+    fsMsg('Buka folder tujuan dulu', true);
+    return;
+  }
+  if (item.getAttribute('data-up') === 'dir') {
+    fsUploadDir.value = '';
+    fsUploadDir.click();
+  } else {
+    fsUploadFile.value = '';
+    fsUploadFile.click();
+  }
+});
+
+document.addEventListener('click', function (e) {
+  const menu = document.getElementById('fsUpMenu');
+  if (!menu.classList.contains('hidden') && !e.target.closest('.fs-up-wrap')) {
+    menu.classList.add('hidden');
+  }
+});
+
+fsUploadFile.addEventListener('change', function () {
+  const jobs = fsUploadJobsFrom(fsUploadFile.files);
+  if (!jobs.length) return;
+  startFsUpload(jobs);
+});
+
+fsUploadDir.addEventListener('change', function () {
+  const jobs = fsUploadJobsFrom(fsUploadDir.files);
+  if (!jobs.length) return;
+  startFsUpload(jobs);
+});
+
+fsList.addEventListener('dragover', function (e) {
+  if (!fsPath) return;
+  e.preventDefault();
+  fsList.classList.add('fs-drag');
+});
+fsList.addEventListener('dragleave', function () {
+  fsList.classList.remove('fs-drag');
+});
+fsList.addEventListener('drop', function (e) {
+  e.preventDefault();
+  fsList.classList.remove('fs-drag');
+  if (!fsPath) return;
+  const dt = e.dataTransfer;
+  if (!dt || !dt.files || !dt.files.length) return;
+  startFsUpload(fsUploadJobsFrom(dt.files));
 });
 
 function extOf(name) {
@@ -1116,6 +1227,8 @@ async function doDeleteMedia(token, ok) {
 
 function openMedia(it, src, thumb) {
   mmType = it.isVideo ? 'video' : 'image';
+  mmCurrentToken = it.token;
+  mmLastSave = 0;
   mmTitle.textContent = it.name;
   mmSub.textContent = fmt(it.size) + (it.modified > 0 ? ' \u00b7 ' + fmtDate(it.modified) : '') + (it.isVideo ? ' \u00b7 video' : ' \u00b7 foto');
   mmDesc.classList.remove('hidden');
@@ -1261,6 +1374,43 @@ mmPlayer.addEventListener('click', function (e) {
 mmPlayer.addEventListener('mousemove', mmShowCtrl);
 mmPlayer.addEventListener('touchstart', function () { mmShowCtrl(); }, { passive: true });
 
+// Gesture ala YouTube: kiri = kecerahan, kanan = volume
+function mmCurBrightness() {
+  const m = mmPlayer.style.filter.match(/brightness\(([\d.]+)\)/);
+  return m ? parseFloat(m[1]) : 1;
+}
+function mmSetBrightness(v) {
+  if (v >= 0.99) mmPlayer.style.filter = '';
+  else mmPlayer.style.filter = 'brightness(' + v.toFixed(2) + ')';
+}
+mmPlayer.addEventListener('touchstart', function (e) {
+  if (e.touches.length !== 1) { mmGesture = null; return; }
+  const left = e.touches[0].clientX < window.innerWidth / 2;
+  mmGesture = {
+    side: left ? 'b' : 'v',
+    startY: e.touches[0].clientY,
+    startVal: left ? mmCurBrightness() : mmVideo.volume,
+    active: false
+  };
+}, { passive: true });
+mmPlayer.addEventListener('touchmove', function (e) {
+  if (!mmGesture || e.touches.length !== 1) return;
+  const dy = e.touches[0].clientY - mmGesture.startY;
+  if (!mmGesture.active && Math.abs(dy) < 12) return;
+  mmGesture.active = true;
+  e.preventDefault();
+  const delta = -dy / (window.innerHeight * 0.6);
+  const val = Math.min(1, Math.max(0, mmGesture.startVal + delta));
+  if (mmGesture.side === 'b') {
+    mmSetBrightness(val);
+    mmShowToast('\u{1F506} ' + Math.round(val * 100) + '%');
+  } else {
+    mmVideo.volume = val;
+    mmShowToast('\u{1F50A} ' + Math.round(val * 100) + '%');
+  }
+}, { passive: false });
+mmPlayer.addEventListener('touchend', function () { mmGesture = null; });
+
 mmVideo.addEventListener('play', function () {
   mmPlayBtn.innerHTML = ICONS.pause;
   mmBigPlay.classList.add('hidden');
@@ -1269,16 +1419,25 @@ mmVideo.addEventListener('play', function () {
 mmVideo.addEventListener('pause', function () {
   mmPlayBtn.innerHTML = ICONS.play;
   mmBigPlay.classList.remove('hidden');
+  saveVideoPos(mmCurrentToken);
   mmShowCtrl();
 });
 mmVideo.addEventListener('ended', function () {
   mmPlayBtn.innerHTML = ICONS.play;
   mmBigPlay.classList.remove('hidden');
+  if (mmCurrentToken) {
+    try { localStorage.removeItem(vposKey(mmCurrentToken)); } catch (e) {}
+  }
   mmSeekUI();
   mmShowCtrl();
 });
 mmVideo.addEventListener('timeupdate', function () {
   mmSeekUI();
+  const now = Date.now();
+  if (now - mmLastSave > 5000) {
+    mmLastSave = now;
+    saveVideoPos(mmCurrentToken);
+  }
 });
 mmVideo.addEventListener('progress', function () {
   mmUpdateBuffer();
@@ -1286,6 +1445,13 @@ mmVideo.addEventListener('progress', function () {
 mmVideo.addEventListener('loadedmetadata', function () {
   mmSeekUI();
   mmUpdateBuffer();
+  const pos = mmCurrentToken ? loadVideoPos(mmCurrentToken) : 0;
+  const d = mmVideo.duration || 0;
+  if (pos >= 10 && d > 0 && pos < d - 10) {
+    mmVideo.currentTime = pos;
+    mmSeekUI();
+    mmShowToast('Lanjutkan dari ' + mmFmtTime(pos));
+  }
 });
 mmVideo.addEventListener('waiting', function () {
   mmSpinner.classList.remove('hidden');

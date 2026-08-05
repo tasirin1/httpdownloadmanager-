@@ -31,11 +31,11 @@ Server remote bawaan untuk mengontrol dari browser di perangkat lain dalam satu 
 Fitur halaman remote:
 
 - Manajemen download: tambah URL, pantau progress, jeda/lanjut/batalkan/hapus, filter & urutkan
-- **Upload file ke device** dari browser: banyak file sekaligus, dipecah per potongan 2 MB dengan retry otomatis (koneksi putus tidak mulai dari nol), progress & kecepatan
+- **Upload file ke device** dari browser: banyak file sekaligus, dipecah per potongan 2 MB dengan retry otomatis (koneksi putus tidak mulai dari nol), upload folder utuh + drag & drop, progress & kecepatan
 - **File manager remote**: jelajah folder, buat folder, rename, pindah, hapus (massal), download folder sebagai ZIP
   - Folder menampilkan info isinya: jumlah item + total ukuran
 - **Galeri remote ala YouTube**: thumbnail 16:9, badge **durasi video asli** (di-cache di device), load bertahap saat scroll
-- **Player video ala YouTube**: seekbar merah + buffered, waktu, mute, fullscreen, tap untuk pause/resume, double-tap ±10 detik, dan **saran video** lain di bawah player
+- **Player video ala YouTube**: seekbar merah + buffered, waktu, mute, fullscreen, tap untuk pause/resume, double-tap ±10 detik, gesture geser untuk kecerahan/volume, lanjut dari posisi terakhir, dan **saran video** lain di bawah player
 - **Streaming** (putar/pratinjau) atau **download** file yang sudah selesai — dukungan HTTP Range untuk video/audio
 - Status baterai & penyimpanan device, pilihan port server, server background + auto-start
 

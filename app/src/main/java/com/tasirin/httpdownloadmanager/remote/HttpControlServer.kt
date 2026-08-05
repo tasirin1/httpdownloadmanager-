@@ -855,7 +855,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             }
             arr.put(o)
         }
-        saveVideoDurations(cache)
+        if (extracted > 0) saveVideoDurations(cache)
         return jsonResponse(JSONObject().put("items", arr))
     }
 

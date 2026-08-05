@@ -337,7 +337,6 @@
   <div id="mmTitle"></div>
   <div id="mmSub"></div>
   <div class="m-actions">
-    <a id="mmDownload" class="dl" href="#" download>&#11015; Download</a>
     <button id="mmDelete" type="button" class="danger">&#128465; Hapus</button>
     <button id="mmClose" type="button" class="btn-ghost">Tutup</button>
   </div>
@@ -433,7 +432,7 @@ const mmImage = document.getElementById('mmImage');
 const mmVideo = document.getElementById('mmVideo');
 const mmTitle = document.getElementById('mmTitle');
 const mmSub = document.getElementById('mmSub');
-const mmDownload = document.getElementById('mmDownload');
+const mmClose = document.getElementById('mmClose');
 
 galleryBtn.addEventListener('click', function () {
   if (fsOpen) {
@@ -961,8 +960,7 @@ function openMedia(it, src, thumb) {
     mmImage.src = src;
     mmImage.classList.remove('hidden');
   }
-  mmDownload.href = src + '&dl=1';
-  mmDownload.setAttribute('download', it.name);
+  mmClose.classList.toggle('hidden', it.isVideo);
   mediaModal.classList.add('open');
 }
 

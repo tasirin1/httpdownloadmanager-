@@ -127,7 +127,7 @@
   .fs-actions a.fs-dl { background: var(--amber-bg); color: var(--amber); }
   .fs-actions a.fs-dl:hover { border-color: var(--amber); }
   .fs-actions button:hover { border-color: var(--muted); }
-  .fs-actions button.danger { color: var(--red); }
+  .fs-actions button.danger { color: var(--red); margin-left: auto; }
   .fs-actions button.danger:hover { background: var(--red-bg); border-color: var(--red); }
   .fs-root { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; margin-bottom: 8px; box-shadow: var(--shadow-sm); transition: border-color .15s ease; }
   .fs-root:hover { border-color: var(--primary); }
@@ -238,7 +238,8 @@
     .gal-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px 10px; }
     .mm-rel-thumb { width: 120px; height: 68px; }
     .fs-row { padding: 10px 12px; }
-    .fs-row .fs-actions a, .fs-row .fs-actions button { flex: 1 1 auto; min-width: 56px; padding: 7px 8px; text-align: center; }
+    .fs-row .fs-actions { gap: 7px; }
+    .fs-row .fs-actions a, .fs-row .fs-actions button { flex: 0 0 auto; min-width: 0; padding: 5px 9px; text-align: center; }
     .fs-path { font-size: 12px; }
     .fs-tools { flex-wrap: nowrap; }
     .fs-tools button { flex: 1 1 0; min-width: 0; }

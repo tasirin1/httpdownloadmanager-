@@ -179,35 +179,38 @@
   html[data-theme="dark"] .actions button, html[data-theme="dark"] .btn-ghost { background: #232b38; color: var(--ink); }
   html[data-theme="dark"] .actions a.stream, html[data-theme="dark"] a.fs-stream { background: var(--green-bg); color: var(--green); }
   html[data-theme="dark"] .actions a.dl, html[data-theme="dark"] a.fs-dl { background: var(--amber-bg); color: var(--amber); }
-  #mediaModal { position: fixed; inset: 0; background: #000; z-index: 60; display: none; flex-direction: column; }
+  #mediaModal { position: fixed; inset: 0; background: #0f0f0f; z-index: 60; display: none; flex-direction: column; }
   #mediaModal.open { display: flex; }
-  #mmBar { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 8px 12px; color: #fff; }
-  #mmBack { flex: 0 0 auto; width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  #mmTop { flex: 0 0 auto; display: flex; align-items: center; padding: 6px 10px; }
+  #mmBack { width: 38px; height: 38px; border: 0; border-radius: 50%; background: transparent; color: #fff; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   #mmBack:hover { background: rgba(255,255,255,.14); }
-  #mmHead { min-width: 0; }
-  #mmTitle { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80vw; }
-  #mmSub { color: rgba(255,255,255,.6); font-size: 12px; margin-top: 1px; }
-  #mmStage { flex: 1 1 auto; position: relative; min-height: 0; display: flex; align-items: center; justify-content: center; }
-  #mmStage img { max-width: 100%; max-height: 100%; }
-  #mmPlayer { position: absolute; inset: 0; background: #000; }
-  #mmVideo { width: 100%; height: 100%; object-fit: contain; }
-  .mm-big { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.28); cursor: pointer; }
-  .mm-big .icon { width: 68px; height: 68px; border-radius: 50%; background: rgba(0,0,0,.68); display: flex; align-items: center; justify-content: center; }
-  .mm-big .icon svg { width: 30px; height: 30px; color: #fff; margin-left: 4px; }
+  #mmBody { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  #mmPlayer { position: relative; width: 100%; background: #000; }
+  #mmPlayer::before { content: ''; display: block; padding-top: 56.25%; }
+  #mmPlayer:fullscreen { width: 100%; height: 100%; }
+  #mmPlayer:fullscreen::before, #mmPlayer:-webkit-full-screen::before { padding-top: 0; }
+  #mmVideo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  #mmImage { display: block; max-width: 100%; max-height: 62vh; margin: 8px auto 0; }
+  #mmDesc { padding: 12px 16px 24px; }
+  #mmTitle { color: #fff; font-size: 14.5px; font-weight: 500; line-height: 1.4; word-break: break-word; }
+  #mmSub { color: rgba(255,255,255,.6); font-size: 12.5px; margin-top: 5px; }
+  .mm-big { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.22); cursor: pointer; }
+  .mm-big .icon { width: 56px; height: 56px; border-radius: 50%; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; }
+  .mm-big .icon svg { width: 26px; height: 26px; color: #fff; margin-left: 3px; }
   .mm-spin { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-  .mm-spin::before { content: ''; width: 44px; height: 44px; border-radius: 50%; border: 4px solid rgba(255,255,255,.25); border-top-color: #fff; animation: mmSpin 1s linear infinite; }
+  .mm-spin::before { content: ''; width: 36px; height: 36px; border-radius: 50%; border: 3px solid rgba(255,255,255,.25); border-top-color: #fff; animation: mmSpin 1s linear infinite; }
   @keyframes mmSpin { to { transform: rotate(360deg); } }
-  #mmToast { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,.72); color: #fff; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 700; pointer-events: none; }
-  #mmCtrl { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 12px 8px; background: linear-gradient(transparent, rgba(0,0,0,.82)); transition: opacity .25s ease; }
+  #mmToast { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,.72); color: #fff; padding: 6px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 700; pointer-events: none; }
+  #mmCtrl { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 8px 4px; background: linear-gradient(transparent, rgba(0,0,0,.85)); transition: opacity .25s ease; }
   #mmCtrl.hide { opacity: 0; pointer-events: none; }
-  #mmSeekWrap { position: relative; height: 18px; display: flex; align-items: center; }
-  #mmBuf { position: absolute; left: 0; top: 50%; transform: translateY(-50%); height: 4px; border-radius: 999px; background: rgba(255,255,255,.3); pointer-events: none; }
-  #mmSeek { -webkit-appearance: none; appearance: none; position: relative; z-index: 2; width: 100%; height: 18px; margin: 0; background: transparent; }
-  #mmSeek::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: linear-gradient(to right, #f00 var(--fill, 0%), rgba(255,255,255,.25) var(--fill, 0%)); }
-  #mmSeek::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: #f00; border: 0; margin-top: -4.5px; }
-  #mmCtrlRow { display: flex; align-items: center; gap: 10px; color: #fff; }
-  #mmCtrlRow button { flex: 0 0 auto; width: 36px; height: 36px; border: 0; background: transparent; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-  #mmTime { font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  #mmSeekWrap { position: relative; height: 16px; display: flex; align-items: center; }
+  #mmBuf { position: absolute; left: 0; top: 50%; transform: translateY(-50%); height: 3px; border-radius: 999px; background: rgba(255,255,255,.3); pointer-events: none; }
+  #mmSeek { -webkit-appearance: none; appearance: none; position: relative; z-index: 2; width: 100%; height: 16px; margin: 0; background: transparent; }
+  #mmSeek::-webkit-slider-runnable-track { height: 3px; border-radius: 999px; background: linear-gradient(to right, #f00 var(--fill, 0%), rgba(255,255,255,.25) var(--fill, 0%)); }
+  #mmSeek::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #f00; border: 0; margin-top: -4.5px; }
+  #mmCtrlRow { display: flex; align-items: center; gap: 8px; color: #fff; }
+  #mmCtrlRow button { flex: 0 0 auto; width: 32px; height: 32px; border: 0; background: transparent; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  #mmTime { font-size: 11.5px; font-variant-numeric: tabular-nums; }
   .mm-flex { flex: 1; }
   .hidden { display: none !important; }
   @media (max-width: 600px) {
@@ -334,18 +337,13 @@
 </div>
 
 <div id="mediaModal">
-  <div id="mmBar">
+  <div id="mmTop">
     <button id="mmBack" type="button" title="Tutup">&#10005;</button>
-    <div id="mmHead">
-      <div id="mmTitle"></div>
-      <div id="mmSub"></div>
-    </div>
   </div>
-  <div id="mmStage">
-    <img id="mmImage" class="hidden">
+  <div id="mmBody">
     <div id="mmPlayer" class="hidden">
       <video id="mmVideo" playsinline preload="metadata"></video>
-      <div id="mmBigPlay" class="mm-big hidden"><div class="icon"><svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div></div>
+      <div id="mmBigPlay" class="mm-big hidden"><div class="icon"><svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div></div>
       <div id="mmSpinner" class="mm-spin hidden"></div>
       <div id="mmToast" class="hidden"></div>
       <div id="mmCtrl" class="hidden">
@@ -361,6 +359,11 @@
           <button id="mmFsBtn" type="button"></button>
         </div>
       </div>
+    </div>
+    <img id="mmImage" class="hidden">
+    <div id="mmDesc" class="hidden">
+      <div id="mmTitle"></div>
+      <div id="mmSub"></div>
     </div>
   </div>
 </div>
@@ -440,10 +443,12 @@ const galleryGrid = document.getElementById('galleryGrid');
 const galleryCount = document.getElementById('galleryCount');
 const galleryStatus = document.getElementById('galleryStatus');
 const mediaModal = document.getElementById('mediaModal');
+const mmBody = document.getElementById('mmBody');
 const mmImage = document.getElementById('mmImage');
 const mmVideo = document.getElementById('mmVideo');
 const mmTitle = document.getElementById('mmTitle');
 const mmSub = document.getElementById('mmSub');
+const mmDesc = document.getElementById('mmDesc');
 const mmPlayer = document.getElementById('mmPlayer');
 const mmBigPlay = document.getElementById('mmBigPlay');
 const mmSpinner = document.getElementById('mmSpinner');
@@ -529,6 +534,7 @@ function closeMedia() {
   mmSpinner.classList.add('hidden');
   mmCtrl.classList.add('hidden');
   mmCtrl.classList.remove('hide');
+  mmDesc.classList.add('hidden');
   clearTimeout(mmTimer);
   if (document.fullscreenElement || document.webkitFullscreenElement) {
     try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {}
@@ -1019,6 +1025,8 @@ function openMedia(it, src, thumb) {
   mmType = it.isVideo ? 'video' : 'image';
   mmTitle.textContent = it.name;
   mmSub.textContent = fmt(it.size) + (it.modified > 0 ? ' \u00b7 ' + fmtDate(it.modified) : '') + (it.isVideo ? ' \u00b7 video' : ' \u00b7 foto');
+  mmDesc.classList.remove('hidden');
+  mmBody.scrollTop = 0;
   mmImage.classList.add('hidden');
   mmImage.removeAttribute('src');
   mmPlayer.classList.add('hidden');
@@ -1080,7 +1088,7 @@ mmMuteBtn.addEventListener('click', function () {
 });
 
 mmFsBtn.addEventListener('click', function () {
-  const el = mediaModal;
+  const el = mmPlayer;
   const req = el.requestFullscreen || el.webkitRequestFullscreen;
   const exit = document.exitFullscreen || document.webkitExitFullscreen;
   if (document.fullscreenElement || document.webkitFullscreenElement) {
@@ -1149,8 +1157,8 @@ mmVideo.addEventListener('canplay', function () {
   mmSpinner.classList.add('hidden');
 });
 
-document.getElementById('mmStage').addEventListener('click', function (e) {
-  if (mmType === 'image' && e.target === document.getElementById('mmStage')) closeMedia();
+mmBody.addEventListener('click', function (e) {
+  if (mmType === 'image' && e.target === mmBody) closeMedia();
 });
 
 async function refresh() {

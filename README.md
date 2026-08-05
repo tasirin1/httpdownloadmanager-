@@ -36,6 +36,8 @@ Server remote bawaan untuk mengontrol dari browser di perangkat lain dalam satu 
 Fitur halaman remote:
 
 - **Tampilan mobile**: tombol FAB "+" untuk tambah download, menu aksi item ala bottom-sheet (anti salah pencet), topbar lebih ringkas
+- **Update real-time (SSE)**: halaman remote tidak lagi polling tiap 1,5 detik — progress & status datang langsung dari device lewat event stream; fallback polling otomatis jika jaringan memblokir streaming
+- **Atur kecepatan global dari browser**: slider "Kecepatan global" di halaman remote langsung mempengaruhi semua download yang berjalan (berlaku instan, tanpa buka aplikasi)
 - Manajemen download: tambah URL, pantau progress, jeda/lanjut/batalkan/hapus, filter & urutkan
 - **Item aktif otomatis di urutan atas** + **total kecepatan live di bar atas** (jumlah download aktif)
 - Di layar HP, tombol aksi item dipadatkan ke menu **"⋯"**; hapus item & bersihkan daftar kini memakai dialog konfirmasi
@@ -48,6 +50,8 @@ Fitur halaman remote:
   - **Breadcrumb tap-able** untuk naik level cepat, **menu aksi "⋯"** (bottom-sheet di HP), dialog custom untuk rename/pindah/hapus, **long-press** untuk pilih massal, dan **ketuk file media langsung pratinjau**
 - **Galeri remote ala YouTube**: thumbnail 16:9, badge **durasi video asli** (di-cache di device), load bertahap saat scroll
 - **Player video ala YouTube**: seekbar merah + buffered, waktu, mute, fullscreen otomatis landscape, tap untuk pause/resume, double-tap ±10 detik, gesture geser untuk kecerahan/volume, lanjut dari posisi terakhir, dan **saran video** lain di bawah player
+- **Kecepatan putar video 0.5×–2×** di player remote
+- **Bagikan file via tautan sementara**: file selesai bisa dibagikan lewat tautan tanpa PIN (berlaku 24 jam) + QR code dari halaman remote
 - **Streaming** (putar/pratinjau) atau **download** file yang sudah selesai — dukungan HTTP Range untuk video/audio
 - Status baterai & penyimpanan device, pilihan port server, server background + auto-start
 - **Auto-lock**: halaman remote meminta PIN lagi setelah 10 menit tanpa aktivitas

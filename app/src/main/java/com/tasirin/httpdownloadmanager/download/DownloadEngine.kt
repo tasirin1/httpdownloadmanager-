@@ -355,6 +355,12 @@ class DownloadEngine(private val context: Context) {
         updateItem(id) { it.copy(speedLimitKbps = speedLimitKbps, priority = priority) }
     }
 
+    fun setGlobalSpeedLimitKbps(kbps: Int) {
+        // Berlaku langsung ke download yang sedang berjalan lewat SpeedThrottle
+        // yang membaca prefs setiap kali (provider), bukan disimpan di awal.
+        StoragePrefs.setSpeedLimitKbps(context, kbps.coerceIn(0, 100_000))
+    }
+
     fun move(id: String, destTreeUri: Uri) {
         val item = _items.value.find { it.id == id } ?: return
         if (item.state != DownloadState.COMPLETED) return
@@ -511,9 +517,10 @@ class DownloadEngine(private val context: Context) {
                 "Penyimpanan hampir penuh (sisa ${formatBytes(freeNow)})"
             )
         }
-        val globalLimit = StoragePrefs.speedLimitKbps(context)
-        val limit = if (item.speedLimitKbps > 0) item.speedLimitKbps else globalLimit
-        val throttle = SpeedThrottle(limit)
+        val throttle = SpeedThrottle {
+            if (item.speedLimitKbps > 0) item.speedLimitKbps
+            else StoragePrefs.speedLimitKbps(context)
+        }
 
         if (item.segments.isNotEmpty()) {
             runSegmented(item, saver, throttle, item.totalBytes, null)
@@ -1053,26 +1060,39 @@ data class UrlProbe(
     val contentType: String?
 )
 
-private class SpeedThrottle(private val limitKbps: Int) {
+private class SpeedThrottle(private val limitProvider: () -> Int) {
     private val lock = Any()
     private var startTime = System.currentTimeMillis()
     private var startBytes = 0L
+    private var lastLimit = limitProvider()
 
     fun reset(start: Long) {
         synchronized(lock) {
             startTime = System.currentTimeMillis()
             startBytes = start
+            lastLimit = limitProvider()
         }
     }
 
     fun sleepIfNeeded(totalDownloaded: Long) {
-        if (limitKbps <= 0) return
         synchronized(lock) {
-            val limit = limitKbps * 1024L
+            val limit = limitProvider()
+            if (limit <= 0) {
+                lastLimit = limit
+                return
+            }
+            if (limit != lastLimit) {
+                // Batas berubah di tengah download: hitung ulang basis supaya
+                // throttle tidak melonjak karena akumulasi byte lama.
+                startTime = System.currentTimeMillis()
+                startBytes = totalDownloaded
+                lastLimit = limit
+            }
+            val limitBps = limit * 1024L
             val elapsed = System.currentTimeMillis() - startTime
-            val expected = startBytes + (elapsed * limit) / 1000L
+            val expected = startBytes + (elapsed * limitBps) / 1000L
             if (totalDownloaded > expected) {
-                val delayMs = ((totalDownloaded - expected) * 1000L) / limit
+                val delayMs = ((totalDownloaded - expected) * 1000L) / limitBps
                 Thread.sleep(delayMs)
             }
         }

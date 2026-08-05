@@ -20,20 +20,36 @@ import com.tasirin.httpdownloadmanager.util.MediaLibrary
 import com.tasirin.httpdownloadmanager.util.MimeTypes
 import com.tasirin.httpdownloadmanager.util.StoragePrefs
 import androidx.documentfile.provider.DocumentFile
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.qrcode.QRCodeWriter
 import fi.iki.elonen.NanoHTTPD
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.FileOutputStream
 import java.io.BufferedOutputStream
+import java.io.ByteArrayOutputStream
 import java.net.Inet4Address
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import java.net.NetworkInterface
@@ -46,18 +62,31 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         private set
 
     private var cacheCleanupDone = false
+    private val serverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val sseClients = CopyOnWriteArrayList<SseStream>()
+    private var sseJob: Job? = null
+    private var sseLastPayload = ""
+    private var sseLastPushAt = 0L
+    private val shareTokens = ConcurrentHashMap<String, ShareEntry>()
 
     override fun serve(session: IHTTPSession): Response {
         return try {
             when {
                 session.method == Method.POST && session.uri == "/api/login" -> login(session)
                 session.method == Method.GET && session.uri == "/api/logout" -> logout()
+                session.method == Method.GET && session.uri.startsWith("/share/") ->
+                    serveShare(session)
                 pinOk(session) -> when {
                     session.method == Method.GET && session.uri == "/" -> htmlPage()
                     session.method == Method.GET && session.uri == "/api/pin_enabled" ->
                         jsonResponse(JSONObject().put("enabled", pinEnabled()))
                     session.method == Method.GET && session.uri == "/api/downloads" -> downloadsJson()
                     session.method == Method.GET && session.uri == "/api/status" -> statusJson()
+                    session.method == Method.GET && session.uri == "/api/events" -> sseResponse()
+                    session.method == Method.GET && session.uri == "/api/settings" -> settingsJson()
+                    session.method == Method.POST && session.uri == "/api/speed" -> setSpeed(session)
+                    session.method == Method.POST && session.uri == "/api/share" -> createShare(session)
+                    session.method == Method.GET && session.uri == "/api/qr" -> qrPngResponse(session)
                     session.method == Method.GET && session.uri == "/api/gallery" -> galleryJson()
                     session.method == Method.GET && session.uri == "/api/fs" -> fsList(session)
                     session.method == Method.GET && session.uri == "/api/thumb" -> serveThumb(session)
@@ -122,6 +151,11 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     }
 
     fun stopServer() {
+        sseJob?.cancel()
+        sseJob = null
+        sseClients.forEach { it.closeStream() }
+        sseClients.clear()
+        shareTokens.clear()
         super.stop()
     }
 
@@ -221,6 +255,10 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     }
 
     private fun downloadsJson(): Response {
+        return jsonResponse(downloadsPayload())
+    }
+
+    private fun downloadsPayload(): JSONObject {
         val arr = JSONArray()
         App.engine.items.value.forEach { item ->
             val o = JSONObject()
@@ -237,7 +275,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             item.error?.let { o.put("error", it) }
             arr.put(o)
         }
-        return jsonResponse(JSONObject().put("items", arr))
+        return JSONObject().put("items", arr)
     }
 
     private fun addDownload(session: IHTTPSession): Response {
@@ -1118,6 +1156,172 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         pct to charging
     }.getOrDefault(-1 to false)
 
+    // ---------- Pengaturan & batas kecepatan global ----------
+
+    private fun settingsJson(): Response {
+        val obj = JSONObject()
+        obj.put("speedLimitKbps", StoragePrefs.speedLimitKbps(context))
+        obj.put("maxConcurrent", StoragePrefs.maxConcurrent(context))
+        obj.put("segments", StoragePrefs.segmentCount(context))
+        obj.put("port", listeningPort)
+        return jsonResponse(obj)
+    }
+
+    private fun setSpeed(session: IHTTPSession): Response {
+        val params = readForm(session)
+        val kbps = params["kbps"]?.toIntOrNull()
+        if (kbps == null || kbps < 0 || kbps > 100_000) {
+            return jsonResponse(
+                JSONObject().put("ok", false).put("error", "nilai tidak valid (0-100000)")
+            )
+        }
+        App.engine.setGlobalSpeedLimitKbps(kbps)
+        return jsonResponse(JSONObject().put("ok", true).put("speedLimitKbps", kbps))
+    }
+
+    // ---------- SSE: update real-time ----------
+
+    private fun sseResponse(): Response {
+        val stream = SseStream()
+        sseClients.add(stream)
+        ensureSsePump()
+        stream.push("data: ${downloadsPayload()}\n\n")
+        val res = newChunkedResponse(
+            Response.Status.OK,
+            "text/event-stream; charset=utf-8",
+            stream
+        )
+        res.addHeader("Cache-Control", "no-cache, no-transform")
+        res.addHeader("Connection", "keep-alive")
+        res.addHeader("X-Accel-Buffering", "no")
+        return res
+    }
+
+    private fun ensureSsePump() {
+        if (sseJob?.isActive == true) return
+        sseJob = serverScope.launch {
+            runCatching {
+                App.engine.items.collect { items ->
+                    val payload = JSONObject().put(
+                        "items",
+                        JSONArray().apply {
+                            items.forEach { item ->
+                                val o = JSONObject()
+                                o.put("id", item.id)
+                                o.put("fileName", item.fileName)
+                                o.put("state", item.state.name)
+                                o.put("bytesDownloaded", item.bytesDownloaded)
+                                o.put("totalBytes", item.totalBytes)
+                                o.put("progress", item.progressPercent)
+                                o.put("speedBps", item.speedBps)
+                                o.put("etaSeconds", item.etaSeconds)
+                                o.put("addedAt", item.addedAt)
+                                item.error?.let { o.put("error", it) }
+                                put(o)
+                            }
+                        }
+                    ).toString()
+                    val now = System.currentTimeMillis()
+                    if (payload != sseLastPayload || now - sseLastPushAt > 10_000) {
+                        sseLastPayload = payload
+                        sseLastPushAt = now
+                        val frame = "data: $payload\n\n"
+                        sseClients.removeIf { it.isClosed }
+                        sseClients.forEach { it.push(frame) }
+                    }
+                }
+            }
+        }
+    }
+
+    // ---------- Berbagi file via tautan sementara ----------
+
+    private fun createShare(session: IHTTPSession): Response {
+        val params = readForm(session)
+        val id = params["id"].orEmpty()
+        val item = App.engine.items.value.find {
+            it.id == id && it.state == DownloadState.COMPLETED
+        } ?: return jsonResponse(JSONObject().put("ok", false).put("error", "file tidak ditemukan"))
+        pruneShares()
+        val token = UUID.randomUUID().toString().replace("-", "").take(16)
+        shareTokens[token] = ShareEntry(item.id, System.currentTimeMillis() + SHARE_TTL_MS)
+        return jsonResponse(
+            JSONObject().put("ok", true)
+                .put("token", token)
+                .put("expiresInHours", SHARE_TTL_HOURS)
+        )
+    }
+
+    private fun pruneShares() {
+        val now = System.currentTimeMillis()
+        shareTokens.entries.removeIf { it.value.expiresAt < now }
+    }
+
+    private fun serveShare(session: IHTTPSession): Response {
+        val token = session.uri.removePrefix("/share/").trim()
+        if (token.isEmpty()) return notFound()
+        pruneShares()
+        val entry = shareTokens[token] ?: return notFound()
+        val item = App.engine.items.value.find {
+            it.id == entry.itemId && it.state == DownloadState.COMPLETED
+        } ?: return notFound()
+        val input: InputStream
+        val total: Long
+        if (!item.filePath.isNullOrEmpty()) {
+            val file = File(item.filePath)
+            if (!file.exists() || !file.isFile) return notFound()
+            input = FileInputStream(file)
+            total = file.length()
+        } else if (!item.contentUri.isNullOrEmpty()) {
+            val uri = Uri.parse(item.contentUri)
+            val resolver = context.contentResolver
+            val stream = resolver.openInputStream(uri) ?: return notFound()
+            total = resolver.openAssetFileDescriptor(uri, "r")?.length ?: -1L
+            input = stream
+        } else {
+            return notFound()
+        }
+        return streamMedia(
+            name = item.fileName,
+            mime = MimeTypes.forFile(item.fileName),
+            input = input,
+            total = total,
+            rangeHeader = session.headers["range"] ?: session.headers["Range"],
+            download = true
+        )
+    }
+
+    // ---------- QR code ----------
+
+    private fun qrPngResponse(session: IHTTPSession): Response {
+        val text = session.parms["text"].orEmpty()
+        if (text.isEmpty()) return notFound()
+        val bytes = generateQr(text) ?: return notFound()
+        return newFixedLengthResponse(
+            Response.Status.OK,
+            "image/png",
+            ByteArrayInputStream(bytes),
+            bytes.size.toLong()
+        ).also { it.addHeader("Cache-Control", "no-store") }
+    }
+
+    private fun generateQr(text: String): ByteArray? = runCatching {
+        val size = 520
+        val matrix = QRCodeWriter().encode(
+            text, BarcodeFormat.QR_CODE, size, size, mapOf(EncodeHintType.MARGIN to 1)
+        )
+        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565)
+        for (x in 0 until size) {
+            for (y in 0 until size) {
+                bmp.setPixel(x, y, if (matrix.get(x, y)) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+            }
+        }
+        val out = ByteArrayOutputStream()
+        bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+        bmp.recycle()
+        out.toByteArray()
+    }.getOrNull()
+
     private fun logError(e: Exception) {
         runCatching {
             val file = File(context.filesDir, App.CRASH_LOG_FILE)
@@ -1147,6 +1351,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         private const val MAX_BODY_SIZE = 1_048_576L
         private const val MAX_UPLOAD_BYTES = 2L * 1024 * 1024 * 1024
         private const val MAX_UPLOAD_MB = 2048
+        private const val SHARE_TTL_HOURS = 24
+        private const val SHARE_TTL_MS = SHARE_TTL_HOURS * 60L * 60 * 1000
 
         fun ipv4Addresses(): List<String> = runCatching {
             NetworkInterface.getNetworkInterfaces().toList().flatMap { ni ->
@@ -1155,5 +1361,57 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     .map { it.hostAddress.orEmpty() }
             }
         }.getOrDefault(emptyList())
+    }
+}
+
+private data class ShareEntry(val itemId: String, val expiresAt: Long)
+
+private class SseStream : InputStream() {
+    private val queue = LinkedBlockingQueue<ByteArray>(32)
+
+    @Volatile
+    var isClosed = false
+        private set
+
+    private var current: ByteArray? = null
+    private var pos = 0
+
+    fun push(text: String) {
+        if (!isClosed && !queue.offer(text.toByteArray(Charsets.UTF_8))) {
+            // Antrean penuh berarti klien tidak lagi membaca (koneksi putus).
+            isClosed = true
+        }
+    }
+
+    fun closeStream() {
+        isClosed = true
+    }
+
+    override fun close() {
+        isClosed = true
+        super.close()
+    }
+
+    override fun read(): Int {
+        while (true) {
+            val cur = current
+            if (cur != null && pos < cur.size) return cur[pos++].toInt() and 0xff
+            if (isClosed) return -1
+            val next = try {
+                queue.poll(20, TimeUnit.SECONDS)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return -1
+            }
+            if (next != null) {
+                current = next
+                pos = 0
+            } else {
+                // Tidak ada data selama 20 detik: kirim komentar heartbeat
+                // supaya koneksi tidak diputus proxy/timout.
+                current = ": ping\n\n".toByteArray(Charsets.UTF_8)
+                pos = 0
+            }
+        }
     }
 }

@@ -256,6 +256,7 @@
   .sheet-list button:hover { background: var(--bg-soft); }
   .sheet-list button.danger { color: var(--red); }
   .sheet-cancel { width: 100%; margin-top: 8px; padding: 13px; border: 0; border-radius: 12px; background: var(--bg-soft); color: var(--ink); font-size: 14px; font-weight: 700; cursor: pointer; }
+  .share-qr { display: block; width: 190px; height: 190px; margin: 0 auto 12px; border-radius: 10px; border: 1px solid var(--line); background: #fff; }
   .fab { display: none; position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 55; width: 56px; height: 56px; border-radius: 50%; border: 0; background: linear-gradient(135deg, var(--primary), #5f6ff0); color: #fff; font-size: 27px; font-weight: 600; box-shadow: 0 6px 18px rgba(67,83,230,.45); cursor: pointer; align-items: center; justify-content: center; transition: transform .15s ease, box-shadow .15s ease; }
   .fab:active { transform: scale(.92); }
   #filtersSticky { position: sticky; z-index: 30; background: var(--bg); padding: 8px 0 12px; margin: -8px 0 4px; }
@@ -264,6 +265,11 @@
   .status-card .refresh-btn:hover { color: var(--primary); border-color: var(--primary); }
   #lastUpd { font-size: 11px; opacity: .85; }
   .status-card.offline .dot { background: var(--red); box-shadow: 0 0 0 3px var(--red-bg); animation: dotBlink 1.1s ease-in-out infinite; }
+  .speed-ctl { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding: 12px 16px; }
+  .speed-ctl .sc-lbl { font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .speed-ctl input[type="range"] { flex: 1; min-width: 150px; padding: 0; border: 0; background: transparent; box-shadow: none; accent-color: var(--primary); }
+  .speed-ctl input[type="range"]:focus { box-shadow: none; }
+  .speed-ctl .sc-val { font-size: 12.5px; color: var(--muted); white-space: nowrap; min-width: 78px; text-align: right; font-variant-numeric: tabular-nums; }
   @keyframes dotBlink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
   .empty { padding: 46px 16px; text-align: center; color: var(--muted); }
   .empty .ico { font-size: 46px; line-height: 1; display: block; }
@@ -348,6 +354,12 @@
 <div class="wrap">
   <div class="status-card" id="deviceStatus">
     <span><span class="dot"></span>Menghubungkan ke device…</span>
+  </div>
+
+  <div class="speed-ctl card" id="speedCtl">
+    <span class="sc-lbl">&#9889; Kecepatan global</span>
+    <input id="speedRange" type="range" min="0" max="10000" step="128" value="0">
+    <span class="sc-val" id="speedVal">Tanpa batas</span>
   </div>
 
   <div class="toolbar" id="downloadsToolbar">
@@ -458,6 +470,7 @@
           <button id="mmPlayBtn" type="button"></button>
           <span id="mmTime">0:00 / 0:00</span>
           <span class="mm-flex"></span>
+          <button id="mmSpeedBtn" type="button" title="Kecepatan putar">1&#215;</button>
           <button id="mmMuteBtn" type="button"></button>
           <button id="mmFsBtn" type="button"></button>
         </div>
@@ -507,6 +520,20 @@
     <div class="cm-row">
       <button id="inputNo" type="button" class="btn-ghost">Batal</button>
       <button id="inputYes" type="button" class="danger">OK</button>
+    </div>
+  </div>
+</div>
+
+<div id="shareModal" class="cm-overlay hidden">
+  <div class="cm-box">
+    <div class="cm-title">Bagikan file</div>
+    <div class="cm-text" id="shareText"></div>
+    <img id="shareQr" class="share-qr" alt="QR" title="QR tautan berbagi">
+    <input id="shareLink" type="text" readonly class="cm-input" autocomplete="off">
+    <div class="cm-row">
+      <button id="shareCopy" type="button" class="btn-ghost">Salin</button>
+      <button id="shareOpen" type="button" class="btn-main">Buka</button>
+      <button id="shareClose" type="button" class="btn-ghost">Tutup</button>
     </div>
   </div>
 </div>
@@ -608,6 +635,35 @@ async function refreshStatus() {
     el.classList.add('offline');
     el.innerHTML = '<span><span class="dot"></span><b>Server tidak terhubung</b> — mulai server dari aplikasi</span>';
   }
+}
+
+const speedRange = document.getElementById('speedRange');
+const speedVal = document.getElementById('speedVal');
+function fmtKbps(k) {
+  if (k <= 0) return 'Tanpa batas';
+  if (k >= 1024) return (k / 1024).toFixed(1) + ' MB/s';
+  return k + ' KB/s';
+}
+function updateSpeedLabel() {
+  speedVal.textContent = fmtKbps(parseInt(speedRange.value, 10) || 0);
+}
+let speedTimer = null;
+speedRange.addEventListener('input', function () {
+  updateSpeedLabel();
+  clearTimeout(speedTimer);
+  speedTimer = setTimeout(function () {
+    const body = new URLSearchParams({kbps: speedRange.value});
+    fetch(API + '/api/speed', {method: 'POST', body}).catch(function () {});
+  }, 400);
+});
+async function loadSettings() {
+  try {
+    const res = await fetch(API + '/api/settings');
+    if (!res.ok) return;
+    const st = await res.json();
+    speedRange.value = st.speedLimitKbps || 0;
+    updateSpeedLabel();
+  } catch (e) {}
 }
 
 const galleryView = document.getElementById('galleryView');
@@ -743,6 +799,7 @@ function closeMedia() {
   mmRelated.classList.add('hidden');
   mmRelated.innerHTML = '';
   clearTimeout(mmTimer);
+  mmResetSpeed();
   if (document.fullscreenElement || document.webkitFullscreenElement) {
     try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {}
   }
@@ -1265,6 +1322,7 @@ function openItemSheet(it) {
   if (it.state === 'COMPLETED') {
     acts.push({label: '\u25B6 Stream', stream: API + '/file/' + encId});
     acts.push({label: '\u2B07 Download', dl: API + '/file/' + encId + '?dl=1'});
+    acts.push({label: '\u{1F517} Bagikan', op: 'share'});
   }
   if (it.state === 'DOWNLOADING') acts.push({label: '\u23F8 Jeda', op: 'pause'});
   if (it.state === 'PAUSED' || it.state === 'FAILED') acts.push({label: '\u25B6 Lanjut', op: 'resume'});
@@ -1640,6 +1698,7 @@ function openMedia(it, src) {
     mmSpinner.classList.add('hidden');
     mmCtrl.classList.remove('hidden');
     mmCtrl.classList.remove('hide');
+    mmResetSpeed();
     mmPlayBtn.innerHTML = ICONS.play;
     mmMuteBtn.innerHTML = mmVideo.muted ? ICONS.mute : ICONS.sound;
     mmFsBtn.innerHTML = (document.fullscreenElement || document.webkitFullscreenElement) ? ICONS.fsx : ICONS.fs;
@@ -1719,6 +1778,21 @@ mmSeek.addEventListener('input', function () {
 mmMuteBtn.addEventListener('click', function () {
   mmVideo.muted = !mmVideo.muted;
   mmMuteBtn.innerHTML = mmVideo.muted ? ICONS.mute : ICONS.sound;
+});
+
+const mmSpeedBtn = document.getElementById('mmSpeedBtn');
+const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+let mmSpeedIdx = 2;
+function mmResetSpeed() {
+  mmSpeedIdx = 2;
+  mmVideo.playbackRate = 1;
+  mmSpeedBtn.textContent = '1\u00D7';
+}
+mmSpeedBtn.addEventListener('click', function () {
+  mmSpeedIdx = (mmSpeedIdx + 1) % SPEEDS.length;
+  mmVideo.playbackRate = SPEEDS[mmSpeedIdx];
+  mmSpeedBtn.textContent = SPEEDS[mmSpeedIdx].toString() + '\u00D7';
+  mmShowCtrl();
 });
 
 function mmLockLandscape() {
@@ -2119,6 +2193,7 @@ function actionButtons(it) {
   if (it.state === 'COMPLETED') {
     s += '<a class="stream" href="' + API + '/file/' + encId + '" target="_blank">&#9654; Stream</a>';
     s += '<a class="dl" href="' + API + '/file/' + encId + '?dl=1" download>&#11015; Download</a>';
+    s += '<button data-action="share">&#128279; Bagikan</button>';
   }
   if (it.state === 'DOWNLOADING') s += '<button data-action="pause">&#9209; Jeda</button>';
   if (it.state === 'PAUSED' || it.state === 'FAILED') s += '<button data-action="resume">&#9654; Lanjut</button>';
@@ -2193,6 +2268,10 @@ function doAction(id, action) {
     showConfirm('Bersihkan daftar selesai?', 'Semua item berstatus Selesai akan dikeluarkan dari daftar. File di device TIDAK ikut terhapus.', 'Bersihkan', function () { doActionNow(id, action); });
     return;
   }
+  if (action === 'share') {
+    shareItem(id);
+    return;
+  }
   doActionNow(id, action);
 }
 async function doActionNow(id, action) {
@@ -2200,6 +2279,51 @@ async function doActionNow(id, action) {
   await fetch(API + '/api/action', {method: 'POST', body});
   refresh();
 }
+
+const shareModal = document.getElementById('shareModal');
+async function shareItem(id) {
+  const body = new URLSearchParams({id: id});
+  try {
+    const res = await fetch(API + '/api/share', {method: 'POST', body});
+    const data = await res.json();
+    if (!data || !data.ok) {
+      showConfirm('Gagal membuat tautan', (data && data.error) || 'File tidak ditemukan.', 'OK', function () {});
+      return;
+    }
+    const url = location.origin + '/share/' + data.token;
+    document.getElementById('shareText').textContent =
+      'Tautan berlaku ' + data.expiresInHours + ' jam. Siapa pun yang memegang tautan ini bisa mengunduh file tanpa PIN.';
+    document.getElementById('shareLink').value = url;
+    document.getElementById('shareQr').src = API + '/api/qr?text=' + encodeURIComponent(url);
+    shareModal.classList.remove('hidden');
+  } catch (e) {
+    showConfirm('Gagal membuat tautan', String(e), 'OK', function () {});
+  }
+}
+function closeShare() {
+  shareModal.classList.add('hidden');
+  document.getElementById('shareQr').removeAttribute('src');
+}
+document.getElementById('shareClose').addEventListener('click', closeShare);
+shareModal.addEventListener('click', function (e) {
+  if (e.target === shareModal) closeShare();
+});
+document.getElementById('shareCopy').addEventListener('click', function () {
+  const link = document.getElementById('shareLink');
+  link.focus();
+  link.select();
+  let copied = false;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(link.value).then(function () { copied = true; }).catch(function () {});
+  }
+  if (!copied) {
+    try { document.execCommand('copy'); } catch (e) {}
+  }
+});
+document.getElementById('shareOpen').addEventListener('click', function () {
+  const link = document.getElementById('shareLink').value;
+  if (link) window.open(link, '_blank');
+});
 
 function globalAction(action) {
   doAction('', action);
@@ -2232,9 +2356,46 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
 window.addEventListener('hashchange', applyRoute);
 applyRoute();
 refreshStatus();
-setInterval(function () {
-  if (currentRoute() === 'downloads') refresh();
-}, 1500);
+loadSettings();
+let sse = null;
+let sseFailCount = 0;
+function connectEvents() {
+  if (sse) { try { sse.close(); } catch (e) {} }
+  sse = new EventSource(API + '/api/events');
+  sse.onopen = function () { sseFailCount = 0; };
+  sse.onmessage = function (ev) {
+    sseFailCount = 0;
+    lastOkTime = Date.now();
+    hasLoadedItems = true;
+    document.getElementById('deviceStatus').classList.remove('offline');
+    try {
+      const data = JSON.parse(ev.data);
+      const items = data.items || [];
+      items.forEach(sampleSpeed);
+      render(items);
+    } catch (e) {}
+  };
+  sse.onerror = function () {
+    sseFailCount++;
+    if (sseFailCount > 2) {
+      document.getElementById('deviceStatus').classList.add('offline');
+    }
+  };
+}
+if (typeof EventSource !== 'undefined') {
+  connectEvents();
+  // Fallback polling: aktif hanya saat SSE tidak terhubung (mis. jaringan
+  // memblokir streaming), EventSource akan coba menyambung ulang sendiri.
+  setInterval(function () {
+    if (!sse || sse.readyState !== EventSource.OPEN) {
+      if (currentRoute() === 'downloads') refresh();
+    }
+  }, 6000);
+} else {
+  setInterval(function () {
+    if (currentRoute() === 'downloads') refresh();
+  }, 1500);
+}
 setInterval(refreshStatus, 5000);
 setInterval(function () {
   const el = document.getElementById('lastUpd');

@@ -79,6 +79,7 @@
     <string name="about_repo">GitHub: github.com/tasirin1/httpdownloadmanager-</string>
     <string name="ok">OK</string>
     <string name="about_changelog">Catatan perubahan (fitur utama):
+&#8226; Remote real-time (SSE, tanpa polling), slider batas kecepatan global langsung dari browser, kecepatan putar video 0.5&#215;&#8211;2&#215;, bagikan file via tautan sementara 24 jam + QR code
 &#8226; Tampilan remote dirombak: FAB tambah download di HP, menu aksi item bottom-sheet, skeleton loading, empty state cantik, filter sticky, indikator koneksi + refresh manual, animasi halus, favicon &amp; theme-color
 &#8226; Info file otomatis sebelum download mulai (nama asli, ukuran, tipe) + peringatan jika lebih besar dari penyimpanan
 &#8226; ETA &amp; kecepatan stabil (rata-rata bergerak, tidak melompat-lompat)

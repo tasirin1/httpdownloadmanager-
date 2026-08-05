@@ -79,6 +79,7 @@
     <string name="about_repo">GitHub: github.com/tasirin1/httpdownloadmanager-</string>
     <string name="ok">OK</string>
     <string name="about_changelog">Changelog (main features):
+&#8226; Real-time remote (SSE, no polling), global speed limit slider right from the browser, video playback speed 0.5&#215;&#8211;2&#215;, share files via 24-hour temporary links + QR code
 &#8226; Remote UI overhaul: mobile FAB for new download, bottom-sheet item actions, skeleton loading, pretty empty states, sticky filters, connection indicator + manual refresh, smooth animations, favicon &amp; theme-color
 &#8226; Automatic file info before download starts (real name, size, type) + warning when larger than available storage
 &#8226; Stable ETA &amp; speed (moving average, no more jumping)

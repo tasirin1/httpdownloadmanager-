@@ -1002,7 +1002,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                     if (newPort != oldPort) {
                         // NanoHTTPD mengunci port saat konstruksi, jadi server
                         // dibuat ulang agar port baru benar-benar terpakai.
-                        App.restartHttpServer()
+                        App.restartHttpServer(this)
                     }
                 }
                 updateServerStatus()

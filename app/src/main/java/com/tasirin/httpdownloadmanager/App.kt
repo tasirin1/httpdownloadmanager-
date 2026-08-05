@@ -1,6 +1,7 @@
 package com.tasirin.httpdownloadmanager
 
 import android.app.Application
+import android.content.Context
 import android.content.ContentValues
 import android.provider.MediaStore
 import android.os.Build
@@ -27,18 +28,6 @@ class App : Application() {
         }
     }
 
-    /** Buat ulang server remote dengan port terbaru dari prefs.
-     *  NanoHTTPD mengunci port saat konstruksi, jadi ganti port = instance baru.
-     *  Server tetap hidup bila sebelumnya hidup. */
-    fun restartHttpServer() {
-        val wasAlive = httpServer.isAlive
-        runCatching { httpServer.stopServer() }
-        httpServer = HttpControlServer(this)
-        if (wasAlive) {
-            runCatching { httpServer.startServer() }
-        }
-    }
-
     private fun installCrashLogger() {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
@@ -51,6 +40,18 @@ class App : Application() {
         const val CRASH_LOG_FILE = "crash.log"
         lateinit var engine: DownloadEngine
         lateinit var httpServer: HttpControlServer
+
+        /** Buat ulang server remote dengan port terbaru dari prefs.
+         *  NanoHTTPD mengunci port saat konstruksi, jadi ganti port = instance baru.
+         *  Server tetap hidup bila sebelumnya hidup. */
+        fun restartHttpServer(context: Context) {
+            val wasAlive = httpServer.isAlive
+            runCatching { httpServer.stopServer() }
+            httpServer = HttpControlServer(context)
+            if (wasAlive) {
+                runCatching { httpServer.startServer() }
+            }
+        }
 
         fun appendCrash(context: android.content.Context, tag: String, t: Throwable) {
             runCatching {

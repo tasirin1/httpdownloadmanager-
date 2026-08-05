@@ -597,30 +597,34 @@ document.getElementById('cancelAdd').addEventListener('click', function () {
 });
 
 let lastOkTime = 0;
+function renderStatus(st) {
+  const el = document.getElementById('deviceStatus');
+  if (!el) return;
+  lastOkTime = Date.now();
+  let text = '<span><span class="dot"></span><b>Device terhubung</b></span>';
+  if (st.batteryPercent >= 0) {
+    text += '<span>&#128267; Baterai <b>' + st.batteryPercent + '%</b>' + (st.batteryCharging ? ' (mengisi)' : '') + '</span>';
+  } else {
+    text += '<span>&#128267; Baterai ?</span>';
+  }
+  if (typeof st.storageFree === 'number') {
+    text += '<span>&#128190; Sisa <b>' + fmt(st.storageFree) + '</b></span>';
+  }
+  text += '<span>&#128424; Port <b>' + st.port + '</b></span>';
+  text += '<span id="lastUpd">diperbarui 0 dtk lalu</span>';
+  text += '<button type="button" class="refresh-btn" title="Segarkan">&#8635;</button>';
+  el.innerHTML = text;
+  el.classList.remove('offline');
+  const rb = el.querySelector('.refresh-btn');
+  if (rb) rb.addEventListener('click', function () { refreshStatus(); refresh(); });
+}
 async function refreshStatus() {
   const el = document.getElementById('deviceStatus');
   if (!el) return;
   try {
     const res = await fetch(API + '/api/status');
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const st = await res.json();
-    lastOkTime = Date.now();
-    let text = '<span><span class="dot"></span><b>Device terhubung</b></span>';
-    if (st.batteryPercent >= 0) {
-      text += '<span>&#128267; Baterai <b>' + st.batteryPercent + '%</b>' + (st.batteryCharging ? ' (mengisi)' : '') + '</span>';
-    } else {
-      text += '<span>&#128267; Baterai ?</span>';
-    }
-    if (typeof st.storageFree === 'number') {
-      text += '<span>&#128190; Sisa <b>' + fmt(st.storageFree) + '</b></span>';
-    }
-    text += '<span>&#128424; Port <b>' + st.port + '</b></span>';
-    text += '<span id="lastUpd">diperbarui 0 dtk lalu</span>';
-    text += '<button type="button" class="refresh-btn" title="Segarkan">&#8635;</button>';
-    el.innerHTML = text;
-    el.classList.remove('offline');
-    const rb = el.querySelector('.refresh-btn');
-    if (rb) rb.addEventListener('click', function () { refreshStatus(); refresh(); });
+    renderStatus(await res.json());
   } catch (e) {
     el.classList.add('offline');
     el.innerHTML = '<span><span class="dot"></span><b>Server tidak terhubung</b> — mulai server dari aplikasi</span>';
@@ -2354,6 +2358,7 @@ function connectEvents() {
     try {
       const data = JSON.parse(ev.data);
       const items = data.items || [];
+      if (data.status) renderStatus(data.status);
       items.forEach(sampleSpeed);
       render(items);
     } catch (e) {}
@@ -2372,14 +2377,15 @@ if (typeof EventSource !== 'undefined') {
   setInterval(function () {
     if (!sse || sse.readyState !== EventSource.OPEN) {
       if (currentRoute() === 'downloads') refresh();
+      refreshStatus();
     }
   }, 6000);
 } else {
   setInterval(function () {
     if (currentRoute() === 'downloads') refresh();
+    refreshStatus();
   }, 1500);
 }
-setInterval(refreshStatus, 5000);
 setInterval(function () {
   const el = document.getElementById('lastUpd');
   if (!el) return;

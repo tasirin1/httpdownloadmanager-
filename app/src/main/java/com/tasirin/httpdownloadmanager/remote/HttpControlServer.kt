@@ -28,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -65,8 +66,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     private val serverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val sseClients = CopyOnWriteArrayList<SseStream>()
     private var sseJob: Job? = null
-    private var sseLastPayload = ""
-    private var sseLastPushAt = 0L
+    @Volatile private var sseLastPayload = ""
+    @Volatile private var sseLastPushAt = 0L
     private val shareTokens = ConcurrentHashMap<String, ShareEntry>()
 
     override fun serve(session: IHTTPSession): Response {
@@ -1132,13 +1133,17 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     }
 
     private fun statusJson(): Response {
+        return jsonResponse(statusObject())
+    }
+
+    private fun statusObject(): JSONObject {
         val obj = JSONObject()
         val (level, charging) = batteryStatus()
         obj.put("batteryPercent", level)
         obj.put("batteryCharging", charging)
         obj.put("storageFree", App.engine.freeSpaceBytes())
         obj.put("port", listeningPort)
-        return jsonResponse(obj)
+        return obj
     }
 
     private fun batteryStatus(): Pair<Int, Boolean> = runCatching {
@@ -1175,36 +1180,51 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     private fun ensureSsePump() {
         if (sseJob?.isActive == true) return
         sseJob = serverScope.launch {
-            runCatching {
-                App.engine.items.collect { items ->
-                    val payload = JSONObject().put(
-                        "items",
-                        JSONArray().apply {
-                            items.forEach { item ->
-                                val o = JSONObject()
-                                o.put("id", item.id)
-                                o.put("fileName", item.fileName)
-                                o.put("state", item.state.name)
-                                o.put("bytesDownloaded", item.bytesDownloaded)
-                                o.put("totalBytes", item.totalBytes)
-                                o.put("progress", item.progressPercent)
-                                o.put("speedBps", item.speedBps)
-                                o.put("etaSeconds", item.etaSeconds)
-                                o.put("addedAt", item.addedAt)
-                                item.error?.let { o.put("error", it) }
-                                put(o)
-                            }
+            val buildPayload = { withStatus: Boolean ->
+                val payload = JSONObject().put(
+                    "items",
+                    JSONArray().apply {
+                        App.engine.items.value.forEach { item ->
+                            val o = JSONObject()
+                            o.put("id", item.id)
+                            o.put("fileName", item.fileName)
+                            o.put("state", item.state.name)
+                            o.put("bytesDownloaded", item.bytesDownloaded)
+                            o.put("totalBytes", item.totalBytes)
+                            o.put("progress", item.progressPercent)
+                            o.put("speedBps", item.speedBps)
+                            o.put("etaSeconds", item.etaSeconds)
+                            o.put("addedAt", item.addedAt)
+                            item.error?.let { o.put("error", it) }
+                            put(o)
                         }
-                    ).toString()
-                    val now = System.currentTimeMillis()
-                    if (payload != sseLastPayload || now - sseLastPushAt > 10_000) {
-                        sseLastPayload = payload
-                        sseLastPushAt = now
-                        val frame = "data: $payload\n\n"
-                        sseClients.removeIf { it.isClosed }
-                        sseClients.forEach { it.push(frame) }
+                    }
+                )
+                if (withStatus) payload.put("status", statusObject())
+                payload.toString()
+            }
+            val pushFrame = { payloadText: String ->
+                val now = System.currentTimeMillis()
+                if (payloadText != sseLastPayload || now - sseLastPushAt > 10_000) {
+                    sseLastPayload = payloadText
+                    sseLastPushAt = now
+                    val frame = "data: $payloadText\n\n"
+                    sseClients.removeIf { it.isClosed }
+                    sseClients.forEach { it.push(frame) }
+                }
+            }
+            launch {
+                runCatching {
+                    App.engine.items.collect {
+                        pushFrame(buildPayload(true))
                     }
                 }
+            }
+            // Ticker status: tetap push walau tidak ada perubahan item,
+            // supaya baterai/penyimpanan/port selalu segar.
+            while (true) {
+                delay(3_000)
+                pushFrame(buildPayload(true))
             }
         }
     }

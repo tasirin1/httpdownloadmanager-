@@ -52,6 +52,10 @@ Vaultwarden Host: `WRITE_EXTERNAL_STORAGE` penuh + `requestLegacyExternalStorage
 target SDK 28, jadi folder Downloads publik bisa diakses langsung di Android 5–11
 (tanpa dibatasi scoped storage). Di Android 12+ tetap memakai MediaStore/SAF otomatis.
 Izin penyimpanan diminta otomatis saat membuka dialog Penyimpanan di Android 6+.
+Selain "Pilih folder…" (picker sistem/SAF), ada **folder teks**: ketik path mentah
+seperti `/storage/emulated/0/<folder>` (pola Vaultwarden Host). Folder otomatis
+dibuat kalau belum ada, jadi path folder buatan Total Commander dll. bisa langsung
+dipakai di Android 5–11.
 Untuk memilih lokasi lain (misalnya folder di SD card):
 
 1. Ketuk menu **⋮ → Penyimpanan**

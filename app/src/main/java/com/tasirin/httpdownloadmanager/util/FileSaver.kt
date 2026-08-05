@@ -119,7 +119,7 @@ class FileSaver(context: Context) {
         }
         StoragePrefs.getTextFolder(appContext)?.let { tf ->
             val dir = File(tf)
-            if (dir.isDirectory) {
+            if (dir.isDirectory || dir.mkdirs()) {
                 val target = File(dir, fileName)
                 target.outputStream().use { out -> writer(out) }
                 return PublishResult(filePath = target.absolutePath)
@@ -216,8 +216,7 @@ class FileSaver(context: Context) {
         folder: String
     ): PublishResult? = runCatching {
         val dir = File(folder)
-        if (!dir.isDirectory) return null
-        runCatching { dir.mkdirs() }
+        if (!dir.isDirectory && !dir.mkdirs()) return null
         val target = File(dir, fileName)
         target.outputStream().use { out -> partial.inputStream().use { it.copyTo(out) } }
         partial.delete()

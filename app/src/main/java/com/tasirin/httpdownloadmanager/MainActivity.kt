@@ -680,7 +680,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         })
 
         view.findViewById<Button>(R.id.btn_pick_storage).setOnClickListener {
-            if (Build.VERSION.SDK_INT in 23..28) {
+            if (Build.VERSION.SDK_INT >= 23) {
                 requestPermissionsIfNeeded()
             }
             launchDocumentTree(folderPicker)
@@ -718,7 +718,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val path = pathInput.text?.toString()?.trim().orEmpty()
         if (path.isEmpty()) return
         val dir = File(path)
-        if (!dir.isDirectory) {
+        if (!dir.isDirectory && !dir.mkdirs()) {
             Toast.makeText(this, R.string.storage_text_folder_invalid, Toast.LENGTH_LONG).show()
             return
         }
@@ -734,7 +734,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     }
 
     private fun showStorageDialog() {
-        if (Build.VERSION.SDK_INT in 23..28 &&
+        if (Build.VERSION.SDK_INT >= 23 &&
             checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
             PackageManager.PERMISSION_GRANTED
         ) {
@@ -765,7 +765,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             .setPositiveButton(R.string.save) { _, _ ->
                 val path = input.text?.toString()?.trim().orEmpty()
                 val dir = File(path)
-                if (path.isNotEmpty() && dir.isDirectory) {
+                if (path.isNotEmpty() && (dir.isDirectory || dir.mkdirs())) {
                     StoragePrefs.setTextFolder(this, path)
                     StoragePrefs.saveFolder(this, null, null)
                     Toast.makeText(

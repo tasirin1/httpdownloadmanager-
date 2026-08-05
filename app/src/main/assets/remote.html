@@ -91,7 +91,7 @@
   .actions button.danger:hover { background: var(--red-bg); border-color: var(--red); }
   .spark { width: 100%; height: 26px; display: block; margin-top: 8px; }
   .spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.6; }
-  .gal-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .gal-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
   .gal-toolbar h2 { margin: 0; font-size: 16px; }
   .gal-toolbar .count { font-size: 12px; color: var(--muted); }
   .gal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
@@ -108,17 +108,17 @@
   .gal-cell .ext { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #9aa4b2; font-size: 26px; font-weight: 800; text-transform: uppercase; }
   .gal-empty { grid-column: 1 / -1; padding: 44px 16px; text-align: center; color: var(--muted); }
   #galleryStatus { color: var(--red); font-size: 13px; margin-bottom: 8px; }
-  .fs-path { font-size: 12.5px; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 9px 13px; margin-bottom: 12px; word-break: break-all; }
-  .fs-list { display: flex; flex-direction: column; gap: 8px; }
-  .fs-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 10px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; box-shadow: var(--shadow-sm); transition: border-color .15s ease; }
+  .fs-path { font-size: 12px; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 6px 10px; margin-bottom: 8px; word-break: break-all; }
+  .fs-list { display: flex; flex-direction: column; gap: 6px; }
+  .fs-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 10px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; box-shadow: var(--shadow-sm); transition: border-color .15s ease; }
   .fs-row.fs-dir { cursor: pointer; }
   .fs-row.fs-dir:hover { border-color: var(--primary); }
-  .fs-row .icon { flex: 0 0 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 19px; background: var(--blue-bg); }
+  .fs-row .icon { flex: 0 0 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; background: var(--blue-bg); }
   .fs-row .fs-main { flex: 1 1 140px; min-width: 0; }
-  .fs-row .fs-name { font-weight: 700; font-size: 13.5px; word-break: break-all; }
+  .fs-row .fs-name { font-weight: 700; font-size: 13px; word-break: break-all; }
   .fs-row .fs-meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
   .fs-row .fs-actions { flex: 1 1 100%; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
-  .fs-row .fs-actions a, .fs-row .fs-actions button { padding: 6px 12px; font-size: 12px; font-weight: 600; text-decoration: none; border-radius: 999px; border: 1px solid transparent; cursor: pointer; transition: all .15s ease; }
+  .fs-row .fs-actions a, .fs-row .fs-actions button { padding: 4px 10px; font-size: 11.5px; font-weight: 600; text-decoration: none; border-radius: 999px; border: 1px solid transparent; cursor: pointer; transition: all .15s ease; }
   .fs-actions a, .fs-actions button { background: var(--bg-soft); color: var(--ink); }
   .fs-actions a.fs-stream { background: var(--green-bg); color: var(--green); }
   .fs-actions a.fs-stream:hover { border-color: var(--green); }
@@ -127,22 +127,24 @@
   .fs-actions button:hover { border-color: var(--muted); }
   .fs-actions button.danger { color: var(--red); }
   .fs-actions button.danger:hover { background: var(--red-bg); border-color: var(--red); }
-  .fs-root { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; cursor: pointer; margin-bottom: 10px; box-shadow: var(--shadow-sm); transition: border-color .15s ease; }
+  .fs-root { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; margin-bottom: 8px; box-shadow: var(--shadow-sm); transition: border-color .15s ease; }
   .fs-root:hover { border-color: var(--primary); }
   .fs-root .fs-rcap small { display: block; color: var(--muted); font-size: 12px; word-break: break-all; margin-top: 2px; }
-  .fs-empty { padding: 36px 16px; text-align: center; color: var(--muted); }
+  .fs-empty { padding: 24px 12px; text-align: center; color: var(--muted); }
   .btn-ghost:disabled { opacity: .45; cursor: default; }
-  .fs-tools { display: flex; gap: 8px; margin-bottom: 12px; }
-  .fs-tools input { flex: 1; }
+  .fs-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 8px; }
+  .fs-tools input { flex: 1 1 140px; }
   .fs-tools select { flex: 0 0 auto; width: auto; }
-  .fs-upload { margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); box-shadow: var(--shadow-sm); }
+  .fs-tools button { padding: 7px 12px; font-size: 12px; font-weight: 600; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; transition: all .15s ease; }
+  .fs-tools button:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+  .fs-upload { margin: 0 0 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); box-shadow: var(--shadow-sm); }
   .fs-upload-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
   .fs-upload-head span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .fs-upload .bar { height: 6px; border-radius: 999px; background: var(--primary-soft); overflow: hidden; }
   .fs-upload .fill { height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, var(--primary), #7a5cff); transition: width .2s ease; }
-  .fs-batch { display: flex; align-items: center; gap: 8px; background: var(--primary-soft); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; }
+  .fs-batch { display: flex; align-items: center; gap: 8px; background: var(--primary-soft); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
   .fs-batch span { font-size: 13px; font-weight: 700; margin-right: auto; }
-  .fs-batch button { padding: 7px 13px; font-size: 12.5px; font-weight: 600; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+  .fs-batch button { padding: 6px 11px; font-size: 12px; font-weight: 600; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
   .fs-batch button:hover { border-color: var(--primary); }
   .fs-batch button.danger { color: var(--red); }
   .fs-check { flex: 0 0 22px; height: 22px; border-radius: 50%; border: 2px solid var(--muted); display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff; line-height: 1; }
@@ -200,11 +202,13 @@
     input, select { font-size: 16px; padding: 12px; }
     .gal-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
     .gal-cell { aspect-ratio: 4 / 3; }
-    .fs-row { padding: 12px; }
-    .fs-row .fs-actions a, .fs-row .fs-actions button { flex: 1 1 auto; min-width: 64px; padding: 8px 10px; text-align: center; }
+    .fs-row { padding: 10px 12px; }
+    .fs-row .fs-actions a, .fs-row .fs-actions button { flex: 1 1 auto; min-width: 56px; padding: 7px 8px; text-align: center; }
     .fs-path { font-size: 12px; }
-    .fs-tools { flex-direction: column; }
+    .fs-tools { flex-direction: column; align-items: stretch; }
+    .fs-tools input { flex: none; }
     .fs-tools select { width: 100%; }
+    .fs-tools button { flex: 1 1 auto; }
     .fs-batch { flex-wrap: wrap; }
     .fs-batch button { flex: 1 1 auto; }
     .item { padding: 14px; }
@@ -281,29 +285,27 @@
   </div>
 
   <div id="fsView" class="hidden">
-    <div class="gal-toolbar">
-      <h2>&#128193; File Manager</h2>
-      <span class="count" id="fsCount"></span>
-      <button id="fsUpBtn" type="button" class="btn-ghost" style="margin-left:auto">&#11014; Naik</button>
-    </div>
-    <div id="fsPath" class="fs-path"></div>
-    <div class="toolbar">
-      <button id="fsMkdirBtn" type="button">&#128193; Folder baru</button>
-      <button id="fsUploadBtn" type="button">&#11014; Upload</button>
-      <button id="fsSelectBtn" type="button">&#9989; Pilih</button>
-    </div>
-    <input id="fsUploadFile" type="file" class="hidden" multiple>
-    <div class="fs-tools" id="fsToolsRow">
-      <input id="fsSearch" type="search" placeholder="Cari file…">
-      <select id="fsSort">
-        <option value="name_asc">Nama A-Z</option>
-        <option value="name_desc">Nama Z-A</option>
-        <option value="size_desc">Ukuran terbesar</option>
-        <option value="size_asc">Ukuran terkecil</option>
-        <option value="date_desc">Terbaru</option>
-        <option value="date_asc">Terlama</option>
-      </select>
-    </div>
+  <div class="gal-toolbar">
+    <h2>&#128193; File Manager</h2>
+    <span class="count" id="fsCount"></span>
+    <button id="fsUpBtn" type="button" class="btn-ghost" style="margin-left:auto">&#11014; Naik</button>
+  </div>
+  <div id="fsPath" class="fs-path"></div>
+  <div class="fs-tools" id="fsToolsRow">
+    <input id="fsSearch" type="search" placeholder="Cari file…">
+    <select id="fsSort">
+      <option value="name_asc">Nama A-Z</option>
+      <option value="name_desc">Nama Z-A</option>
+      <option value="size_desc">Ukuran terbesar</option>
+      <option value="size_asc">Ukuran terkecil</option>
+      <option value="date_desc">Terbaru</option>
+      <option value="date_asc">Terlama</option>
+    </select>
+    <button id="fsMkdirBtn" type="button">&#128193; Folder</button>
+    <button id="fsUploadBtn" type="button">&#11014; Upload</button>
+    <button id="fsSelectBtn" type="button">&#9989; Pilih</button>
+  </div>
+  <input id="fsUploadFile" type="file" class="hidden" multiple>
     <div id="fsBatch" class="fs-batch hidden">
       <span id="fsBatchCount"></span>
       <button id="fsBatchMove" type="button">&#10145; Pindah</button>
@@ -360,14 +362,19 @@ Object.entries(WEB_FILTERS).forEach(function (e) {
 
 const addForm = document.getElementById('addForm');
 const newBtn = document.getElementById('newBtn');
+let pendingAddForm = false;
 function toggleAddForm(show) {
   addForm.classList.toggle('hidden', !show);
   newBtn.textContent = show ? '\u2715 Tutup' : '+ New Download';
   if (show) document.getElementById('url').focus();
 }
 newBtn.addEventListener('click', function () {
-  if (currentRoute() !== 'downloads') location.hash = '#/';
-  toggleAddForm(addForm.classList.contains('hidden'));
+  if (currentRoute() !== 'downloads') {
+    pendingAddForm = true;
+    location.hash = '#/';
+  } else {
+    toggleAddForm(addForm.classList.contains('hidden'));
+  }
 });
 
 document.getElementById('cancelAdd').addEventListener('click', function () {
@@ -528,6 +535,12 @@ function applyRoute() {
     fsBatch.classList.add('hidden');
     loadFs();
   } else {
+    if (pendingAddForm) {
+      pendingAddForm = false;
+      toggleAddForm(true);
+    } else {
+      toggleAddForm(false);
+    }
     refresh();
   }
 }

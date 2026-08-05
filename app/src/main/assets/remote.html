@@ -337,7 +337,6 @@
   <div id="mmTitle"></div>
   <div id="mmSub"></div>
   <div class="m-actions">
-    <button id="mmDelete" type="button" class="danger">&#128465; Hapus</button>
     <button id="mmClose" type="button" class="btn-ghost">Tutup</button>
   </div>
 </div>
@@ -421,7 +420,6 @@ async function refreshStatus() {
 }
 
 let galleryOpen = false;
-let currentMediaToken = null;
 const galleryView = document.getElementById('galleryView');
 const galleryBtn = document.getElementById('galleryBtn');
 const galleryGrid = document.getElementById('galleryGrid');
@@ -450,14 +448,6 @@ galleryBtn.addEventListener('click', function () {
   }
 });
 
-document.getElementById('mmDelete').addEventListener('click', function () {
-  if (!currentMediaToken) return;
-  if (!confirm('Hapus file ini?')) return;
-  doDeleteMedia(currentMediaToken, function () {
-    document.getElementById('mmClose').click();
-    loadGallery();
-  });
-});
 document.getElementById('mmClose').addEventListener('click', function () {
   mediaModal.classList.remove('open');
   mmVideo.pause();
@@ -946,7 +936,6 @@ async function doDeleteMedia(token, ok) {
 }
 
 function openMedia(it, src, thumb) {
-  currentMediaToken = it.token;
   mmImage.classList.add('hidden');
   mmVideo.classList.add('hidden');
   mmImage.removeAttribute('src');

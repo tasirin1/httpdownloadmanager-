@@ -161,7 +161,6 @@
     <string name="gallery_empty">No photos/videos in the download folder yet.</string>
     <string name="gallery_open_error">No app found to open this file</string>
     <string name="settings_storage_label">Storage (destination folder)</string>
-    <string name="change_storage">Change storage&#8230;</string>
     <string name="change_storage_short">Change</string>
     <string name="storage_home_info">%1$s · Free %2$s</string>
 

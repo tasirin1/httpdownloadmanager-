@@ -162,7 +162,6 @@
     <string name="gallery_empty">Belum ada foto/video di folder download.</string>
     <string name="gallery_open_error">Tidak ada aplikasi untuk membuka file ini</string>
     <string name="settings_storage_label">Penyimpanan (folder tujuan)</string>
-    <string name="change_storage">Ubah penyimpanan&#8230;</string>
     <string name="change_storage_short">Ubah</string>
     <string name="storage_home_info">%1$s · Sisa %2$s</string>
 

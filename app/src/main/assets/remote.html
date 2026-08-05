@@ -352,7 +352,7 @@
     <span><span class="dot"></span>Menghubungkan ke device…</span>
   </div>
 
-  <div class="toolbar" id="downloadsToolbar">
+  <div class="toolbar hidden" id="downloadsToolbar">
     <button id="pauseAllBtn" type="button">&#9209; Jeda semua</button>
     <button id="resumeAllBtn" type="button">&#9654; Lanjut semua</button>
     <button id="retryFailedBtn" type="button">&#8635; Ulangi gagal</button>
@@ -2043,6 +2043,28 @@ function renderSpeedTotal(items) {
   el.innerHTML = '&#9889; ' + fmtSpeed(total) + ' <span class="st-sub">' + active + ' aktif</span>';
 }
 
+// Toolbar aksi massal hanya tampil saat ada item yang relevan,
+// supaya halaman tidak penuh tombol yang tidak terpakai.
+function updateToolbar(items) {
+  let active = 0;
+  let pausedOrFailed = 0;
+  let failed = 0;
+  let completed = 0;
+  items.forEach(function (it) {
+    if (it.state === 'DOWNLOADING' || it.state === 'PENDING') active++;
+    if (it.state === 'PAUSED' || it.state === 'FAILED') pausedOrFailed++;
+    if (it.state === 'FAILED') failed++;
+    if (it.state === 'COMPLETED') completed++;
+  });
+  document.getElementById('pauseAllBtn').classList.toggle('hidden', active === 0);
+  document.getElementById('resumeAllBtn').classList.toggle('hidden', pausedOrFailed === 0);
+  document.getElementById('retryFailedBtn').classList.toggle('hidden', failed === 0);
+  document.getElementById('clearCompletedBtn').classList.toggle('hidden', completed === 0);
+  document.getElementById('downloadsToolbar').classList.toggle(
+    'hidden', active === 0 && pausedOrFailed === 0 && completed === 0
+  );
+}
+
 let lastItemsSig = '';
 let lastIdListSig = '';
 function itemsSig(items) {
@@ -2079,6 +2101,7 @@ function render(items) {
     return d !== 0 ? d : ((b.addedAt || 0) - (a.addedAt || 0));
   });
   renderSpeedTotal(items);
+  updateToolbar(items);
   const filtered = items.filter(function (it) {
     if (webFilter === 'ALL') return true;
     if (webFilter === 'ACTIVE') return it.state === 'DOWNLOADING' || it.state === 'PENDING';

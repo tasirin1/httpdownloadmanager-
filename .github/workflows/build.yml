@@ -69,7 +69,11 @@ jobs:
           VER=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
           CODE=$(grep -oP 'versionCode = \K[0-9]+' app/build.gradle.kts)
           OUT="http-download-manager-v${VER}-${CODE}.apk"
-          cp app/build/outputs/apk/debug/app-debug.apk "$OUT"
+          if [ -f app/build/outputs/apk/release/app-release.apk ]; then
+            cp app/build/outputs/apk/release/app-release.apk "$OUT"
+          else
+            cp app/build/outputs/apk/debug/app-debug.apk "$OUT"
+          fi
           gh release delete "v${VER}" --yes --cleanup-tag || true
           gh release create "v${VER}" "$OUT" \
             --title "HTTP Download Manager v${VER}" \

@@ -16,6 +16,7 @@ Aplikasi download manager + remote control untuk **Android 5.0 (API 21) ke atas*
 - Auth HTTP Basic + custom header (Referer, Cookie, dll.), tempel banyak URL sekaligus, riwayat URL
 - Buka file selesai dengan aplikasi lain, buka folder, ubah nama / pindahkan file (long-press)
 - Nama file otomatis mengikuti server (Content-Disposition/Content-Type) atau pola "unduhan_tanggal_waktu"
+- **Nama duplikat di folder tujuan otomatis diganti** saat download selesai: `nama (1).ext`, `nama (2).ext`, dst. (berlaku untuk semua lokasi simpan: Downloads, folder kustom, MediaStore, penyimpanan internal)
 - Pindahkan otomatis ke subfolder Video/Foto setelah selesai (pengaturan)
 - Splash screen modern + adaptive icon (fallback PNG untuk Android 5–7)
 - **Tema ikuti sistem** (otomatis / terang / gelap), bahasa Indonesia/Inggris (ikut sistem)

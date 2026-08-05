@@ -162,10 +162,11 @@ class DownloadEngine(private val context: Context) {
         val size = length
         val saver = FileSaver(context)
         val published = saver.saveStream(name, destination, folderPath, writer)
+        val finalName = published.fileName ?: name
         val item = DownloadItem(
             id = UUID.randomUUID().toString(),
-            url = "upload://$name",
-            fileName = name,
+            url = "upload://$finalName",
+            fileName = finalName,
             state = DownloadState.COMPLETED,
             bytesDownloaded = size,
             totalBytes = size,
@@ -571,15 +572,16 @@ class DownloadEngine(private val context: Context) {
         verifySize(item.id, downloaded, total)
 
         val published0 = publishItem(saver, partialFile, fileName, item)
-        verifyChecksum(item.id, fileName, published0, saver)?.let {
+        val finalName = published0.fileName ?: fileName
+        verifyChecksum(item.id, finalName, published0, saver)?.let {
             throw IOException(it)
         }
-        val published = organizeIfEnabled(saver, published0, fileName)
+        val published = organizeIfEnabled(saver, published0, finalName)
         speedTracker.reset(item.id)
         updateItem(item.id) {
             it.copy(
                 state = DownloadState.COMPLETED,
-                fileName = fileName,
+                fileName = finalName,
                 bytesDownloaded = downloaded,
                 totalBytes = if (total > 0) total else downloaded,
                 contentUri = published.contentUri,
@@ -637,15 +639,16 @@ class DownloadEngine(private val context: Context) {
 
         val merged = saver.mergeSegments(fileName, segments.size)
         val published0 = publishItem(saver, merged, fileName, item)
-        verifyChecksum(item.id, fileName, published0, saver)?.let {
+        val finalName = published0.fileName ?: fileName
+        verifyChecksum(item.id, finalName, published0, saver)?.let {
             throw IOException(it)
         }
-        val published = organizeIfEnabled(saver, published0, fileName)
+        val published = organizeIfEnabled(saver, published0, finalName)
         speedTracker.reset(item.id)
         updateItem(item.id) {
             it.copy(
                 state = DownloadState.COMPLETED,
-                fileName = fileName,
+                fileName = finalName,
                 bytesDownloaded = current.bytesDownloaded,
                 totalBytes = current.totalBytes,
                 contentUri = published.contentUri,

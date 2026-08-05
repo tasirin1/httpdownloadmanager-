@@ -83,6 +83,7 @@
 &#8226; Player video ala YouTube: seekbar + buffered, fullscreen otomatis landscape, double-tap &#177;10 dtk, gesture kecerahan/volume, lanjut dari posisi terakhir, saran video
 &#8226; File manager remote: info isi folder, buat folder, rename, pindah, hapus massal, ZIP
 &#8226; Upload banyak file sekaligus: dipecah per potongan, retry otomatis, upload folder utuh + drag &amp; drop, nama duplikat otomatis (file (1).ext), konfirmasi saat tutup halaman
+&#8226; Nama duplikat di folder tujuan otomatis diganti saat download selesai (file (1).ext, file (2).ext, dst.) di semua lokasi simpan
 &#8226; Streaming &amp; download file via browser (HTTP Range)
 &#8226; Download multi-segmen paralel, resume, batas kecepatan &amp; prioritas per-download
 &#8226; Retry otomatis dengan jeda bertahap, auto-start saat boot

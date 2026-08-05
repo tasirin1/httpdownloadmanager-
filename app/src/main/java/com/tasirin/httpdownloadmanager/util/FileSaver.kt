@@ -20,7 +20,11 @@ class FileSaver(context: Context) {
     private val downloadDir = File(appContext.filesDir, "downloads").apply { mkdirs() }
     private val customFolderUri = StoragePrefs.getFolderUri(appContext)
 
-    data class PublishResult(val contentUri: String? = null, val filePath: String? = null)
+    data class PublishResult(
+        val contentUri: String? = null,
+        val filePath: String? = null,
+        val fileName: String? = null
+    )
 
     fun partialFile(fileName: String, segment: Int? = null): File {
         val suffix = if (segment != null) ".part.$segment" else ".part"
@@ -52,10 +56,10 @@ class FileSaver(context: Context) {
         if (!dir.isDirectory && !dir.mkdirs()) return null
         if (!dir.isDirectory) return null
         return runCatching {
-            val target = File(dir, fileName)
+            val target = uniqueTargetFile(File(dir, fileName))
             target.outputStream().use { out -> partial.inputStream().use { it.copyTo(out) } }
             partial.delete()
-            PublishResult(filePath = target.absolutePath)
+            PublishResult(filePath = target.absolutePath, fileName = target.name)
         }.getOrNull()
     }
 
@@ -102,9 +106,9 @@ class FileSaver(context: Context) {
             if (!dir.isDirectory && !dir.mkdirs()) {
                 throw IOException("Folder tujuan tidak valid atau tidak bisa ditulis: $cleanFolder")
             }
-            val target = File(dir, fileName)
+            val target = uniqueTargetFile(File(dir, fileName))
             target.outputStream().use { out -> writer(out) }
-            return PublishResult(filePath = target.absolutePath)
+            return PublishResult(filePath = target.absolutePath, fileName = target.name)
         }
         when (destination) {
             "internal" -> return writeInternal(fileName, writer)
@@ -133,9 +137,9 @@ class FileSaver(context: Context) {
     }
 
     private fun writeInternal(fileName: String, writer: (OutputStream) -> Unit): PublishResult {
-        val target = File(downloadDir, fileName)
+        val target = uniqueTargetFile(File(downloadDir, fileName))
         target.outputStream().use { out -> writer(out) }
-        return PublishResult(filePath = target.absolutePath)
+        return PublishResult(filePath = target.absolutePath, fileName = target.name)
     }
 
     @Suppress("DEPRECATION")
@@ -144,9 +148,9 @@ class FileSaver(context: Context) {
         if (Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED) return null
         runCatching { publicDir.mkdirs() }
         if (!publicDir.isDirectory || !publicDir.canWrite()) return null
-        val target = File(publicDir, fileName)
+        val target = uniqueTargetFile(File(publicDir, fileName))
         target.outputStream().use { out -> writer(out) }
-        return PublishResult(filePath = target.absolutePath)
+        return PublishResult(filePath = target.absolutePath, fileName = target.name)
     }
 
     private fun saveToMediaStore(
@@ -155,9 +159,10 @@ class FileSaver(context: Context) {
         writer: (OutputStream) -> Unit
     ): PublishResult {
         val resolver = appContext.contentResolver
+        val unique = uniqueMediaStoreName(fileName, relativePath)
         val values = ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-            put(MediaStore.Downloads.MIME_TYPE, MimeTypes.forFile(fileName))
+            put(MediaStore.Downloads.DISPLAY_NAME, unique)
+            put(MediaStore.Downloads.MIME_TYPE, MimeTypes.forFile(unique))
             relativePath?.let { rel ->
                 put(MediaStore.Downloads.RELATIVE_PATH, rel.trim('/').trimEnd('/') + "/")
             }
@@ -171,7 +176,7 @@ class FileSaver(context: Context) {
             values.clear()
             values.put(MediaStore.Downloads.IS_PENDING, 0)
             resolver.update(uri, values, null, null)
-            return PublishResult(contentUri = uri.toString())
+            return PublishResult(contentUri = uri.toString(), fileName = unique)
         } catch (e: Exception) {
             runCatching { resolver.delete(uri, null, null) }
             throw e
@@ -184,12 +189,13 @@ class FileSaver(context: Context) {
         writer: (OutputStream) -> Unit
     ): PublishResult? = runCatching {
         val tree = DocumentFile.fromTreeUri(appContext, folderUri) ?: return null
-        val target = tree.findFile(fileName)
-            ?: tree.createFile(MimeTypes.forFile(fileName), fileName)
+        val unique = uniqueDocumentName(tree, fileName)
+        val target = tree.findFile(unique)
+            ?: tree.createFile(MimeTypes.forFile(unique), unique)
             ?: return null
         val output = appContext.contentResolver.openOutputStream(target.uri, "wt") ?: return null
         output.use { writer(it) }
-        PublishResult(contentUri = target.uri.toString())
+        PublishResult(contentUri = target.uri.toString(), fileName = unique)
     }.getOrNull()
 
     private fun publishToCustomFolder(
@@ -198,8 +204,9 @@ class FileSaver(context: Context) {
         folderUri: Uri
     ): PublishResult? = runCatching {
         val tree = DocumentFile.fromTreeUri(appContext, folderUri) ?: return null
-        val target = tree.findFile(fileName)
-            ?: tree.createFile(MimeTypes.forFile(fileName), fileName)
+        val unique = uniqueDocumentName(tree, fileName)
+        val target = tree.findFile(unique)
+            ?: tree.createFile(MimeTypes.forFile(unique), unique)
             ?: return null
         val output = appContext.contentResolver.openOutputStream(target.uri, "wt")
             ?: return null
@@ -207,7 +214,7 @@ class FileSaver(context: Context) {
             partial.inputStream().use { input -> input.copyTo(out) }
         }
         partial.delete()
-        PublishResult(contentUri = target.uri.toString())
+        PublishResult(contentUri = target.uri.toString(), fileName = unique)
     }.getOrNull()
 
     private fun publishToTextFolder(
@@ -217,10 +224,10 @@ class FileSaver(context: Context) {
     ): PublishResult? = runCatching {
         val dir = File(folder)
         if (!dir.isDirectory && !dir.mkdirs()) return null
-        val target = File(dir, fileName)
+        val target = uniqueTargetFile(File(dir, fileName))
         target.outputStream().use { out -> partial.inputStream().use { it.copyTo(out) } }
         partial.delete()
-        PublishResult(filePath = target.absolutePath)
+        PublishResult(filePath = target.absolutePath, fileName = target.name)
     }.getOrNull()
 
     fun freeBytes(): Long = runCatching {
@@ -299,11 +306,11 @@ class FileSaver(context: Context) {
         if (Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED) {
             runCatching { publicDir.mkdirs() }
             if (publicDir.isDirectory && publicDir.canWrite()) {
-                val target = File(publicDir, fileName)
+                val target = uniqueTargetFile(File(publicDir, fileName))
                 try {
                     target.outputStream().use { out -> partial.inputStream().use { it.copyTo(out) } }
                     partial.delete()
-                    return PublishResult(filePath = target.absolutePath)
+                    return PublishResult(filePath = target.absolutePath, fileName = target.name)
                 } catch (_: Exception) {
                     // fallback ke penyimpanan internal
                 }
@@ -313,10 +320,10 @@ class FileSaver(context: Context) {
     }
 
     private fun publishToInternal(partial: File, fileName: String): PublishResult {
-        val target = File(downloadDir, fileName)
+        val target = uniqueTargetFile(File(downloadDir, fileName))
         target.outputStream().use { out -> partial.inputStream().use { it.copyTo(out) } }
         partial.delete()
-        return PublishResult(filePath = target.absolutePath)
+        return PublishResult(filePath = target.absolutePath, fileName = target.name)
     }
 
     fun deleteFiles(item: DownloadItem) {
@@ -374,6 +381,50 @@ class FileSaver(context: Context) {
             deleteFiles(item)
             PublishResult(contentUri = target.uri.toString())
         }.getOrNull()
+    }
+
+    private fun uniqueName(fileName: String, taken: (String) -> Boolean): String {
+        if (!taken(fileName)) return fileName
+        val dot = fileName.lastIndexOf('.')
+        val base = if (dot > 0) fileName.substring(0, dot) else fileName
+        val ext = if (dot > 0) fileName.substring(dot) else ""
+        var i = 1
+        while (taken("$base ($i)$ext")) i++
+        return "$base ($i)$ext"
+    }
+
+    private fun uniqueTargetFile(file: File): File {
+        if (!file.exists()) return file
+        val parent = file.parentFile
+        val unique = uniqueName(file.name) { File(parent, it).exists() }
+        return File(parent, unique)
+    }
+
+    private fun uniqueDocumentName(tree: DocumentFile, fileName: String): String {
+        return uniqueName(fileName) { tree.findFile(it) != null }
+    }
+
+    private fun uniqueMediaStoreName(fileName: String, relativePath: String?): String {
+        if (Build.VERSION.SDK_INT < 29) return fileName
+        return runCatching {
+            val resolver = appContext.contentResolver
+            val existing = mutableSetOf<String>()
+            val selection = relativePath?.let { "${MediaStore.Downloads.RELATIVE_PATH}=?" }
+            val args = relativePath?.let { arrayOf(it.trim('/') + "/") }
+            resolver.query(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                arrayOf(MediaStore.Downloads.DISPLAY_NAME),
+                selection,
+                args,
+                null
+            )?.use { c ->
+                val idx = c.getColumnIndexOrThrow(MediaStore.Downloads.DISPLAY_NAME)
+                while (c.moveToNext()) {
+                    c.getString(idx)?.let(existing::add)
+                }
+            }
+            uniqueName(fileName) { existing.contains(it) }
+        }.getOrDefault(fileName)
     }
 
     fun organizeByType(result: PublishResult, fileName: String): PublishResult {

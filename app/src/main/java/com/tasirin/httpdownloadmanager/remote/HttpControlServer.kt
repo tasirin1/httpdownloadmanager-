@@ -290,10 +290,10 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         }
         val finalName = uploadUniqueName(name, folderPath)
         return runCatching {
-            App.engine.importStream(finalName, storage, folderPath, length) { out ->
+            val published = App.engine.importStream(finalName, storage, folderPath, length) { out ->
                 copyUploadBody(session, length, out)
             }
-            jsonResponse(JSONObject().put("ok", true).put("name", finalName))
+            jsonResponse(JSONObject().put("ok", true).put("name", published.fileName ?: finalName))
         }.getOrElse {
             jsonResponse(JSONObject().put("ok", false).put("error", it.message ?: "gagal upload"))
         }

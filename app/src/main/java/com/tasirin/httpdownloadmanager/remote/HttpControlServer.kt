@@ -45,6 +45,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     var lastError: String? = null
         private set
 
+    private var cacheCleanupDone = false
+
     override fun serve(session: IHTTPSession): Response {
         return try {
             when {
@@ -87,9 +89,32 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         try {
             super.start()
             lastError = null
+            cleanupCache()
         } catch (e: IOException) {
             lastError = e.message
             throw e
+        }
+    }
+
+    private fun cleanupCache() {
+        if (cacheCleanupDone) return
+        cacheCleanupDone = true
+        runCatching {
+            val now = System.currentTimeMillis()
+            val thumbs = File(context.cacheDir, "thumbs")
+            if (thumbs.isDirectory) {
+                val files = thumbs.listFiles()?.filter { it.isFile }
+                    ?.sortedByDescending { it.lastModified() } ?: return
+                val keep = 400
+                val maxAge = 30L * 24 * 60 * 60 * 1000
+                files.forEachIndexed { i, f ->
+                    if (i >= keep || now - f.lastModified() > maxAge) f.delete()
+                }
+            }
+            val tmpMaxAge = 24L * 60 * 60 * 1000
+            context.cacheDir.listFiles()?.forEach { f ->
+                if (f.name.startsWith("up_") && f.isFile && now - f.lastModified() > tmpMaxAge) f.delete()
+            }
         }
     }
 
@@ -229,7 +254,14 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             ?: "upload_${System.currentTimeMillis()}"
         val storage = session.parms["storage"]?.trim().orEmpty()
         val folderPath = session.parms["path"]?.trim().orEmpty()
+        val chunkIdx = session.parms["chunk"]?.toIntOrNull() ?: -1
+        val chunks = (session.parms["chunks"]?.toIntOrNull() ?: 1).coerceAtLeast(1)
         val length = (session.headers["content-length"]?.toLongOrNull() ?: 0L)
+
+        if (chunkIdx >= 0) {
+            return handleUploadChunk(session, name, storage, folderPath, chunkIdx, chunks, length)
+        }
+
         if (length <= 0 || length > MAX_UPLOAD_BYTES) {
             return jsonResponse(
                 JSONObject().put("ok", false)
@@ -244,21 +276,93 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         }
         return runCatching {
             App.engine.importStream(name, storage, folderPath, length) { out ->
-                session.inputStream.use { input ->
-                    val buffer = ByteArray(64 * 1024)
-                    var remaining = length
-                    while (remaining > 0) {
-                        val chunk = minOf(buffer.size.toLong(), remaining).toInt()
-                        val read = input.read(buffer, 0, chunk)
-                        if (read == -1) break
-                        out.write(buffer, 0, read)
-                        remaining -= read
+                copyUploadBody(session, length, out)
+            }
+            jsonResponse(JSONObject().put("ok", true).put("name", name))
+        }.getOrElse {
+            jsonResponse(JSONObject().put("ok", false).put("error", it.message ?: "gagal upload"))
+        }
+    }
+
+    private fun handleUploadChunk(
+        session: IHTTPSession,
+        name: String,
+        storage: String,
+        folderPath: String,
+        chunkIdx: Int,
+        chunks: Int,
+        length: Long
+    ): Response {
+        if (length > MAX_UPLOAD_BYTES) {
+            return jsonResponse(
+                JSONObject().put("ok", false)
+                    .put("error", "Potongan terlalu besar (maks ${MAX_UPLOAD_MB} MB)")
+            )
+        }
+        if (App.engine.freeSpaceBytes() < length) {
+            return jsonResponse(
+                JSONObject().put("ok", false)
+                    .put("error", "Penyimpanan tidak cukup untuk upload")
+            )
+        }
+        val id = session.parms["id"]?.trim()?.take(64) ?: "x"
+        val tmp = File(context.cacheDir, "up_$id.tmp")
+        return runCatching {
+            when {
+                chunkIdx == 0 -> {
+                    tmp.parentFile?.mkdirs()
+                    tmp.outputStream().use { out -> copyUploadBody(session, length, out) }
+                }
+                !tmp.isFile -> return jsonResponse(
+                    JSONObject().put("ok", false).put("error", "Upload harus dimulai dari potongan pertama")
+                )
+                else -> {
+                    val out = FileOutputStream(tmp, true)
+                    try {
+                        copyUploadBody(session, length, out)
+                    } finally {
+                        out.close()
                     }
+                }
+            }
+            if (chunkIdx == chunks - 1) {
+                if (tmp.length() > MAX_UPLOAD_BYTES) {
+                    tmp.delete()
+                    return jsonResponse(
+                        JSONObject().put("ok", false).put("error", "File terlalu besar (maks ${MAX_UPLOAD_MB} MB)")
+                    )
+                }
+                if (App.engine.freeSpaceBytes() < tmp.length()) {
+                    tmp.delete()
+                    return jsonResponse(
+                        JSONObject().put("ok", false).put("error", "Penyimpanan tidak cukup untuk upload")
+                    )
+                }
+                try {
+                    App.engine.importStream(name, storage, folderPath, tmp.length()) { out ->
+                        tmp.inputStream().use { it.copyTo(out) }
+                    }
+                } finally {
+                    tmp.delete()
                 }
             }
             jsonResponse(JSONObject().put("ok", true).put("name", name))
         }.getOrElse {
             jsonResponse(JSONObject().put("ok", false).put("error", it.message ?: "gagal upload"))
+        }
+    }
+
+    private fun copyUploadBody(session: IHTTPSession, length: Long, out: java.io.OutputStream) {
+        session.inputStream.use { input ->
+            val buffer = ByteArray(64 * 1024)
+            var remaining = length
+            while (remaining > 0) {
+                val chunk = minOf(buffer.size.toLong(), remaining).toInt()
+                val read = input.read(buffer, 0, chunk)
+                if (read == -1) break
+                out.write(buffer, 0, read)
+                remaining -= read
+            }
         }
     }
 

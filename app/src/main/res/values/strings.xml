@@ -82,7 +82,7 @@
 &#8226; Galeri remote ala YouTube: thumbnail 16:9, durasi video asli (cache), load bertahap
 &#8226; Player video ala YouTube: seekbar + buffered, fullscreen, double-tap &#177;10 dtk, saran video
 &#8226; File manager remote: info isi folder, buat folder, rename, pindah, hapus massal, ZIP
-&#8226; Upload banyak file sekaligus dengan progress &amp; kecepatan
+&#8226; Upload banyak file sekaligus: dipecah per potongan, retry otomatis saat koneksi putus, progress &amp; kecepatan
 &#8226; Streaming &amp; download file via browser (HTTP Range)
 &#8226; Download multi-segmen paralel, resume, batas kecepatan &amp; prioritas per-download
 &#8226; Retry otomatis dengan jeda bertahap, auto-start saat boot

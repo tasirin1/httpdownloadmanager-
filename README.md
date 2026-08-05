@@ -31,7 +31,7 @@ Server remote bawaan untuk mengontrol dari browser di perangkat lain dalam satu 
 Fitur halaman remote:
 
 - Manajemen download: tambah URL, pantau progress, jeda/lanjut/batalkan/hapus, filter & urutkan
-- **Upload file ke device** dari browser (banyak file sekaligus, progress & kecepatan)
+- **Upload file ke device** dari browser: banyak file sekaligus, dipecah per potongan 2 MB dengan retry otomatis (koneksi putus tidak mulai dari nol), progress & kecepatan
 - **File manager remote**: jelajah folder, buat folder, rename, pindah, hapus (massal), download folder sebagai ZIP
   - Folder menampilkan info isinya: jumlah item + total ukuran
 - **Galeri remote ala YouTube**: thumbnail 16:9, badge **durasi video asli** (di-cache di device), load bertahap saat scroll

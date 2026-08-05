@@ -952,6 +952,8 @@ document.getElementById('fsMkdirBtn').addEventListener('click', async function (
   loadFs();
 });
 
+const UPLOAD_CHUNK = 2 * 1024 * 1024;
+
 function uploadFiles(files, path, statusEl, progressBox, progressText, progressPct, progressBar, done) {
   const total = files.length;
   if (!total) return;
@@ -969,50 +971,74 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
     statusEl.textContent = 'Mengunggah ' + file.name + ' (' + (idx + 1) + '/' + total + ')' +
       (attempt > 1 ? ' \u00b7 coba ke-' + attempt : '') + ' \u2026';
     progressText.textContent = file.name + (attempt > 1 ? ' (coba ' + attempt + ')' : '');
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', API + '/api/upload?name=' + encodeURIComponent(file.name) +
-      '&path=' + encodeURIComponent(path));
-    xhr.upload.onprogress = function (e) {
-      if (!e.lengthComputable) return;
-      const now = Date.now();
-      const dt = (now - lastTime) / 1000;
-      if (dt > 0.3) {
-        speed = (e.loaded - lastBytes) / dt;
-        lastBytes = e.loaded;
-        lastTime = now;
-      }
-      const doneNow = sentBytes + e.loaded;
-      const pct = totalBytes > 0 ? Math.round(doneNow * 100 / totalBytes) : 0;
-      progressBar.style.width = pct + '%';
-      progressPct.textContent = pct + '% \u00b7 ' + fmtSpeed(speed);
-    };
-    xhr.onload = function () {
-      let ok = false;
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          ok = xhr.responseText && JSON.parse(xhr.responseText).ok;
-        } catch (e) {}
-      }
-      if (ok) {
+    const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const chunks = Math.max(1, Math.ceil(file.size / UPLOAD_CHUNK));
+    let chunkIdx = 0;
+    let chunkFails = 0;
+
+    function nextChunk() {
+      if (chunkIdx >= chunks) {
         sentBytes += file.size;
         finishOne();
-      } else {
-        retryOrFail(file, attempt);
+        return;
       }
-    };
-    xhr.onerror = function () { retryOrFail(file, attempt); };
-    xhr.onabort = function () { retryOrFail(file, attempt); };
-    xhr.send(file);
-  }
-
-  function retryOrFail(file, attempt) {
-    if (attempt < 3) {
-      setTimeout(function () { uploadOne(file, attempt + 1); }, 600);
-      return;
+      const start = chunkIdx * UPLOAD_CHUNK;
+      const end = Math.min(start + UPLOAD_CHUNK, file.size);
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', API + '/api/upload?name=' + encodeURIComponent(file.name) +
+        '&path=' + encodeURIComponent(path) +
+        '&id=' + encodeURIComponent(id) +
+        '&chunk=' + chunkIdx + '&chunks=' + chunks);
+      xhr.upload.onprogress = function (e) {
+        if (!e.lengthComputable) return;
+        const now = Date.now();
+        const dt = (now - lastTime) / 1000;
+        if (dt > 0.3) {
+          speed = (e.loaded - lastBytes) / dt;
+          lastBytes = e.loaded;
+          lastTime = now;
+        }
+        const doneNow = sentBytes + start + e.loaded;
+        const pct = totalBytes > 0 ? Math.round(doneNow * 100 / totalBytes) : 0;
+        progressBar.style.width = pct + '%';
+        progressPct.textContent = pct + '% \u00b7 ' + fmtSpeed(speed);
+      };
+      xhr.onload = function () {
+        let ok = false;
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            ok = xhr.responseText && JSON.parse(xhr.responseText).ok;
+          } catch (e) {}
+        }
+        if (ok) {
+          chunkIdx++;
+          chunkFails = 0;
+          nextChunk();
+        } else {
+          retryChunk();
+        }
+      };
+      xhr.onerror = function () { retryChunk(); };
+      xhr.onabort = function () { retryChunk(); };
+      xhr.send(file.slice(start, end));
     }
-    failed.push(file.name);
-    statusEl.textContent = 'Gagal: ' + file.name;
-    finishOne();
+
+    function retryChunk() {
+      chunkFails++;
+      if (chunkFails < 3) {
+        setTimeout(nextChunk, 600);
+        return;
+      }
+      if (attempt < 3) {
+        setTimeout(function () { uploadOne(file, attempt + 1); }, 800);
+        return;
+      }
+      failed.push(file.name);
+      statusEl.textContent = 'Gagal: ' + file.name;
+      finishOne();
+    }
+
+    nextChunk();
   }
 
   function finishOne() {

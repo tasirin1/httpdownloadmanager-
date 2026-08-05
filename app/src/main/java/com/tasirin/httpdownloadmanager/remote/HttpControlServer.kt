@@ -233,6 +233,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             o.put("progress", item.progressPercent)
             o.put("speedBps", item.speedBps)
             o.put("etaSeconds", item.etaSeconds)
+            o.put("addedAt", item.addedAt)
             item.error?.let { o.put("error", it) }
             arr.put(o)
         }

@@ -89,6 +89,9 @@
   .actions button:hover { border-color: var(--muted); }
   .actions button.danger { color: var(--red); }
   .actions button.danger:hover { background: var(--red-bg); border-color: var(--red); }
+  .speed-total { display: inline-flex; align-items: center; gap: 5px; padding: 7px 13px; border-radius: 999px; border: 1px solid transparent; background: var(--amber-bg); color: var(--accent); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+  .speed-total .st-sub { color: var(--muted); font-weight: 600; font-size: 11px; }
+  .item-menu-btn { display: none; }
   .spark { width: 100%; height: 26px; display: block; margin-top: 8px; }
   .spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.6; }
   .gal-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
@@ -230,6 +233,14 @@
   #mmTime { font-size: 11.5px; font-variant-numeric: tabular-nums; }
   .mm-flex { flex: 1; }
   .hidden { display: none !important; }
+  .cm-overlay { position: fixed; inset: 0; z-index: 90; background: rgba(8,12,22,.5); display: flex; align-items: center; justify-content: center; padding: 22px; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+  .cm-box { width: 100%; max-width: 340px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; box-shadow: var(--shadow); }
+  .cm-title { font-size: 16.5px; font-weight: 800; margin-bottom: 6px; }
+  .cm-text { font-size: 13.5px; color: var(--muted); margin-bottom: 18px; word-break: break-word; }
+  .cm-row { display: flex; gap: 10px; }
+  .cm-row button { flex: 1; padding: 12px; border-radius: var(--radius-sm); border: 0; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .cm-row .btn-ghost { background: var(--bg-soft); color: var(--ink); }
+  .cm-row .danger { background: var(--red); color: #fff; }
   @media (max-width: 600px) {
     .wrap { padding: 0 12px; margin-top: 12px; }
     .topbar-in { padding: 10px 12px; gap: 6px; }
@@ -256,6 +267,10 @@
     .name { font-size: 13.5px; }
     .icon { flex-basis: 36px; height: 36px; font-size: 18px; }
     .actions a, .actions button { padding: 7px 11px; font-size: 12px; }
+    .item-menu-btn { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 36px; height: 36px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; }
+    .item-menu-btn:hover { color: var(--primary); border-color: var(--primary); }
+    .actions { display: none; }
+    li.item.menu-open .actions { display: flex; }
     .grid2 { grid-template-columns: 1fr; }
     .status-card { font-size: 12px; padding: 10px 14px; }
   }
@@ -265,6 +280,7 @@
 <div class="topbar">
   <div class="topbar-in">
     <div class="brand"><span class="logo">&#11015;</span><span>Download Manager<small>Remote Control</small></span></div>
+    <span id="speedTotal" class="speed-total hidden" title="Kecepatan download aktif">&#9889; 0 B/s <span class="st-sub"></span></span>
     <button id="newBtn" class="pill primary" type="button">+ New Download</button>
     <button id="galleryBtn" class="pill" type="button">&#128247; Galeri</button>
     <button id="fsBtn" class="pill" type="button">&#128193; File Manager</button>
@@ -395,6 +411,17 @@
   </div>
 </div>
 
+<div id="confirmModal" class="cm-overlay hidden">
+  <div class="cm-box">
+    <div class="cm-title" id="confirmTitle">Hapus?</div>
+    <div class="cm-text" id="confirmText"></div>
+    <div class="cm-row">
+      <button id="confirmNo" type="button" class="btn-ghost">Batal</button>
+      <button id="confirmYes" type="button" class="danger">Hapus</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const API = '';
 const themeBtn = document.getElementById('themeBtn');
@@ -425,6 +452,7 @@ themeBtn.addEventListener('click', function () {
 })();
 
 let failCount = 0;
+let currentItems = [];
 let webFilter = 'ALL';
 const WEB_FILTERS = {ALL:'webFilterAll', ACTIVE:'webFilterActive', COMPLETED:'webFilterCompleted', FAILED:'webFilterFailed'};
 Object.entries(WEB_FILTERS).forEach(function (e) {
@@ -1621,9 +1649,36 @@ function fileIcon(name) {
   return '\u{1F4CE}';
 }
 
+function renderSpeedTotal(items) {
+  const el = document.getElementById('speedTotal');
+  if (!el) return;
+  let total = 0;
+  let active = 0;
+  items.forEach(function (it) {
+    if (it.state === 'DOWNLOADING') {
+      active++;
+      if (it.speedBps > 0) total += it.speedBps;
+    } else if (it.state === 'PENDING') {
+      active++;
+    }
+  });
+  if (!active) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  el.innerHTML = '&#9889; ' + fmtSpeed(total) + ' <span class="st-sub">' + active + ' aktif</span>';
+}
+
 function render(items) {
   const list = document.getElementById('list');
   list.innerHTML = '';
+  currentItems = items.slice();
+  const STATE_ORDER = {DOWNLOADING:0, PENDING:1, PAUSED:2, FAILED:3, COMPLETED:4, CANCELLED:5};
+  items = items.slice().sort(function (a, b) {
+    const da = STATE_ORDER[a.state] != null ? STATE_ORDER[a.state] : 6;
+    const db = STATE_ORDER[b.state] != null ? STATE_ORDER[b.state] : 6;
+    const d = da - db;
+    return d !== 0 ? d : ((b.addedAt || 0) - (a.addedAt || 0));
+  });
+  renderSpeedTotal(items);
   const filtered = items.filter(function (it) {
     if (webFilter === 'ALL') return true;
     if (webFilter === 'ACTIVE') return it.state === 'DOWNLOADING' || it.state === 'PENDING';
@@ -1655,10 +1710,19 @@ function render(items) {
       '<div class="bar"><div class="fill" style="width:' + prog + '%"></div></div>' +
       spark +
       '<div class="actions">' + actionButtons(it) + '</div>' +
-      '</div></div>';
+      '</div>' +
+      '<button class="item-menu-btn" type="button" title="Aksi">\u22EF</button>' +
+      '</div>';
     li.querySelectorAll('[data-action]').forEach(b =>
       b.addEventListener('click', () => doAction(it.id, b.dataset.action))
     );
+    const menuBtn = li.querySelector('.item-menu-btn');
+    if (menuBtn) {
+      menuBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        li.classList.toggle('menu-open');
+      });
+    }
     list.appendChild(li);
   }
 }
@@ -1682,7 +1746,50 @@ function escapeHtml(s) {
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-async function doAction(id, action) {
+const confirmModal = document.getElementById('confirmModal');
+let confirmCb = null;
+function showConfirm(title, text, yesLabel, cb) {
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmText').textContent = text;
+  document.getElementById('confirmYes').textContent = yesLabel;
+  confirmCb = cb;
+  confirmModal.classList.remove('hidden');
+}
+function hideConfirm() {
+  confirmModal.classList.add('hidden');
+  confirmCb = null;
+}
+document.getElementById('confirmNo').addEventListener('click', hideConfirm);
+document.getElementById('confirmYes').addEventListener('click', function () {
+  const cb = confirmCb;
+  hideConfirm();
+  if (cb) cb();
+});
+confirmModal.addEventListener('click', function (e) {
+  if (e.target === confirmModal) hideConfirm();
+});
+
+function closeItemMenus() {
+  document.querySelectorAll('li.item.menu-open').forEach(function (li) {
+    li.classList.remove('menu-open');
+  });
+}
+document.addEventListener('click', closeItemMenus);
+
+function doAction(id, action) {
+  if (action === 'delete') {
+    const it = currentItems.find(function (x) { return x.id === id; });
+    const label = it && it.fileName ? it.fileName : 'item ini';
+    showConfirm('Hapus item?', 'Hapus \"' + label + '\" dari daftar download? File di device TIDAK ikut terhapus.', 'Hapus', function () { doActionNow(id, action); });
+    return;
+  }
+  if (action === 'clear_completed') {
+    showConfirm('Bersihkan daftar selesai?', 'Semua item berstatus Selesai akan dikeluarkan dari daftar. File di device TIDAK ikut terhapus.', 'Bersihkan', function () { doActionNow(id, action); });
+    return;
+  }
+  doActionNow(id, action);
+}
+async function doActionNow(id, action) {
   const body = new URLSearchParams({id: id, action: action});
   await fetch(API + '/api/action', {method: 'POST', body});
   refresh();

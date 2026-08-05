@@ -622,11 +622,6 @@ function mmShowCtrl() {
   }
 }
 
-function mmHideCtrl() {
-  mmCtrl.classList.add('hide');
-  clearTimeout(mmTimer);
-}
-
 function vposKey(token) {
   return 'dm_vpos_' + token;
 }
@@ -761,7 +756,7 @@ function renderGalleryCell(it) {
       '<div class="m">' + fmt(it.size) + (it.modified > 0 ? ' \u00b7 ' + fmtDate(it.modified) : '') + '</div>' +
     '</div>';
   cell.addEventListener('click', function () {
-    openMedia(it, media, thumb);
+    openMedia(it, media);
   });
   cell.querySelector('.del').addEventListener('click', function (ev) {
     ev.stopPropagation();
@@ -1162,8 +1157,7 @@ function fsOpenMedia(it) {
   const isVideo = ['mp4','mkv','webm','avi','mov','3gp','m4v','mpg','mpeg'].indexOf(extOf(it.name).toLowerCase()) >= 0;
   openMedia(
     {name: it.name, size: it.size, modified: it.modified, token: it.token, isVideo: isVideo},
-    media,
-    API + '/api/thumb?token=' + token
+    media
   );
 }
 
@@ -1477,7 +1471,7 @@ async function doDeleteMedia(token, ok) {
   }
 }
 
-function openMedia(it, src, thumb) {
+function openMedia(it, src) {
   mmType = it.isVideo ? 'video' : 'image';
   mmCurrentToken = it.token;
   mmLastSave = 0;
@@ -1551,7 +1545,7 @@ function renderRelated(current) {
         '<div class="mm-rel-meta">' + fmt(v.size) + (v.modified > 0 ? ' \u00b7 ' + fmtDate(v.modified) : '') + '</div>' +
       '</div>';
     row.addEventListener('click', function () {
-      openMedia(v, media, thumb);
+      openMedia(v, media);
     });
     mmRelated.appendChild(row);
   }
@@ -1853,10 +1847,21 @@ function renderSpeedTotal(items) {
   el.innerHTML = '&#9889; ' + fmtSpeed(total) + ' <span class="st-sub">' + active + ' aktif</span>';
 }
 
+let lastItemsSig = '';
+function itemsSig(items) {
+  return items.map(function (it) {
+    return it.id + '|' + it.state + '|' + it.bytesDownloaded + '|' + it.totalBytes + '|' +
+      (it.speedBps || 0) + '|' + (it.etaSeconds || 0) + (it.error ? '|e' : '');
+  }).join(';');
+}
+
 function render(items) {
   const list = document.getElementById('list');
-  list.innerHTML = '';
   currentItems = items.slice();
+  const sig = (webFilter || '') + '::' + itemsSig(items);
+  if (sig === lastItemsSig) return;
+  lastItemsSig = sig;
+  list.innerHTML = '';
   const STATE_ORDER = {DOWNLOADING:0, PENDING:1, PAUSED:2, FAILED:3, COMPLETED:4, CANCELLED:5};
   items = items.slice().sort(function (a, b) {
     const da = STATE_ORDER[a.state] != null ? STATE_ORDER[a.state] : 6;

@@ -573,7 +573,7 @@ class DownloadEngine(private val context: Context) {
 
         val published0 = publishItem(saver, partialFile, fileName, item)
         val finalName = published0.fileName ?: fileName
-        verifyChecksum(item.id, finalName, published0, saver)?.let {
+        verifyChecksum(item.id, published0, saver)?.let {
             throw IOException(it)
         }
         val published = organizeIfEnabled(saver, published0, finalName)
@@ -640,7 +640,7 @@ class DownloadEngine(private val context: Context) {
         val merged = saver.mergeSegments(fileName, segments.size)
         val published0 = publishItem(saver, merged, fileName, item)
         val finalName = published0.fileName ?: fileName
-        verifyChecksum(item.id, finalName, published0, saver)?.let {
+        verifyChecksum(item.id, published0, saver)?.let {
             throw IOException(it)
         }
         val published = organizeIfEnabled(saver, published0, finalName)
@@ -784,7 +784,6 @@ class DownloadEngine(private val context: Context) {
 
     private fun verifyChecksum(
         itemId: String,
-        fileName: String,
         published: FileSaver.PublishResult,
         saver: FileSaver
     ): String? {

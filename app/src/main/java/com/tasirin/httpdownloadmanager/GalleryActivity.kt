@@ -1,9 +1,11 @@
 package com.tasirin.httpdownloadmanager
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.util.LruCache
 import android.media.ThumbnailUtils
 import android.net.Uri
 import android.os.Build
@@ -29,6 +31,7 @@ import com.tasirin.httpdownloadmanager.util.MediaLibrary
 import com.tasirin.httpdownloadmanager.util.MimeTypes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -165,9 +168,37 @@ class GalleryActivity : AppCompatActivity() {
         private const val SPAN_COUNT = 3
         private const val THUMB_SIZE = 256
 
+        @Volatile
+        private var thumbCache: LruCache<String, Bitmap>? = null
+        private val cacheLock = Any()
+
+        private fun cacheFor(context: Context): LruCache<String, Bitmap> {
+            var cache = thumbCache
+            if (cache == null) {
+                synchronized(cacheLock) {
+                    cache = thumbCache
+                    if (cache == null) {
+                        val memoryClass = runCatching {
+                            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                            am.memoryClass
+                        }.getOrDefault(128)
+                        val maxKb = (memoryClass / 8) * 1024
+                        cache = object : LruCache<String, Bitmap>(maxKb) {
+                            override fun sizeOf(key: String, value: Bitmap): Int =
+                                runCatching { value.byteCount / 1024 }.getOrDefault(256)
+                        }
+                        thumbCache = cache
+                    }
+                }
+            }
+            return cache!!
+        }
+
         suspend fun loadThumb(context: Context, e: MediaLibrary.MediaEntry, req: Int): Bitmap? =
             withContext(Dispatchers.IO) {
-                when {
+                val cache = cacheFor(context)
+                cache.get(e.token)?.let { return@withContext it }
+                val bmp = when {
                     e.isVideo && !e.filePath.isNullOrEmpty() -> runCatching {
                         ThumbnailUtils.createVideoThumbnail(
                             e.filePath, MediaStore.Images.Thumbnails.MINI_KIND
@@ -189,6 +220,8 @@ class GalleryActivity : AppCompatActivity() {
 
                     else -> null
                 }
+                if (bmp != null) cache.put(e.token, bmp)
+                bmp
             }
 
         private fun decodeFile(context: Context, path: String, req: Int): Bitmap? =
@@ -259,7 +292,9 @@ private class GalleryAdapter(
         notifyDataSetChanged()
     }
 
-    class Holder(val binding: ItemGalleryBinding) : RecyclerView.ViewHolder(binding.root)
+    class Holder(val binding: ItemGalleryBinding) : RecyclerView.ViewHolder(binding.root) {
+        var job: Job? = null
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
         val binding = ItemGalleryBinding.inflate(
@@ -283,7 +318,8 @@ private class GalleryAdapter(
             onLongClick(e)
             true
         }
-        scope.launch {
+        holder.job?.cancel()
+        holder.job = scope.launch {
             val bmp = loader(e)
             if (bmp != null && holder.bindingAdapterPosition == pos) {
                 b.imageThumb.setImageBitmap(bmp)

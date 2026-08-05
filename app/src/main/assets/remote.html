@@ -179,11 +179,11 @@
   html[data-theme="dark"] .actions button, html[data-theme="dark"] .btn-ghost { background: #232b38; color: var(--ink); }
   html[data-theme="dark"] .actions a.stream, html[data-theme="dark"] a.fs-stream { background: var(--green-bg); color: var(--green); }
   html[data-theme="dark"] .actions a.dl, html[data-theme="dark"] a.fs-dl { background: var(--amber-bg); color: var(--amber); }
-  #mediaModal { position: fixed; inset: 0; background: #0f0f0f; z-index: 60; display: none; flex-direction: column; }
+  #mediaModal { position: fixed; inset: 0; background: #f9f9f9; z-index: 60; display: none; flex-direction: column; }
   #mediaModal.open { display: flex; }
   #mmTop { flex: 0 0 auto; display: flex; align-items: center; padding: 6px 10px; }
-  #mmBack { width: 38px; height: 38px; border: 0; border-radius: 50%; background: transparent; color: #fff; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-  #mmBack:hover { background: rgba(255,255,255,.14); }
+  #mmBack { width: 38px; height: 38px; border: 0; border-radius: 50%; background: transparent; color: #111; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  #mmBack:hover { background: rgba(0,0,0,.06); }
   #mmBody { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   #mmPlayer { position: relative; width: 100%; background: #000; }
   #mmPlayer::before { content: ''; display: block; padding-top: 56.25%; }
@@ -191,9 +191,19 @@
   #mmPlayer:fullscreen::before, #mmPlayer:-webkit-full-screen::before { padding-top: 0; }
   #mmVideo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
   #mmImage { display: block; max-width: 100%; max-height: 62vh; margin: 8px auto 0; }
-  #mmDesc { padding: 12px 16px 24px; }
-  #mmTitle { color: #fff; font-size: 14.5px; font-weight: 500; line-height: 1.4; word-break: break-word; }
-  #mmSub { color: rgba(255,255,255,.6); font-size: 12.5px; margin-top: 5px; }
+  #mmDesc { padding: 12px 16px 4px; }
+  #mmTitle { color: #0f0f0f; font-size: 14.5px; font-weight: 500; line-height: 1.4; word-break: break-word; }
+  #mmSub { color: #606060; font-size: 12.5px; margin-top: 5px; }
+  #mmRelated { padding: 10px 16px 28px; }
+  .mm-rel-title { color: #0f0f0f; font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+  .mm-rel-row { display: flex; gap: 12px; padding: 8px 0; cursor: pointer; }
+  .mm-rel-thumb { flex: 0 0 auto; width: 150px; height: 84px; position: relative; background: #e5e5e5; border-radius: 8px; overflow: hidden; }
+  .mm-rel-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .mm-rel-thumb .mm-rel-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 17px; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+  .mm-rel-info { min-width: 0; }
+  .mm-rel-name { color: #0f0f0f; font-size: 13px; font-weight: 500; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .mm-rel-meta { color: #606060; font-size: 11.5px; margin-top: 3px; }
+  .mm-rel-empty { color: #606060; font-size: 12.5px; padding: 6px 0 18px; }
   .mm-big { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.22); cursor: pointer; }
   .mm-big .icon { width: 56px; height: 56px; border-radius: 50%; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; }
   .mm-big .icon svg { width: 26px; height: 26px; color: #fff; margin-left: 3px; }
@@ -226,6 +236,7 @@
     .card { padding: 14px; }
     input, select { font-size: 16px; padding: 12px; }
     .gal-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px 10px; }
+    .mm-rel-thumb { width: 120px; height: 68px; }
     .fs-row { padding: 10px 12px; }
     .fs-row .fs-actions a, .fs-row .fs-actions button { flex: 1 1 auto; min-width: 56px; padding: 7px 8px; text-align: center; }
     .fs-path { font-size: 12px; }
@@ -365,6 +376,7 @@
       <div id="mmTitle"></div>
       <div id="mmSub"></div>
     </div>
+    <div id="mmRelated" class="hidden"></div>
   </div>
 </div>
 
@@ -442,6 +454,7 @@ const galleryBtn = document.getElementById('galleryBtn');
 const galleryGrid = document.getElementById('galleryGrid');
 const galleryCount = document.getElementById('galleryCount');
 const galleryStatus = document.getElementById('galleryStatus');
+let galleryItems = [];
 const mediaModal = document.getElementById('mediaModal');
 const mmBody = document.getElementById('mmBody');
 const mmImage = document.getElementById('mmImage');
@@ -449,6 +462,7 @@ const mmVideo = document.getElementById('mmVideo');
 const mmTitle = document.getElementById('mmTitle');
 const mmSub = document.getElementById('mmSub');
 const mmDesc = document.getElementById('mmDesc');
+const mmRelated = document.getElementById('mmRelated');
 const mmPlayer = document.getElementById('mmPlayer');
 const mmBigPlay = document.getElementById('mmBigPlay');
 const mmSpinner = document.getElementById('mmSpinner');
@@ -536,6 +550,8 @@ function closeMedia() {
   mmCtrl.classList.add('hidden');
   mmCtrl.classList.remove('hide');
   mmDesc.classList.add('hidden');
+  mmRelated.classList.add('hidden');
+  mmRelated.innerHTML = '';
   clearTimeout(mmTimer);
   if (document.fullscreenElement || document.webkitFullscreenElement) {
     try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {}
@@ -561,6 +577,7 @@ async function loadGallery() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     galleryStatus.textContent = '';
+    galleryItems = data.items || [];
     const grid = galleryGrid;
     grid.innerHTML = '';
     galleryCount.textContent = data.items && data.items.length ? data.items.length + ' file' : '';
@@ -1056,8 +1073,48 @@ function openMedia(it, src, thumb) {
     mmImage.src = src;
     mmImage.classList.remove('hidden');
   }
+  renderRelated(it);
   mediaModal.classList.add('open');
   document.body.style.overflow = 'hidden';
+}
+
+function renderRelated(current) {
+  mmRelated.innerHTML = '';
+  if (mmType !== 'video') {
+    mmRelated.classList.add('hidden');
+    return;
+  }
+  const others = galleryItems.filter(function (v) {
+    return v.isVideo && v.token !== current.token;
+  }).slice(0, 8);
+  mmRelated.classList.remove('hidden');
+  if (!others.length) {
+    mmRelated.innerHTML = '<div class="mm-rel-empty">Belum ada video lain di galeri.</div>';
+    return;
+  }
+  const head = document.createElement('div');
+  head.className = 'mm-rel-title';
+  head.textContent = 'Saran video';
+  mmRelated.appendChild(head);
+  for (const v of others) {
+    const row = document.createElement('div');
+    row.className = 'mm-rel-row';
+    const thumb = API + '/api/thumb?token=' + encodeURIComponent(v.token);
+    const media = API + '/api/media?token=' + encodeURIComponent(v.token);
+    row.innerHTML =
+      '<div class="mm-rel-thumb">' +
+        '<img loading="lazy" src="' + thumb + '" alt="' + escapeHtml(v.name) + '" onerror="this.remove()">' +
+        '<span class="mm-rel-play">&#9654;</span>' +
+      '</div>' +
+      '<div class="mm-rel-info">' +
+        '<div class="mm-rel-name">' + escapeHtml(v.name) + '</div>' +
+        '<div class="mm-rel-meta">' + fmt(v.size) + (v.modified > 0 ? ' \u00b7 ' + fmtDate(v.modified) : '') + '</div>' +
+      '</div>';
+    row.addEventListener('click', function () {
+      openMedia(v, media, thumb);
+    });
+    mmRelated.appendChild(row);
+  }
 }
 
 // ---- Player ala YouTube ----

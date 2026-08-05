@@ -64,7 +64,6 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     session.method == Method.POST && session.uri == "/api/fs_action" -> fsAction(session)
                     session.method == Method.GET && session.uri == "/api/fs_zip" -> fsZip(session)
                     session.method == Method.GET && session.uri.startsWith("/file/") -> serveFile(session)
-                    session.method == Method.GET && session.uri == "/api/log" -> crashLog()
                     else -> newFixedLengthResponse(
                         Response.Status.NOT_FOUND,
                         "text/plain; charset=utf-8",
@@ -930,14 +929,6 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             status == BatteryManager.BATTERY_STATUS_FULL
         pct to charging
     }.getOrDefault(-1 to false)
-
-    private fun crashLog(): Response {
-        val text = runCatching {
-            val file = File(context.filesDir, App.CRASH_LOG_FILE)
-            if (file.exists()) file.readText() else "Belum ada log error."
-        }.getOrDefault("Tidak dapat membaca log.")
-        return newFixedLengthResponse(Response.Status.OK, "text/plain; charset=utf-8", text)
-    }
 
     private fun logError(e: Exception) {
         runCatching {

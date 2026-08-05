@@ -16,7 +16,6 @@ object StoragePrefs {
     private const val KEY_SERVER_AUTOSTART = "server_autostart_boot"
     private const val KEY_TEXT_FOLDER = "text_folder_path"
     private const val KEY_BATTERY_EXEMPT = "battery_exempt"
-    private const val KEY_ONBOARDED = "storage_onboarded"
     private const val KEY_SERVER_PIN = "server_pin"
     private const val KEY_MAX_CONCURRENT = "max_concurrent"
     private const val KEY_SPEED_LIMIT = "speed_limit_kbps"
@@ -101,16 +100,6 @@ object StoragePrefs {
     fun setServerPin(context: Context, pin: String?) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_SERVER_PIN, pin?.trim()?.takeIf { it.isNotEmpty() })
-            .apply()
-    }
-
-    fun isStorageOnboarded(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getBoolean(KEY_ONBOARDED, false)
-
-    fun setStorageOnboarded(context: Context, value: Boolean = true) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putBoolean(KEY_ONBOARDED, value)
             .apply()
     }
 

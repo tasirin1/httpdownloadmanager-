@@ -91,8 +91,6 @@
   .actions button.danger:hover { background: var(--red-bg); border-color: var(--red); }
   .spark { width: 100%; height: 26px; display: block; margin-top: 8px; }
   .spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.6; }
-  #logBox pre { background: #10172a; color: #c9d8ff; border-radius: var(--radius-sm); padding: 12px; font-size: 12px; max-height: 320px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
-  #logBox .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: 700; }
   .gal-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
   .gal-toolbar h2 { margin: 0; font-size: 16px; }
   .gal-toolbar .count { font-size: 12px; color: var(--muted); }
@@ -179,7 +177,6 @@
   html[data-theme="dark"] .actions button, html[data-theme="dark"] .btn-ghost { background: #232b38; color: var(--ink); }
   html[data-theme="dark"] .actions a.stream, html[data-theme="dark"] a.fs-stream { background: var(--green-bg); color: var(--green); }
   html[data-theme="dark"] .actions a.dl, html[data-theme="dark"] a.fs-dl { background: var(--amber-bg); color: var(--amber); }
-  html[data-theme="dark"] #logBox pre { background: #0b0f16; }
   #mediaModal { position: fixed; inset: 0; background: rgba(8,10,16,.94); z-index: 60; display: none; align-items: center; justify-content: center; flex-direction: column; padding: 20px; }
   #mediaModal.open { display: flex; }
   #mediaModal img, #mediaModal video { max-width: 100%; max-height: 76vh; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
@@ -227,7 +224,6 @@
     <button id="newBtn" class="pill primary" type="button">+ New Download</button>
     <button id="galleryBtn" class="pill" type="button">&#128247; Galeri</button>
     <button id="fsBtn" class="pill" type="button">&#128193; File Manager</button>
-    <button id="logBtn" class="pill" type="button">&#128241; Log error</button>
     <button id="themeBtn" class="pill" type="button">&#127769;</button>
   </div>
 </div>
@@ -249,11 +245,6 @@
     <button id="webFilterActive" type="button">Aktif</button>
     <button id="webFilterCompleted" type="button">Selesai</button>
     <button id="webFilterFailed" type="button">Gagal</button>
-  </div>
-
-  <div id="logBox" class="card hidden">
-    <div class="row"><span>Log error device</span><button id="logClose" type="button" class="btn-ghost">Tutup</button></div>
-    <pre id="logText"></pre>
   </div>
 
   <form id="addForm" class="card hidden">
@@ -379,21 +370,6 @@ newBtn.addEventListener('click', function () {
   toggleAddForm(addForm.classList.contains('hidden'));
 });
 
-const logBtn = document.getElementById('logBtn');
-const logBox = document.getElementById('logBox');
-const logText = document.getElementById('logText');
-logBtn.addEventListener('click', async function () {
-  try {
-    const res = await fetch(API + '/api/log');
-    logText.textContent = await res.text();
-  } catch (e) {
-    logText.textContent = 'Gagal mengambil log: ' + e;
-  }
-  logBox.classList.remove('hidden');
-});
-document.getElementById('logClose').addEventListener('click', function () {
-  logBox.classList.add('hidden');
-});
 document.getElementById('cancelAdd').addEventListener('click', function () {
   toggleAddForm(false);
 });
@@ -521,7 +497,7 @@ fsBtn.addEventListener('click', function () {
   location.hash = (currentRoute() === 'files') ? '#/' : '#/files';
 });
 
-const DOWNLOADS_VIEW = ['deviceStatus', 'downloadsToolbar', 'downloadsFilters', 'logBox', 'addForm', 'status', 'list'];
+const DOWNLOADS_VIEW = ['deviceStatus', 'downloadsToolbar', 'downloadsFilters', 'addForm', 'status', 'list'];
 
 function currentRoute() {
   const h = location.hash;

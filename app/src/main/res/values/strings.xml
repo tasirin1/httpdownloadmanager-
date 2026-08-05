@@ -41,15 +41,9 @@
     <string name="storage_picker_error">Gagal menggunakan folder: %1$s</string>
     <string name="storage_picker_unavailable">Tidak ada aplikasi untuk memilih folder di perangkat ini</string>
     <string name="storage_folder_selected">Folder dipilih: %1$s</string>
-    <string name="storage_text_folder">Ketik path folder</string>
     <string name="storage_text_folder_hint">Path folder (contoh: /storage/emulated/0/Download)</string>
     <string name="storage_text_folder_invalid">Path tidak valid atau bukan folder</string>
     <string name="storage_text_folder_saved">Folder disimpan: %1$s</string>
-    <string name="storage_onboarding_title">Pilih lokasi penyimpanan</string>
-    <string name="storage_onboarding_message">Di mana file download akan disimpan?</string>
-    <string name="storage_onboarding_default">Folder Downloads (default)</string>
-    <string name="storage_onboarding_custom">Pilih folder&#8230;</string>
-    <string name="storage_onboarding_text">Ketik path folder&#8230;</string>
 
     <string name="action_remote">Remote (HTTP)</string>
     <string name="remote_running">Berjalan</string>

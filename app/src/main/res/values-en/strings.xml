@@ -41,15 +41,9 @@
     <string name="storage_picker_error">Failed to use folder: %1$s</string>
     <string name="storage_picker_unavailable">No app available to pick a folder on this device</string>
     <string name="storage_folder_selected">Folder selected: %1$s</string>
-    <string name="storage_text_folder">Type folder path</string>
     <string name="storage_text_folder_hint">Folder path (e.g. /storage/emulated/0/Download)</string>
     <string name="storage_text_folder_invalid">Path is not valid or not a folder</string>
     <string name="storage_text_folder_saved">Folder saved: %1$s</string>
-    <string name="storage_onboarding_title">Choose storage location</string>
-    <string name="storage_onboarding_message">Where should downloaded files be saved?</string>
-    <string name="storage_onboarding_default">Downloads folder (default)</string>
-    <string name="storage_onboarding_custom">Choose folder&#8230;</string>
-    <string name="storage_onboarding_text">Type folder path&#8230;</string>
 
     <string name="action_remote">Remote (HTTP)</string>
     <string name="remote_running">Running</string>

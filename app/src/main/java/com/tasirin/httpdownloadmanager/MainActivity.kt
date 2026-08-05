@@ -14,7 +14,6 @@ import android.os.PowerManager
 import android.provider.DocumentsContract
 import android.provider.Settings
 import android.text.Editable
-import android.text.InputType
 import android.text.TextUtils
 import android.text.TextWatcher
 import android.util.Log
@@ -176,10 +175,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             runCatching { App.httpServer.startServer() }
         }
         runCatching { App.engine.cleanupOrphans() }
-        if (!StoragePrefs.isStorageOnboarded(this)) {
-            StoragePrefs.setStorageOnboarded(this)
-            showStorageOnboardingDialog()
-        }
         if (StoragePrefs.isBatteryExemptEnabled(this)) {
             requestBatteryExemption()
         }
@@ -745,68 +740,12 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         dialog.setOnDismissListener { clearActiveStorageUi() }
     }
 
-    private fun showTextFolderDialog() {
-        val input = EditText(this)
-        input.hint = getString(R.string.storage_text_folder_hint)
-        input.inputType = InputType.TYPE_CLASS_TEXT
-        input.setText(StoragePrefs.getTextFolder(this) ?: defaultDownloadsPath())
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.storage_text_folder)
-            .setView(input)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.save) { _, _ ->
-                val path = input.text?.toString()?.trim().orEmpty()
-                val dir = File(path)
-                if (path.isNotEmpty() && (dir.isDirectory || dir.mkdirs())) {
-                    StoragePrefs.setTextFolder(this, path)
-                    StoragePrefs.saveFolder(this, null, null)
-                    Toast.makeText(
-                        this,
-                        getString(R.string.storage_text_folder_saved, path),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                } else {
-                    Toast.makeText(this, R.string.storage_text_folder_invalid, Toast.LENGTH_LONG).show()
-                }
-            }
-            .show()
-    }
-
     private fun defaultDownloadsPath(): String {
         if (Build.VERSION.SDK_INT >= 29) return "/storage/emulated/0/Download"
         return runCatching {
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                 .absolutePath
         }.getOrDefault("/storage/emulated/0/Download")
-    }
-
-    private fun showStorageOnboardingDialog() {
-        if (StoragePrefs.getFolderUri(this) != null ||
-            StoragePrefs.getTextFolder(this) != null
-        ) {
-            return
-        }
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.storage_onboarding_title)
-            .setMessage(R.string.storage_onboarding_message)
-            .setItems(
-                arrayOf(
-                    getString(R.string.storage_onboarding_default),
-                    getString(R.string.storage_onboarding_custom),
-                    getString(R.string.storage_onboarding_text)
-                )
-            ) { _, which ->
-                when (which) {
-                    0 -> {
-                        StoragePrefs.saveFolder(this, null, null)
-                        StoragePrefs.setTextFolder(this, null)
-                    }
-                    1 -> launchDocumentTree(folderPicker)
-                    2 -> showTextFolderDialog()
-                }
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
     }
 
     private fun requestBatteryExemption() {

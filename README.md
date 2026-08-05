@@ -31,14 +31,27 @@ Aplikasi download manager sederhana untuk **Android 5.0 (API 21) ke atas**, diba
 - File tersimpan di folder Downloads publik (Android < 10) / MediaStore Downloads (Android 10+) jika folder kustom tidak dipilih
 - Tombol "Bersihkan yang selesai" dan "Penyimpanan" di menu toolbar
 
+## Unduh APK
+
+APK terbaru selalu tersedia di **GitHub Releases** (tidak perlu buka menu Actions):
+
+- https://github.com/tasirin1/httpdownloadmanager-/releases/latest
+
+Setiap push ke `main` langsung di-build otomatis dan rilis diperbarui. Pasang APK di HP
+(Android 5.0+), beri izin Penyimpanan saat diminta.
+
 ## Persyaratan
 
-- Android 5.0+ (minSdk 21), target SDK 34
+- Android 5.0+ (minSdk 21), target SDK 28
 - Java 17 dan Android SDK untuk build lokal
 
 ## Penyimpanan
 
-Default file disimpan ke **Folder Downloads** (MediaStore di Android 10+, folder Downloads publik di Android 5–9 — izin penyimpanan diminta otomatis saat membuka dialog Penyimpanan di Android 6+). Pemilih folder defaultnya langsung terbuka di folder Downloads (Android 8+), dan aman dipakai di Android 5/6 (tanpa force close saat memilih folder).
+Default file disimpan ke **Folder Downloads**. Izin penyimpanan mengikuti pola aplikasi
+Vaultwarden Host: `WRITE_EXTERNAL_STORAGE` penuh + `requestLegacyExternalStorage` +
+target SDK 28, jadi folder Downloads publik bisa diakses langsung di Android 5–11
+(tanpa dibatasi scoped storage). Di Android 12+ tetap memakai MediaStore/SAF otomatis.
+Izin penyimpanan diminta otomatis saat membuka dialog Penyimpanan di Android 6+.
 Untuk memilih lokasi lain (misalnya folder di SD card):
 
 1. Ketuk menu **⋮ → Penyimpanan**

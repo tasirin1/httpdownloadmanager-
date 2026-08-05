@@ -293,7 +293,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         ) {
             needed.add(Manifest.permission.POST_NOTIFICATIONS)
         }
-        if (Build.VERSION.SDK_INT in 23..28 &&
+        if (Build.VERSION.SDK_INT >= 23 &&
             checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
             PackageManager.PERMISSION_GRANTED
         ) {

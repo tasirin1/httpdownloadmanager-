@@ -132,10 +132,8 @@
   .fs-root .fs-rcap small { display: block; color: var(--muted); font-size: 12px; word-break: break-all; margin-top: 2px; }
   .fs-empty { padding: 24px 12px; text-align: center; color: var(--muted); }
   .btn-ghost:disabled { opacity: .45; cursor: default; }
-  .fs-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 8px; }
-  .fs-tools input { flex: 1 1 140px; }
-  .fs-tools select { flex: 0 0 auto; width: auto; }
-  .fs-tools button { padding: 7px 12px; font-size: 12px; font-weight: 600; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; transition: all .15s ease; }
+  .fs-tools { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .fs-tools button { flex: 1 1 0; min-width: 0; padding: 8px 12px; font-size: 12.5px; font-weight: 600; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; transition: all .15s ease; }
   .fs-tools button:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
   .fs-upload { margin: 0 0 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); box-shadow: var(--shadow-sm); }
   .fs-upload-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
@@ -205,10 +203,8 @@
     .fs-row { padding: 10px 12px; }
     .fs-row .fs-actions a, .fs-row .fs-actions button { flex: 1 1 auto; min-width: 56px; padding: 7px 8px; text-align: center; }
     .fs-path { font-size: 12px; }
-    .fs-tools { flex-direction: column; align-items: stretch; }
-    .fs-tools input { flex: none; }
-    .fs-tools select { width: 100%; }
-    .fs-tools button { flex: 1 1 auto; }
+    .fs-tools { flex-wrap: nowrap; }
+    .fs-tools button { flex: 1 1 0; min-width: 0; }
     .fs-batch { flex-wrap: wrap; }
     .fs-batch button { flex: 1 1 auto; }
     .item { padding: 14px; }
@@ -292,15 +288,6 @@
   </div>
   <div id="fsPath" class="fs-path"></div>
   <div class="fs-tools" id="fsToolsRow">
-    <input id="fsSearch" type="search" placeholder="Cari file…">
-    <select id="fsSort">
-      <option value="name_asc">Nama A-Z</option>
-      <option value="name_desc">Nama Z-A</option>
-      <option value="size_desc">Ukuran terbesar</option>
-      <option value="size_asc">Ukuran terkecil</option>
-      <option value="date_desc">Terbaru</option>
-      <option value="date_asc">Terlama</option>
-    </select>
     <button id="fsMkdirBtn" type="button">&#128193; Folder</button>
     <button id="fsUploadBtn" type="button">&#11014; Upload</button>
     <button id="fsSelectBtn" type="button">&#9989; Pilih</button>
@@ -496,8 +483,6 @@ const fsUpBtn = document.getElementById('fsUpBtn');
 const fsSelectBtn = document.getElementById('fsSelectBtn');
 const fsBatch = document.getElementById('fsBatch');
 const fsToolsRow = document.getElementById('fsToolsRow');
-const fsSearch = document.getElementById('fsSearch');
-const fsSort = document.getElementById('fsSort');
 const fsUploadFile = document.getElementById('fsUploadFile');
 
 fsBtn.addEventListener('click', function () {
@@ -584,42 +569,11 @@ async function loadFs() {
     fsSelectBtn.classList.toggle('hidden', !fsPath);
     fsItems = data.items || [];
     fsCount.textContent = fsItems.length ? fsItems.length + ' item' : '';
-    applyFsFilter();
+    renderFs(fsItems);
   } catch (e) {
     fsMsg('Gagal memuat: ' + e, true);
   }
 }
-
-function applyFsFilter() {
-  if (!fsPath) {
-    renderFs(fsItems);
-    return;
-  }
-  const q = fsSearch.value.trim().toLowerCase();
-  const sort = fsSort.value;
-  let items = fsItems;
-  if (q) {
-    items = items.filter(function (it) {
-      return it.name.toLowerCase().indexOf(q) >= 0;
-    });
-  }
-  items = items.slice().sort(function (a, b) {
-    if (a.kind !== b.kind) return a.kind === 'dir' ? -1 : 1;
-    switch (sort) {
-      case 'name_asc': return a.name.localeCompare(b.name);
-      case 'name_desc': return b.name.localeCompare(a.name);
-      case 'size_desc': return b.size - a.size;
-      case 'size_asc': return a.size - b.size;
-      case 'date_desc': return b.modified - a.modified;
-      case 'date_asc': return a.modified - b.modified;
-    }
-    return 0;
-  });
-  renderFs(items);
-}
-
-fsSearch.addEventListener('input', applyFsFilter);
-fsSort.addEventListener('change', applyFsFilter);
 
 function renderFs(items) {
   const box = fsList;

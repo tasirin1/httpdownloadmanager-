@@ -67,7 +67,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     private var activeStorageInput: EditText? = null
     private var storagePathEdited = false
     private var updatingStorageInput = false
-    private var updatingServerSwitch = false
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -136,10 +135,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         binding.recycler.adapter = adapter
 
         binding.fabAdd.setOnClickListener { showAddDialog() }
-
-        findViewById<SwitchCompat>(R.id.server_switch)?.setOnCheckedChangeListener { _, checked ->
-            if (!updatingServerSwitch) onServerSwitch(checked)
-        }
 
         binding.btnChangeStorageHome.setOnClickListener { showStorageDialog() }
 
@@ -256,12 +251,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     private fun updateServerStatus() {
         val tv = findViewById<TextView>(R.id.server_status) ?: return
         val alive = App.httpServer.isAlive
-        val sw = findViewById<SwitchCompat>(R.id.server_switch)
-        if (sw != null) {
-            updatingServerSwitch = true
-            sw.isChecked = alive
-            updatingServerSwitch = false
-        }
         tv.text = getString(
             if (alive) R.string.server_status_running else R.string.server_status_stopped
         )
@@ -289,37 +278,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 qrIv.visibility = View.GONE
             }
         }
-    }
-
-    /** On/off server remote dari switch di halaman utama. */
-    private fun onServerSwitch(enable: Boolean) {
-        if (enable) {
-            StoragePrefs.setServerBackgroundEnabled(this, true)
-            runCatching { App.httpServer.startServer() }
-                .onSuccess {
-                    Snackbar.make(
-                        binding.root,
-                        getString(R.string.remote_started, App.httpServer.listeningPort),
-                        Snackbar.LENGTH_SHORT
-                    ).show()
-                }
-                .onFailure {
-                    Snackbar.make(
-                        binding.root,
-                        getString(
-                            R.string.remote_start_failed,
-                            App.httpServer.lastError ?: it.message ?: "?"
-                        ),
-                        Snackbar.LENGTH_LONG
-                    ).show()
-                }
-        } else {
-            StoragePrefs.setServerBackgroundEnabled(this, false)
-            App.httpServer.stopServer()
-            stopServiceIfIdle()
-            Snackbar.make(binding.root, R.string.remote_stopped, Snackbar.LENGTH_SHORT).show()
-        }
-        updateServerStatus()
     }
 
     /** Stop DownloadService bila tidak ada download aktif (server juga mati). */
@@ -1017,55 +975,74 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val statusView = view.findViewById<TextView>(R.id.remote_status)
         val urlsView = view.findViewById<TextView>(R.id.remote_urls)
         val qrView = view.findViewById<ImageView>(R.id.remote_qr)
-        if (server.isAlive) {
-            statusView.setText(R.string.remote_running)
-            val urls = HttpControlServer.ipv4Addresses()
-                .map { "http://$it:${server.listeningPort}/" }
-            urlsView.text = urls.joinToString("\n").ifEmpty {
-                getString(R.string.remote_no_url)
+        val switchView = view.findViewById<SwitchCompat>(R.id.remote_switch) ?: return
+
+        fun renderRemote() {
+            if (App.httpServer.isAlive) {
+                statusView.setText(R.string.remote_running)
+                val urls = HttpControlServer.ipv4Addresses()
+                    .map { "http://$it:${App.httpServer.listeningPort}/" }
+                urlsView.text = urls.joinToString("\n").ifEmpty {
+                    getString(R.string.remote_no_url)
+                }
+                urls.firstOrNull()?.let { address ->
+                    generateQrCode(address, 640)?.let { qrView.setImageBitmap(it) }
+                }
+                qrView.visibility = View.VISIBLE
+            } else {
+                statusView.setText(R.string.remote_stopped)
+                urlsView.text = getString(R.string.remote_no_url)
+                qrView.visibility = View.GONE
             }
-            urls.firstOrNull()?.let { address ->
-                generateQrCode(address, 640)?.let { qrView.setImageBitmap(it) }
-            }
-        } else {
-            statusView.setText(R.string.remote_stopped)
-            urlsView.text = getString(R.string.remote_no_url)
-            qrView.visibility = View.GONE
         }
-        val builder = MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.action_remote)
-            .setView(view)
-            .setNegativeButton(R.string.cancel, null)
-        if (server.isAlive) {
-            builder.setPositiveButton(R.string.remote_stop) { _, _ ->
+
+        renderRemote()
+        switchView.isChecked = server.isAlive
+        var updating = false
+        switchView.setOnCheckedChangeListener { _, checked ->
+            if (updating) return@setOnCheckedChangeListener
+            if (checked) {
+                // Nyalakan: simpan preferensi supaya tetap hidup setelah restart.
+                StoragePrefs.setServerBackgroundEnabled(this, true)
+                StoragePrefs.setServerAutoStartEnabled(this, true)
+                val result = runCatching { App.httpServer.startServer() }
+                if (result.isFailure) {
+                    StoragePrefs.setServerBackgroundEnabled(this, false)
+                    StoragePrefs.setServerAutoStartEnabled(this, false)
+                    updating = true
+                    switchView.isChecked = false
+                    updating = false
+                    Snackbar.make(
+                        binding.root,
+                        getString(
+                            R.string.remote_start_failed,
+                            App.httpServer.lastError ?: result.exceptionOrNull()?.message ?: "?"
+                        ),
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                } else {
+                    Snackbar.make(
+                        binding.root,
+                        getString(R.string.remote_started, App.httpServer.listeningPort),
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                }
+            } else {
                 StoragePrefs.setServerBackgroundEnabled(this, false)
-                server.stopServer()
-                updateServerStatus()
+                StoragePrefs.setServerAutoStartEnabled(this, false)
+                App.httpServer.stopServer()
                 stopServiceIfIdle()
                 Snackbar.make(binding.root, R.string.remote_stopped, Snackbar.LENGTH_SHORT).show()
             }
-        } else {
-            builder.setPositiveButton(R.string.remote_start) { _, _ ->
-                StoragePrefs.setServerBackgroundEnabled(this, true)
-                runCatching { server.startServer() }
-                    .onSuccess {
-                        updateServerStatus()
-                        Snackbar.make(
-                            binding.root,
-                            getString(R.string.remote_started, server.listeningPort),
-                            Snackbar.LENGTH_SHORT
-                        ).show()
-                    }
-                    .onFailure {
-                        Snackbar.make(
-                            binding.root,
-                            getString(R.string.remote_start_failed, it.message ?: "?"),
-                            Snackbar.LENGTH_LONG
-                        ).show()
-                    }
-            }
+            updateServerStatus()
+            renderRemote()
         }
-        builder.show()
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.action_remote)
+            .setView(view)
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun generateQrCode(content: String, size: Int): Bitmap? {

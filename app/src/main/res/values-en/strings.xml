@@ -52,12 +52,9 @@
     <string name="storage_onboarding_text">Type folder path&#8230;</string>
 
     <string name="action_remote">Remote (HTTP)</string>
-    <string name="remote_start">Start server</string>
-    <string name="remote_stop">Stop server</string>
     <string name="remote_running">Running</string>
     <string name="remote_stopped">Stopped</string>
     <string name="remote_no_url">No network address available</string>
-    <string name="remote_message">Status: %1$s\n\nOpen from another device browser:\n%2$s</string>
     <string name="remote_started">Server running on port %1$d</string>
         <string name="remote_qr_desc">Remote server address (QR)</string>
     <string name="remote_start_failed">Failed to start server: %1$s</string>
@@ -138,6 +135,7 @@
     <string name="settings_port_hint">Port (1024–65535)</string>
     <string name="settings_port_invalid">Invalid port (1024–65535)</string>
     <string name="server_switch">Server</string>
+    <string name="remote_autostart_hint">Start automatically after device restart</string>
     <string name="settings_segments">Parallel segments per download</string>
 
     <string name="previous_crash_title">Error log from previous launch</string>

@@ -33,7 +33,7 @@
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: var(--bg); margin: 0; padding: 0 0 56px; color: var(--ink); font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
   .topbar { position: sticky; top: 0; z-index: 40; background: rgba(255,255,255,.85); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); box-shadow: 0 1px 8px rgba(23,32,58,.04); }
   .topbar-in { max-width: 880px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 16px; margin-right: auto; color: var(--ink); }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 16px; margin-right: auto; color: var(--ink); cursor: pointer; }
   .brand .logo { width: 32px; height: 32px; border-radius: 9px; background: linear-gradient(135deg, var(--primary), #7a5cff); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 3px 8px rgba(67,83,230,.35); }
   .brand small { display: block; font-weight: 500; font-size: 10.5px; opacity: .6; letter-spacing: .3px; }
   .pill { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s ease; }
@@ -237,14 +237,14 @@
     <span><span class="dot"></span>Menghubungkan ke device…</span>
   </div>
 
-  <div class="toolbar">
+  <div class="toolbar" id="downloadsToolbar">
     <button id="pauseAllBtn" type="button">&#9209; Jeda semua</button>
     <button id="resumeAllBtn" type="button">&#9654; Lanjut semua</button>
     <button id="retryFailedBtn" type="button">&#8635; Ulangi gagal</button>
     <button id="clearCompletedBtn" type="button">&#128465; Bersihkan selesai</button>
   </div>
 
-  <div class="seg" id="filters">
+  <div class="seg" id="downloadsFilters">
     <button id="webFilterAll" type="button" class="on">Semua</button>
     <button id="webFilterActive" type="button">Aktif</button>
     <button id="webFilterCompleted" type="button">Selesai</button>
@@ -375,6 +375,7 @@ function toggleAddForm(show) {
   if (show) document.getElementById('url').focus();
 }
 newBtn.addEventListener('click', function () {
+  if (currentRoute() !== 'downloads') location.hash = '#/';
   toggleAddForm(addForm.classList.contains('hidden'));
 });
 
@@ -419,7 +420,6 @@ async function refreshStatus() {
   }
 }
 
-let galleryOpen = false;
 const galleryView = document.getElementById('galleryView');
 const galleryBtn = document.getElementById('galleryBtn');
 const galleryGrid = document.getElementById('galleryGrid');
@@ -433,19 +433,7 @@ const mmSub = document.getElementById('mmSub');
 const mmClose = document.getElementById('mmClose');
 
 galleryBtn.addEventListener('click', function () {
-  if (fsOpen) {
-    fsOpen = false;
-    fsView.classList.add('hidden');
-    fsBtn.textContent = '\u{1F4C1} File Manager';
-  }
-  galleryOpen = !galleryOpen;
-  galleryView.classList.toggle('hidden', !galleryOpen);
-  galleryBtn.textContent = galleryOpen ? '\u2715 Tutup galeri' : '\u{1F4F7} Galeri';
-  if (galleryOpen) {
-    loadGallery();
-  } else {
-    refresh();
-  }
+  location.hash = (currentRoute() === 'gallery') ? '#/' : '#/gallery';
 });
 
 document.getElementById('mmClose').addEventListener('click', function () {
@@ -511,7 +499,6 @@ async function loadGallery() {
 }
 
 // File manager
-let fsOpen = false;
 let fsPath = '';
 let fsItems = [];
 let fsSelectMode = false;
@@ -531,25 +518,46 @@ const fsSort = document.getElementById('fsSort');
 const fsUploadFile = document.getElementById('fsUploadFile');
 
 fsBtn.addEventListener('click', function () {
-  if (galleryOpen) {
-    galleryOpen = false;
-    galleryView.classList.add('hidden');
-    galleryBtn.textContent = '\u{1F4F7} Galeri';
-  }
-  fsOpen = !fsOpen;
-  fsView.classList.toggle('hidden', !fsOpen);
-  fsBtn.textContent = fsOpen ? '\u2715 Tutup file' : '\u{1F4C1} File Manager';
-  if (!fsOpen) {
+  location.hash = (currentRoute() === 'files') ? '#/' : '#/files';
+});
+
+const DOWNLOADS_VIEW = ['deviceStatus', 'downloadsToolbar', 'downloadsFilters', 'logBox', 'addForm', 'status', 'list'];
+
+function currentRoute() {
+  const h = location.hash;
+  if (h === '#/gallery') return 'gallery';
+  if (h === '#/files') return 'files';
+  return 'downloads';
+}
+
+function applyRoute() {
+  const route = currentRoute();
+  const showDownloads = route === 'downloads';
+  DOWNLOADS_VIEW.forEach(function (id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('hidden', !showDownloads);
+  });
+  galleryView.classList.toggle('hidden', route !== 'gallery');
+  fsView.classList.toggle('hidden', route !== 'files');
+  galleryBtn.textContent = route === 'gallery' ? '\u2715 Tutup galeri' : '\u{1F4F7} Galeri';
+  fsBtn.textContent = route === 'files' ? '\u2715 Tutup file' : '\u{1F4C1} File Manager';
+  if (route === 'gallery') {
+    toggleAddForm(false);
+    loadGallery();
+  } else if (route === 'files') {
+    toggleAddForm(false);
     fsSelectMode = false;
     fsSelected.length = 0;
     fsSelectBtn.textContent = '\u9989 Pilih';
     fsBatch.classList.add('hidden');
-  }
-  if (fsOpen) {
     loadFs();
   } else {
     refresh();
   }
+}
+
+document.querySelector('.brand').addEventListener('click', function () {
+  location.hash = '#/';
 });
 
 fsUpBtn.addEventListener('click', function () {
@@ -1142,9 +1150,12 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
   refresh();
 });
 
-refresh();
+window.addEventListener('hashchange', applyRoute);
+applyRoute();
 refreshStatus();
-setInterval(refresh, 1500);
+setInterval(function () {
+  if (currentRoute() === 'downloads') refresh();
+}, 1500);
 setInterval(refreshStatus, 5000);
 </script>
 </body>

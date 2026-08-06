@@ -31,6 +31,19 @@
                 android:textAppearance="?attr/textAppearanceTitleMedium" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_quick"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/pause"
+                android:minWidth="0dp"
+                android:paddingHorizontal="10dp"
+                android:visibility="gone"
+                app:icon="@drawable/ic_pause"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_actions"
                 style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="wrap_content"

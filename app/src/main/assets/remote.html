@@ -1356,9 +1356,13 @@ function openItemSheet(it) {
     acts.push({label: '\u25B6 Stream', stream: API + '/file/' + encId});
     acts.push({label: '\u2B07 Download', dl: API + '/file/' + encId + '?dl=1'});
     acts.push({label: '\u{1F517} Bagikan', op: 'share'});
+    acts.push({label: '\u270F Ubah nama', op: 'rename'});
   }
   if (it.state === 'DOWNLOADING') acts.push({label: '\u23F8 Jeda', op: 'pause'});
   if (it.state === 'PAUSED' || it.state === 'FAILED') acts.push({label: '\u25B6 Lanjut', op: 'resume'});
+  if (it.state === 'PENDING' || it.state === 'PAUSED' || it.state === 'FAILED') {
+    acts.push({label: '\u23F1 Batas kecepatan', op: 'limit'});
+  }
   if (it.state === 'DOWNLOADING' || it.state === 'PENDING' || it.state === 'PAUSED') {
     acts.push({label: '\u2715 Batal', op: 'cancel'});
   }
@@ -1374,6 +1378,32 @@ function openItemSheet(it) {
       closeItemSheet();
       if (a.stream) { window.open(a.stream, '_blank'); return; }
       if (a.dl) { fsDownloadUrl(a.dl); return; }
+      if (a.op === 'rename') {
+        showInput('Ubah nama', it.fileName, 'Nama baru untuk file ini', 'Simpan', function (name) {
+          if (!name || name === it.fileName) return;
+          doActionNow(it.id, 'rename', {name: name});
+        });
+        return;
+      }
+      if (a.op === 'limit') {
+        showInput(
+          'Batas kecepatan',
+          String(it.speedLimitKbps || 0),
+          'KB/s (0 = tanpa batas). Opsional prioritas -1/0/1 di belakang, contoh: 512 1',
+          'Simpan',
+          function (val) {
+            const parts = val.trim().split(/\s+/);
+            const speed = parseInt(parts[0], 10);
+            if (isNaN(speed) || speed < 0) return;
+            const priority = parts.length > 1 ? parseInt(parts[1], 10) : 0;
+            doActionNow(it.id, 'limit_priority', {
+              speedLimitKbps: speed,
+              priority: isNaN(priority) ? 0 : priority
+            });
+          }
+        );
+        return;
+      }
       doAction(it.id, a.op);
     });
     list.appendChild(b);
@@ -2331,8 +2361,11 @@ function doAction(id, action) {
   }
   doActionNow(id, action);
 }
-async function doActionNow(id, action) {
+async function doActionNow(id, action, extra) {
   const body = new URLSearchParams({id: id, action: action});
+  if (extra) {
+    Object.entries(extra).forEach(function (e) { body.append(e[0], e[1]); });
+  }
   await fetch(API + '/api/action', {method: 'POST', body});
   refresh();
 }

@@ -853,17 +853,20 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             (StoragePrefs.maxConcurrent(this) - 1).coerceIn(0, concurrentOptions.size - 1)
         )
 
-        val speedOptions = resources.getStringArray(R.array.speed_limit_options)
+        val currentSpeed = StoragePrefs.speedLimitKbps(this)
+        val speedOptions = resources.getStringArray(R.array.speed_limit_options).toMutableList()
         val speedKbps = SPEED_KBPS
+        if (currentSpeed !in speedKbps) {
+            speedOptions.add(getString(R.string.settings_speed_custom, currentSpeed))
+        }
         val spinnerSpeed = view.findViewById<Spinner>(R.id.spinner_speed)
         spinnerSpeed.adapter = ArrayAdapter(
             this, android.R.layout.simple_spinner_item, speedOptions
         ).apply {
             setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
-        spinnerSpeed.setSelection(
-            speedKbps.indexOf(StoragePrefs.speedLimitKbps(this)).coerceAtLeast(0)
-        )
+        val speedIdx = speedKbps.indexOf(currentSpeed)
+        spinnerSpeed.setSelection(if (speedIdx >= 0) speedIdx else speedOptions.size - 1)
 
         val retryOptions = resources.getStringArray(R.array.retry_options)
         val spinnerRetry = view.findViewById<Spinner>(R.id.spinner_retry)
@@ -910,7 +913,11 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                     requestBatteryExemption()
                 }
                 StoragePrefs.setMaxConcurrent(this, spinnerConcurrent.selectedItemPosition + 1)
-                StoragePrefs.setSpeedLimitKbps(this, speedKbps[spinnerSpeed.selectedItemPosition])
+                val selSpeed = spinnerSpeed.selectedItemPosition
+                StoragePrefs.setSpeedLimitKbps(
+                    this,
+                    if (selSpeed < speedKbps.size) speedKbps[selSpeed] else currentSpeed
+                )
                 StoragePrefs.setMaxRetries(this, spinnerRetry.selectedItemPosition)
                 StoragePrefs.setSegmentCount(
                     this,
@@ -1030,16 +1037,20 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
     private fun showLimitPriorityDialog(item: DownloadItem) {
         val view = layoutInflater.inflate(R.layout.dialog_limit_priority, null)
-        val speedPerOptions = resources.getStringArray(R.array.speed_limit_per_options)
+        val itemSpeed = item.speedLimitKbps
+        val speedPerOptions = resources.getStringArray(R.array.speed_limit_per_options).toMutableList()
         val speedKbps = SPEED_KBPS
+        if (itemSpeed !in speedKbps) {
+            speedPerOptions.add(getString(R.string.settings_speed_custom, itemSpeed))
+        }
         val spinnerSpeed = view.findViewById<Spinner>(R.id.spinner_speed_limit_per)
         spinnerSpeed.adapter = ArrayAdapter(
             this, android.R.layout.simple_spinner_item, speedPerOptions
         ).apply {
             setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
-        val speedIndex = speedKbps.indexOf(item.speedLimitKbps)
-        spinnerSpeed.setSelection(if (speedIndex >= 0) speedIndex else 0)
+        val speedIndex = speedKbps.indexOf(itemSpeed)
+        spinnerSpeed.setSelection(if (speedIndex >= 0) speedIndex else speedPerOptions.size - 1)
 
         val priorityValues = PRIORITY_VALUES
         val spinnerPriority = view.findViewById<Spinner>(R.id.spinner_priority)
@@ -1058,9 +1069,10 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             .setView(view)
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton(R.string.save) { _, _ ->
+                val selSpeed = spinnerSpeed.selectedItemPosition
                 App.engine.setLimitAndPriority(
                     item.id,
-                    speedKbps[spinnerSpeed.selectedItemPosition],
+                    if (selSpeed < speedKbps.size) speedKbps[selSpeed] else itemSpeed,
                     priorityValues[spinnerPriority.selectedItemPosition]
                 )
             }

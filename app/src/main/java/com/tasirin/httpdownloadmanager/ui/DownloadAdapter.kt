@@ -40,6 +40,22 @@ class DownloadAdapter(private val listener: Listener) :
         b.textStatus.text = statusText(item, b.root.context)
         b.progressBar.max = 100
         b.progressBar.progress = item.progressPercent
+
+        val quick = b.buttonQuick
+        val quickResume = item.state == DownloadState.PAUSED || item.state == DownloadState.FAILED
+        val quickPause = item.state == DownloadState.DOWNLOADING || item.state == DownloadState.PENDING
+        if (quickResume || quickPause) {
+            quick.visibility = View.VISIBLE
+            quick.setIconResource(if (quickResume) R.drawable.ic_play else R.drawable.ic_pause)
+            quick.contentDescription = b.root.context.getString(
+                if (quickResume) R.string.resume else R.string.pause
+            )
+            quick.setOnClickListener {
+                listener.onAction(item, if (quickResume) Action.RESUME else Action.PAUSE)
+            }
+        } else {
+            quick.visibility = View.GONE
+        }
         b.textProgress.text = if (item.totalBytes > 0) {
             String.format(
                 Locale.US, "%d%% \u2022 %s / %s",

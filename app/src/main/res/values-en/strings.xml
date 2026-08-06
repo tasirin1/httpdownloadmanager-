@@ -129,6 +129,7 @@
     <string name="clear_history">Clear history</string>
     <string name="settings_port_label">Remote server port</string>
     <string name="settings_port_hint">Port (1024–65535)</string>
+    <string name="settings_speed_custom">Custom: %1$d KB/s</string>
     <string name="settings_port_invalid">Invalid port (1024–65535)</string>
     <string name="server_switch">Server</string>
     <string name="remote_autostart_hint">Start automatically after device restart</string>

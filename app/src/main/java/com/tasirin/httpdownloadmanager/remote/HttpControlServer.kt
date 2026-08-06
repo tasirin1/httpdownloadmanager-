@@ -74,6 +74,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     @Volatile private var galleryCache: Pair<Long, List<MediaLibrary.MediaEntry>>? = null
     @Volatile private var loginFailures = 0
     @Volatile private var loginLockUntil = 0L
+    private val fsStatsCache = ConcurrentHashMap<String, Pair<Long, Pair<Int, Long>>>()
 
     override fun serve(session: IHTTPSession): Response {
         return try {
@@ -292,6 +293,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             o.put("progress", item.progressPercent)
             o.put("speedBps", item.speedBps)
             o.put("etaSeconds", item.etaSeconds)
+            o.put("speedLimitKbps", item.speedLimitKbps)
             o.put("addedAt", item.addedAt)
             item.error?.let { o.put("error", it) }
             arr.put(o)
@@ -581,6 +583,21 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             "delete" -> {
                 if (id.isEmpty()) return jsonResponse(JSONObject().put("ok", false))
                 App.engine.remove(id)
+            }
+            "rename" -> {
+                if (id.isEmpty()) return jsonResponse(JSONObject().put("ok", false))
+                val name = params["name"]?.trim().orEmpty()
+                if (name.isBlank() || name.contains('/') || name.contains('\\')) {
+                    return jsonResponse(JSONObject().put("ok", false).put("error", "nama tidak valid"))
+                }
+                App.engine.rename(id, name)
+            }
+            "limit_priority" -> {
+                if (id.isEmpty()) return jsonResponse(JSONObject().put("ok", false))
+                val speed = params["speedLimitKbps"]?.toIntOrNull()
+                    ?.coerceIn(0, 100_000) ?: 0
+                val priority = params["priority"]?.toIntOrNull()?.coerceIn(-1, 1) ?: 0
+                App.engine.setLimitAndPriority(id, speed, priority)
             }
             "pause_all" -> App.engine.pauseAll()
             "resume_all" -> App.engine.resumeAll()
@@ -1028,13 +1045,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     o.put("size", if (f.isFile) f.length() else 0L)
                     o.put("modified", f.lastModified())
                     if (f.isDirectory) {
-                        val children = runCatching { f.listFiles() }.getOrNull() ?: emptyArray()
-                        var itemCount = 0
-                        var totalSize = 0L
-                        for (c in children) {
-                            itemCount++
-                            if (c.isFile) totalSize += c.length()
-                        }
+                        val (itemCount, totalSize) = fsStats(f.absolutePath)
                         o.put("itemCount", itemCount)
                         o.put("totalSize", totalSize)
                     } else {
@@ -1104,6 +1115,21 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             files.forEach { items.put(it) }
         }
         return jsonResponse(JSONObject().put("path", relative).put("items", items))
+    }
+
+    private fun fsStats(path: String): Pair<Int, Long> {
+        val now = System.currentTimeMillis()
+        val cached = fsStatsCache[path]
+        if (cached != null && now - cached.first < FS_STATS_TTL_MS) return cached.second
+        var itemCount = 0
+        var totalSize = 0L
+        runCatching { File(path).listFiles() }.getOrNull()?.forEach { c ->
+            itemCount++
+            if (c.isFile) totalSize += c.length()
+        }
+        val result = itemCount to totalSize
+        fsStatsCache[path] = now to result
+        return result
     }
 
     private fun fsAction(session: IHTTPSession): Response {
@@ -1383,6 +1409,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         private const val DEFAULT_CHUNK_BYTES = 2L * 1024 * 1024
         private const val MAX_LOGIN_ATTEMPTS = 5
         private const val LOGIN_LOCK_MS = 30_000L
+        private const val FS_STATS_TTL_MS = 10_000L
 
         fun ipv4Addresses(): List<String> = runCatching {
             NetworkInterface.getNetworkInterfaces().toList().flatMap { ni ->

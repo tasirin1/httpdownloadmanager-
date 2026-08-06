@@ -1618,10 +1618,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     sseLastPayload = payloadText
                     sseLastPushAt = now
                     val frame = "data: $payloadText\n\n"
-                    val iter = sseClients.iterator()
-                    while (iter.hasNext()) {
-                        if (iter.next().isClosed) iter.remove()
-                    }
+                    val closed = sseClients.filter { it.isClosed }
+                    if (closed.isNotEmpty()) sseClients.removeAll(closed)
                     sseClients.forEach { it.push(frame) }
                 }
             }

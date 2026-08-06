@@ -633,6 +633,9 @@ function renderStatus(st) {
     text += '<span class="st-item">&#128190; Sisa <b>' + fmt(st.storageFree) + '</b></span>';
   }
   text += '<span class="st-item">&#128424; Port <b>' + st.port + '</b></span>';
+  if (st.storageWriteOk === false) {
+    text += '<span class="st-item" style="color:#e53935;font-weight:700">&#9888;&#65039; Izin akses file belum aktif — transfer ke folder f: akan gagal. Buka aplikasi &gt; Remote (HTTP) &gt; Aktifkan akses file.</span>';
+  }
   el.innerHTML = text;
   el.classList.remove('offline');
   if (st.port && location.port && Number(st.port) !== Number(location.port)) {
@@ -1505,6 +1508,7 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
     const chunks = Math.max(1, Math.ceil(file.size / UPLOAD_CHUNK));
     let chunkIdx = 0;
     let chunkFails = 0;
+    let lastErr = '';
 
     function nextChunk() {
       if (chunkIdx >= chunks) {
@@ -1546,6 +1550,7 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
           chunkFails = 0;
           nextChunk();
         } else {
+          try { lastErr = (xhr.responseText ? JSON.parse(xhr.responseText).error : '') || ''; } catch (e) {}
           retryChunk();
         }
       };
@@ -1565,7 +1570,7 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
         return;
       }
       failed.push(file.name);
-      statusEl.textContent = 'Gagal: ' + file.name;
+      statusEl.textContent = 'Gagal: ' + file.name + (lastErr ? ' \u2014 ' + lastErr : '');
       finishOne();
     }
 

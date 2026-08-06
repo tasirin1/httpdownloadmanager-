@@ -1011,6 +1011,38 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val switchView = view.findViewById<SwitchCompat>(R.id.remote_switch) ?: return
 
         fun renderRemote() {
+            val storageBtn = view.findViewById<Button>(R.id.remote_storage_btn)
+            val needsStorage = when {
+                Build.VERSION.SDK_INT >= 30 -> !Environment.isExternalStorageManager()
+                Build.VERSION.SDK_INT >= 23 ->
+                    checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
+                        PackageManager.PERMISSION_GRANTED
+                else -> false
+            }
+            val storageWarn = if (needsStorage) {
+                "\n" + getString(R.string.remote_storage_warn)
+            } else {
+                ""
+            }
+            storageBtn.visibility = if (needsStorage) View.VISIBLE else View.GONE
+            storageBtn.setOnClickListener {
+                if (Build.VERSION.SDK_INT >= 30) {
+                    runCatching {
+                        startActivity(
+                            Intent(
+                                Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                Uri.parse("package:$packageName")
+                            )
+                        )
+                    }.onFailure {
+                        runCatching {
+                            startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                        }
+                    }
+                } else {
+                    requestPermissionsIfNeeded()
+                }
+            }
             if (App.httpServer.isAlive) {
                 statusView.setText(R.string.remote_running)
                 val urls = HttpControlServer.ipv4Addresses()
@@ -1022,8 +1054,9 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                     generateQrCode(address, 640)?.let { qrView.setImageBitmap(it) }
                 }
                 qrView.visibility = View.VISIBLE
+                statusView.append(storageWarn)
             } else {
-                statusView.setText(R.string.remote_stopped)
+                statusView.setText(getString(R.string.remote_stopped) + storageWarn)
                 urlsView.text = getString(R.string.remote_no_url)
                 qrView.visibility = View.GONE
             }

@@ -13,6 +13,15 @@
         android:layout_height="wrap_content"
         android:textAppearance="?attr/textAppearanceTitleMedium" />
 
+    <Button
+        android:id="@+id/remote_storage_btn"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="@string/remote_storage_btn"
+        android:visibility="gone" />
+
     <TextView
         android:id="@+id/remote_urls"
         android:layout_width="match_parent"

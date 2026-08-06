@@ -241,5 +241,7 @@
 
     <string name="settings_pin_enforced">Paksa PIN saat server menyala</string>
     <string name="settings_fs_full_access">Akses penuh penyimpanan utama (file manager)</string>
+    <string name="remote_storage_btn">Aktifkan akses file (izin penyimpanan)</string>
+    <string name="remote_storage_warn">⚠ Izin Penyimpanan belum diberikan — transfer ke folder /sdcard akan gagal. Buka Pengaturan Android → Aplikasi → HttpDownloadManager → Izin → aktifkan Penyimpanan.</string>
     <string name="remote_pin_required">Setel PIN dulu di Pengaturan sebelum menyalakan server (untuk keamanan jaringan)</string>
 </resources>

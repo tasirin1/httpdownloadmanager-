@@ -1,10 +1,12 @@
 package com.tasirin.httpdownloadmanager.remote
 
+import android.Manifest
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
@@ -1568,7 +1570,21 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         obj.put("batteryCharging", charging)
         obj.put("storageFree", App.engine.freeSpaceBytes())
         obj.put("port", listeningPort)
+        obj.put("storageWriteOk", storageWriteOk())
         return obj
+    }
+
+    private fun storageWriteOk(): Boolean {
+        // Izin menulis ke folder f: (path langsung). Android 11+ wajib
+        // MANAGE_EXTERNAL_STORAGE; Android 6-10 wajib WRITE_EXTERNAL_STORAGE.
+        return if (Build.VERSION.SDK_INT >= 30) {
+            Environment.isExternalStorageManager()
+        } else if (Build.VERSION.SDK_INT >= 23) {
+            context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
+                PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
     }
 
     private fun batteryStatus(): Pair<Int, Boolean> = runCatching {

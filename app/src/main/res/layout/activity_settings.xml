@@ -156,6 +156,12 @@
                 android:textSize="14sp"
                 android:textStyle="bold" />
 
+            <CheckBox
+                android:id="@+id/log_autoscroll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/remote_log_autoscroll" />
+
             <ScrollView
                 android:id="@+id/log_scroll"
                 android:layout_width="match_parent"

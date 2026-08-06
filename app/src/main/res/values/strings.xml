@@ -249,6 +249,7 @@
     <string name="settings_section_storage">Penyimpanan</string>
     <string name="settings_saved">Pengaturan disimpan</string>
     <string name="remote_log_label">Log server (realtime)</string>
+    <string name="remote_log_autoscroll">Auto-scroll ke bawah</string>
     <string name="remote_log_copy">Salin</string>
     <string name="remote_log_clear">Bersihkan</string>
     <string name="remote_log_empty">(Belum ada aktivitas — buka halaman remote di browser lalu coba upload)</string>

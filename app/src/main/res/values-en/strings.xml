@@ -249,6 +249,7 @@
     <string name="settings_section_storage">Storage</string>
     <string name="settings_saved">Settings saved</string>
     <string name="remote_log_label">Server log (realtime)</string>
+    <string name="remote_log_autoscroll">Auto-scroll to bottom</string>
     <string name="remote_log_copy">Copy</string>
     <string name="remote_log_clear">Clear</string>
     <string name="remote_log_empty">(No activity yet — open the remote page in a browser and try an upload)</string>

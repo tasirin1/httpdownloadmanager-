@@ -43,6 +43,8 @@ class SettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
 
+    private var logAutoScroll = true
+
     private var activeStorageCurrent: TextView? = null
     private var activeStorageInput: EditText? = null
     private var storagePathEdited = false
@@ -93,9 +95,19 @@ class SettingsActivity : AppCompatActivity() {
         val pollLog = object : Runnable {
             override fun run() {
                 if (isDestroyed || isFinishing) return
+                val prevScroll = binding.logScroll.scrollY
                 binding.log.text = App.httpServer.snapshotLog()
                     .ifEmpty { getString(R.string.remote_log_empty) }
-                binding.logScroll.post { binding.logScroll.fullScroll(View.FOCUS_DOWN) }
+                binding.logScroll.post {
+                    if (logAutoScroll) {
+                        binding.logScroll.fullScroll(View.FOCUS_DOWN)
+                    } else {
+                        // Auto-scroll dimatikan: pertahankan posisi baca.
+                        val max = binding.logScroll.getChildAt(0)?.height?.minus(binding.logScroll.height)
+                            ?: 0
+                        binding.logScroll.scrollTo(0, prevScroll.coerceIn(0, max.coerceAtLeast(0)))
+                    }
+                }
                 binding.log.postDelayed(this, 1000)
             }
         }
@@ -235,6 +247,10 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun wireLog() {
+        binding.logAutoscroll.isChecked = logAutoScroll
+        binding.logAutoscroll.setOnCheckedChangeListener { _, checked ->
+            logAutoScroll = checked
+        }
         binding.logCopy.setOnClickListener {
             val text = App.httpServer.snapshotLog()
                 .ifEmpty { getString(R.string.remote_log_empty) }

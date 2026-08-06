@@ -51,6 +51,7 @@ import com.tasirin.httpdownloadmanager.databinding.ActivityMainBinding
 import com.tasirin.httpdownloadmanager.remote.HttpControlServer
 import com.tasirin.httpdownloadmanager.ui.DownloadAdapter
 import com.tasirin.httpdownloadmanager.util.MimeTypes
+import com.tasirin.httpdownloadmanager.util.Formats
 import com.tasirin.httpdownloadmanager.util.StoragePrefs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -234,17 +235,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         tv.text = getString(
             R.string.storage_home_info,
             folder,
-            formatBytes(App.engine.freeSpaceBytes())
+            Formats.bytes(App.engine.freeSpaceBytes())
         )
-    }
-
-    private fun formatBytes(bytes: Long): String {
-        if (bytes < 1024) return "$bytes B"
-        val kb = bytes / 1024.0
-        if (kb < 1024) return "%.1f KB".format(kb)
-        val mb = kb / 1024.0
-        if (mb < 1024) return "%.1f MB".format(mb)
-        return "%.2f GB".format(mb / 1024.0)
     }
 
     private fun updateServerStatus() {
@@ -319,14 +311,14 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val headersInput = view.findViewById<EditText>(R.id.input_headers)
         val checksumInput = view.findViewById<EditText>(R.id.input_checksum)
         val speedPerOptions = resources.getStringArray(R.array.speed_limit_per_options)
-        val speedKbps = intArrayOf(0, 128, 256, 512, 1024, 2048, 5120)
+        val speedKbps = SPEED_KBPS
         val spinnerSpeedPer = view.findViewById<Spinner>(R.id.spinner_speed_limit_per)
         spinnerSpeedPer.adapter = ArrayAdapter(
             this, android.R.layout.simple_spinner_item, speedPerOptions
         ).apply {
             setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
-        val priorityValues = intArrayOf(-1, 0, 1)
+        val priorityValues = PRIORITY_VALUES
         val spinnerPriority = view.findViewById<Spinner>(R.id.spinner_priority)
         spinnerPriority.adapter = ArrayAdapter(
             this, android.R.layout.simple_spinner_item,
@@ -393,7 +385,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         }
 
         val storageText = view.findViewById<TextView>(R.id.text_storage_remaining)
-        storageText.text = getString(R.string.storage_remaining, formatBytes(App.engine.freeSpaceBytes()))
+        storageText.text = getString(R.string.storage_remaining, Formats.bytes(App.engine.freeSpaceBytes()))
 
         val fileInfoText = view.findViewById<TextView>(R.id.text_file_info)
         var probeJob: Job? = null
@@ -430,7 +422,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 val guessedName = probeTarget.substringAfterLast('/').substringBefore('?')
                 val name = probe.fileName?.takeIf { it.isNotBlank() } ?: guessedName
                 val size = if (probe.sizeBytes > 0) {
-                    formatBytes(probe.sizeBytes)
+                    Formats.bytes(probe.sizeBytes)
                 } else {
                     getString(R.string.file_info_size_unknown)
                 }
@@ -441,7 +433,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                     fileInfoText.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_off))
                     fileInfoText.append("\n" + getString(
                         R.string.file_info_large_warning,
-                        formatBytes(probe.sizeBytes)
+                        Formats.bytes(probe.sizeBytes)
                     ))
                 }
             }
@@ -862,7 +854,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         )
 
         val speedOptions = resources.getStringArray(R.array.speed_limit_options)
-        val speedKbps = intArrayOf(0, 128, 256, 512, 1024, 2048, 5120)
+        val speedKbps = SPEED_KBPS
         val spinnerSpeed = view.findViewById<Spinner>(R.id.spinner_speed)
         spinnerSpeed.adapter = ArrayAdapter(
             this, android.R.layout.simple_spinner_item, speedOptions
@@ -1039,7 +1031,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     private fun showLimitPriorityDialog(item: DownloadItem) {
         val view = layoutInflater.inflate(R.layout.dialog_limit_priority, null)
         val speedPerOptions = resources.getStringArray(R.array.speed_limit_per_options)
-        val speedKbps = intArrayOf(0, 128, 256, 512, 1024, 2048, 5120)
+        val speedKbps = SPEED_KBPS
         val spinnerSpeed = view.findViewById<Spinner>(R.id.spinner_speed_limit_per)
         spinnerSpeed.adapter = ArrayAdapter(
             this, android.R.layout.simple_spinner_item, speedPerOptions
@@ -1049,7 +1041,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val speedIndex = speedKbps.indexOf(item.speedLimitKbps)
         spinnerSpeed.setSelection(if (speedIndex >= 0) speedIndex else 0)
 
-        val priorityValues = intArrayOf(-1, 0, 1)
+        val priorityValues = PRIORITY_VALUES
         val spinnerPriority = view.findViewById<Spinner>(R.id.spinner_priority)
         spinnerPriority.adapter = ArrayAdapter(
             this, android.R.layout.simple_spinner_item,
@@ -1312,5 +1304,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
     companion object {
         private const val EXTRA_ADD_DOWNLOAD = "com.tasirin.httpdownloadmanager.ADD_DOWNLOAD"
+        private val SPEED_KBPS = intArrayOf(0, 128, 256, 512, 1024, 2048, 5120)
+        private val PRIORITY_VALUES = intArrayOf(-1, 0, 1)
     }
 }

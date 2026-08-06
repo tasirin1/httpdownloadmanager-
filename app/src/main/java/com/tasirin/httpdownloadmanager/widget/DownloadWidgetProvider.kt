@@ -13,6 +13,7 @@ import com.tasirin.httpdownloadmanager.MainActivity
 import com.tasirin.httpdownloadmanager.R
 import com.tasirin.httpdownloadmanager.data.DownloadItem
 import com.tasirin.httpdownloadmanager.data.DownloadState
+import com.tasirin.httpdownloadmanager.util.Formats
 import java.util.Locale
 
 class DownloadWidgetProvider : AppWidgetProvider() {
@@ -75,21 +76,13 @@ class DownloadWidgetProvider : AppWidgetProvider() {
                 String.format(
                     Locale.US, "%d%% \u2022 %s / %s",
                     item.progressPercent,
-                    formatSize(item.bytesDownloaded),
-                    formatSize(item.totalBytes)
+                    Formats.bytes(item.bytesDownloaded),
+                    Formats.bytes(item.totalBytes)
                 )
             } else {
-                formatSize(item.bytesDownloaded)
+                Formats.bytes(item.bytesDownloaded)
             }
         }
 
-        private fun formatSize(bytes: Long): String {
-            if (bytes < 1024) return "$bytes B"
-            val kb = bytes / 1024.0
-            if (kb < 1024) return String.format(Locale.US, "%.1f KB", kb)
-            val mb = kb / 1024.0
-            if (mb < 1024) return String.format(Locale.US, "%.1f MB", mb)
-            return String.format(Locale.US, "%.2f GB", mb / 1024.0)
-        }
     }
 }

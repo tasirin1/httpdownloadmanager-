@@ -28,6 +28,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.tasirin.httpdownloadmanager.databinding.ActivityGalleryBinding
 import com.tasirin.httpdownloadmanager.databinding.ItemGalleryBinding
 import com.tasirin.httpdownloadmanager.util.MediaLibrary
+import com.tasirin.httpdownloadmanager.util.Formats
 import com.tasirin.httpdownloadmanager.util.MimeTypes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -271,15 +272,6 @@ private class GalleryAdapter(
     private val items = mutableListOf<MediaLibrary.MediaEntry>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    private fun formatSize(bytes: Long): String {
-        if (bytes < 1024) return "$bytes B"
-        val kb = bytes / 1024.0
-        if (kb < 1024) return "%.1f KB".format(kb)
-        val mb = kb / 1024.0
-        if (mb < 1024) return "%.1f MB".format(mb)
-        return "%.2f GB".format(mb / 1024.0)
-    }
-
     private fun formatDate(ms: Long): String {
         if (ms <= 0) return ""
         return java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
@@ -310,7 +302,7 @@ private class GalleryAdapter(
         val b = holder.binding
         b.textName.text = e.name
         b.textExt.text = e.name.substringAfterLast('.', "").uppercase()
-        b.textInfo.text = formatSize(e.size) + " · " + formatDate(e.modified)
+        b.textInfo.text = Formats.bytes(e.size) + " · " + formatDate(e.modified)
         b.imageThumb.setImageDrawable(null)
         val pos = position
         holder.itemView.setOnClickListener { onClick(e) }

@@ -10,6 +10,7 @@ import com.tasirin.httpdownloadmanager.data.DownloadRepository
 import com.tasirin.httpdownloadmanager.data.DownloadSegment
 import com.tasirin.httpdownloadmanager.data.DownloadState
 import com.tasirin.httpdownloadmanager.util.FileSaver
+import com.tasirin.httpdownloadmanager.util.Formats
 import com.tasirin.httpdownloadmanager.util.MimeTypes
 import com.tasirin.httpdownloadmanager.util.StoragePrefs
 import kotlinx.coroutines.CancellationException
@@ -508,7 +509,7 @@ class DownloadEngine(private val context: Context) {
         val freeNow = saver.freeBytes()
         if (freeNow < MIN_FREE_BYTES) {
             throw IOException(
-                "Penyimpanan hampir penuh (sisa ${formatBytes(freeNow)})"
+                "Penyimpanan hampir penuh (sisa ${Formats.bytes(freeNow)})"
             )
         }
         val globalLimit = StoragePrefs.speedLimitKbps(context)
@@ -607,8 +608,8 @@ class DownloadEngine(private val context: Context) {
         }
         if (total > 0 && saver.freeBytes() < total) {
             throw IOException(
-                "Penyimpanan tidak cukup: butuh ${formatBytes(total)}, " +
-                    "tersedia ${formatBytes(saver.freeBytes())}"
+                "Penyimpanan tidak cukup: butuh ${Formats.bytes(total)}, " +
+                    "tersedia ${Formats.bytes(saver.freeBytes())}"
             )
         }
 
@@ -686,8 +687,8 @@ class DownloadEngine(private val context: Context) {
             segments = createSegments(total)
             if (total > 0 && saver.freeBytes() < total) {
                 throw IOException(
-                    "Penyimpanan tidak cukup: butuh ${formatBytes(total)}, " +
-                        "tersedia ${formatBytes(saver.freeBytes())}"
+                    "Penyimpanan tidak cukup: butuh ${Formats.bytes(total)}, " +
+                        "tersedia ${Formats.bytes(saver.freeBytes())}"
                 )
             }
             updateItem(item.id) {
@@ -914,15 +915,6 @@ class DownloadEngine(private val context: Context) {
         }
     }.getOrNull()
 
-    private fun formatBytes(bytes: Long): String {
-        if (bytes < 1024) return "$bytes B"
-        val kb = bytes / 1024.0
-        if (kb < 1024) return "%.1f KB".format(kb)
-        val mb = kb / 1024.0
-        if (mb < 1024) return "%.1f MB".format(mb)
-        return "%.2f GB".format(mb / 1024.0)
-    }
-
     private fun contentLength(conn: HttpURLConnection): Long {
         return conn.getHeaderField("Content-Length")?.trim()?.toLongOrNull() ?: -1L
     }
@@ -1021,7 +1013,7 @@ class DownloadEngine(private val context: Context) {
     private fun guessFileName(url: String): String {
         val noQuery = url.substringBefore('?').substringBefore('#')
         val path = Uri.parse(noQuery).lastPathSegment.orEmpty()
-        val candidate = path.substringAfterLast('/').trim()
+        val candidate = path.trim()
         if (candidate.isNotEmpty() && !candidate.contains('=')) return candidate
         return "unduhan_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())}"
     }
@@ -1065,17 +1057,15 @@ private class SpeedThrottle(private val limitKbps: Int) {
         }
     }
 
-    fun sleepIfNeeded(totalDownloaded: Long) {
+    suspend fun sleepIfNeeded(totalDownloaded: Long) {
         if (limitKbps <= 0) return
-        synchronized(lock) {
+        val delayMs = synchronized(lock) {
             val limit = limitKbps * 1024L
             val elapsed = System.currentTimeMillis() - startTime
             val expected = startBytes + (elapsed * limit) / 1000L
-            if (totalDownloaded > expected) {
-                val delayMs = ((totalDownloaded - expected) * 1000L) / limit
-                Thread.sleep(delayMs)
-            }
+            if (totalDownloaded > expected) ((totalDownloaded - expected) * 1000L) / limit else 0L
         }
+        if (delayMs > 0) delay(delayMs)
     }
 }
 

@@ -383,25 +383,15 @@ class FileSaver(context: Context) {
         }.getOrNull()
     }
 
-    private fun uniqueName(fileName: String, taken: (String) -> Boolean): String {
-        if (!taken(fileName)) return fileName
-        val dot = fileName.lastIndexOf('.')
-        val base = if (dot > 0) fileName.substring(0, dot) else fileName
-        val ext = if (dot > 0) fileName.substring(dot) else ""
-        var i = 1
-        while (taken("$base ($i)$ext")) i++
-        return "$base ($i)$ext"
-    }
-
     private fun uniqueTargetFile(file: File): File {
         if (!file.exists()) return file
         val parent = file.parentFile
-        val unique = uniqueName(file.name) { File(parent, it).exists() }
+        val unique = FileNames.unique(file.name) { File(parent, it).exists() }
         return File(parent, unique)
     }
 
     private fun uniqueDocumentName(tree: DocumentFile, fileName: String): String {
-        return uniqueName(fileName) { tree.findFile(it) != null }
+        return FileNames.unique(fileName) { tree.findFile(it) != null }
     }
 
     private fun uniqueMediaStoreName(fileName: String, relativePath: String?): String {
@@ -423,7 +413,7 @@ class FileSaver(context: Context) {
                     c.getString(idx)?.let(existing::add)
                 }
             }
-            uniqueName(fileName) { existing.contains(it) }
+            FileNames.unique(fileName) { existing.contains(it) }
         }.getOrDefault(fileName)
     }
 
@@ -464,8 +454,7 @@ class FileSaver(context: Context) {
                     val parent = file.parentFile ?: return result
                     val subDir = File(parent, sub)
                     if (!subDir.isDirectory && !subDir.mkdirs()) return result
-                    val target = File(subDir, file.name)
-                    if (target.exists()) target.delete()
+                    val target = uniqueTargetFile(File(subDir, file.name))
                     if (file.renameTo(target)) {
                         PublishResult(filePath = target.absolutePath)
                     } else {

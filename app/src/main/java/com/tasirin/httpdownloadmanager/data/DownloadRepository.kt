@@ -10,47 +10,50 @@ class DownloadRepository(context: Context) {
 
     fun load(): List<DownloadItem> {
         val raw = prefs.getString(KEY_ITEMS, null) ?: return emptyList()
+        val arr = runCatching { JSONArray(raw) }.getOrNull() ?: return emptyList()
+        val items = mutableListOf<DownloadItem>()
+        for (i in 0 until arr.length()) {
+            // Satu entry korup tidak boleh menghapus seluruh daftar.
+            parseItem(arr.optJSONObject(i))?.let { items.add(it) }
+        }
+        return items
+    }
+
+    private fun parseItem(o: JSONObject?): DownloadItem? {
+        if (o == null) return null
         return runCatching {
-            val arr = JSONArray(raw)
-            buildList {
-                for (i in 0 until arr.length()) {
-                    val o = arr.getJSONObject(i)
-                    val rawState = DownloadState.valueOf(o.getString("state"))
-                    // Setelah proses di-restart, download yang tadi berjalan dianggap dijeda.
-                    val state = if (rawState == DownloadState.DOWNLOADING || rawState == DownloadState.PENDING) {
-                        DownloadState.PAUSED
-                    } else {
-                        rawState
-                    }
-                    add(
-                        DownloadItem(
-                            id = o.getString("id"),
-                            url = o.getString("url"),
-                            fileName = o.getString("fileName"),
-                            state = state,
-                            bytesDownloaded = o.optLong("bytesDownloaded", 0),
-                            totalBytes = o.optLong("totalBytes", 0),
-                            error = o.optString("error").ifEmpty { null },
-                            contentUri = o.optString("contentUri").ifEmpty { null },
-                            filePath = o.optString("filePath").ifEmpty { null },
-                            addedAt = o.optLong("addedAt", 0),
-                            nameIsCustom = o.optBoolean("nameIsCustom", false),
-                            autoResume = o.optBoolean("autoResume", false),
-                            username = o.optString("username"),
-                            password = o.optString("password"),
-                            headers = o.optString("headers"),
-                            destination = o.optString("destination"),
-                            folderPath = o.optString("folderPath"),
-                            speedLimitKbps = o.optInt("speedLimitKbps", 0),
-                            priority = o.optInt("priority", 0),
-                            checksum = o.optString("checksum"),
-                            checksumVerified = o.optBoolean("checksumVerified", false),
-                            segments = parseSegments(o)
-                        )
-                    )
-                }
+            val rawState = DownloadState.valueOf(o.getString("state"))
+            // Setelah proses di-restart, download yang tadi berjalan dianggap dijeda.
+            val state = if (rawState == DownloadState.DOWNLOADING || rawState == DownloadState.PENDING) {
+                DownloadState.PAUSED
+            } else {
+                rawState
             }
-        }.getOrDefault(emptyList())
+            DownloadItem(
+                id = o.getString("id"),
+                url = o.getString("url"),
+                fileName = o.getString("fileName"),
+                state = state,
+                bytesDownloaded = o.optLong("bytesDownloaded", 0),
+                totalBytes = o.optLong("totalBytes", 0),
+                error = o.optString("error").ifEmpty { null },
+                contentUri = o.optString("contentUri").ifEmpty { null },
+                filePath = o.optString("filePath").ifEmpty { null },
+                addedAt = o.optLong("addedAt", 0),
+                nameIsCustom = o.optBoolean("nameIsCustom", false),
+                autoResume = o.optBoolean("autoResume", false),
+                username = o.optString("username"),
+                password = o.optString("password"),
+                headers = o.optString("headers"),
+                destination = o.optString("destination"),
+                folderPath = o.optString("folderPath"),
+                speedLimitKbps = o.optInt("speedLimitKbps", 0),
+                priority = o.optInt("priority", 0),
+                checksum = o.optString("checksum"),
+                checksumVerified = o.optBoolean("checksumVerified", false),
+                segments = parseSegments(o)
+            )
+        }.getOrNull()
     }
 
     fun save(items: List<DownloadItem>) {

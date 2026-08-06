@@ -30,25 +30,28 @@ class App : Application() {
         if (StoragePrefs.isServerBackgroundEnabled(this)) {
             runCatching { httpServer.startServer() }
         }
-        if (Build.VERSION.SDK_INT >= 24) {
-            registerNetworkCallback()
-        }
+        registerNetworkCallback()
     }
 
     // Android 7+ tidak menerima broadcast CONNECTIVITY_CHANGE untuk receiver
     // statis di manifest, jadi pakai NetworkCallback untuk fitur lanjutkan
-    // download otomatis saat koneksi pulih.
+    // download otomatis saat koneksi pulih (Android 5-6 pakai varian lama).
     private fun registerNetworkCallback() {
         runCatching {
             val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             val request = NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build()
-            cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+            val callback = object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
                     runCatching { engine.resumeAutoPaused() }
                 }
-            })
+            }
+            if (Build.VERSION.SDK_INT >= 24) {
+                cm.registerDefaultNetworkCallback(callback)
+            } else {
+                cm.registerNetworkCallback(request, callback)
+            }
         }
     }
 

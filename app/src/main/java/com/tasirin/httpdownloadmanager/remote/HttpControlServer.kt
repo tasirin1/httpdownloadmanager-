@@ -17,6 +17,7 @@ import android.util.Log
 import com.tasirin.httpdownloadmanager.App
 import com.tasirin.httpdownloadmanager.data.DownloadState
 import com.tasirin.httpdownloadmanager.util.MediaLibrary
+import com.tasirin.httpdownloadmanager.util.FileNames
 import com.tasirin.httpdownloadmanager.util.MimeTypes
 import com.tasirin.httpdownloadmanager.util.StoragePrefs
 import androidx.documentfile.provider.DocumentFile
@@ -69,6 +70,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     @Volatile private var sseLastPayload = ""
     @Volatile private var sseLastPushAt = 0L
     private val shareTokens = ConcurrentHashMap<String, ShareEntry>()
+    @Volatile private var galleryCache: Pair<Long, List<MediaLibrary.MediaEntry>>? = null
 
     override fun serve(session: IHTTPSession): Response {
         return try {
@@ -258,6 +260,10 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     }
 
     private fun downloadsPayload(): JSONObject {
+        return JSONObject().put("items", itemsJson())
+    }
+
+    private fun itemsJson(): JSONArray {
         val arr = JSONArray()
         App.engine.items.value.forEach { item ->
             val o = JSONObject()
@@ -274,7 +280,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             item.error?.let { o.put("error", it) }
             arr.put(o)
         }
-        return JSONObject().put("items", arr)
+        return arr
     }
 
     private fun addDownload(session: IHTTPSession): Response {
@@ -342,13 +348,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         if (clean.isBlank() || clean.startsWith("m:")) return name
         val dir = File(clean)
         if (!dir.isDirectory) return name
-        if (!File(dir, name).exists()) return name
-        val dot = name.lastIndexOf('.')
-        val base = if (dot > 0) name.substring(0, dot) else name
-        val ext = if (dot > 0) name.substring(dot) else ""
-        var i = 1
-        while (File(dir, "$base ($i)$ext").exists()) i++
-        return "$base ($i)$ext"
+        return FileNames.unique(name) { File(dir, it).exists() }
     }
 
     private fun handleUploadChunk(
@@ -374,6 +374,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         }
         val id = session.parms["id"]?.trim()?.take(64) ?: "x"
         val tmp = File(context.cacheDir, "up_$id.tmp")
+        var resultName = name
         return runCatching {
             when {
                 chunkIdx == 0 -> {
@@ -413,8 +414,9 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                 } finally {
                     tmp.delete()
                 }
+                resultName = finalName
             }
-            jsonResponse(JSONObject().put("ok", true).put("name", name))
+            jsonResponse(JSONObject().put("ok", true).put("name", resultName))
         }.getOrElse {
             jsonResponse(JSONObject().put("ok", false).put("error", it.message ?: "gagal upload"))
         }
@@ -459,7 +461,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         return streamMedia(
             name = "$folderName.zip",
             mime = "application/zip",
-            input = FileInputStream(tmp),
+            input = DeleteOnCloseStream(FileInputStream(tmp), tmp),
             total = tmp.length(),
             rangeHeader = session.headers["range"] ?: session.headers["Range"],
             download = true
@@ -874,7 +876,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         val arr = JSONArray()
         val cache = loadVideoDurations()
         var extracted = 0
-        MediaLibrary.scan(context).forEach { e ->
+        scannedGallery().forEach { e ->
             val o = JSONObject()
             o.put("name", e.name)
             o.put("size", e.size)
@@ -894,6 +896,15 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         }
         if (extracted > 0) saveVideoDurations(cache)
         return jsonResponse(JSONObject().put("items", arr))
+    }
+
+    private fun scannedGallery(): List<MediaLibrary.MediaEntry> {
+        val now = System.currentTimeMillis()
+        val cached = galleryCache
+        if (cached != null && now - cached.first < GALLERY_SCAN_TTL_MS) return cached.second
+        val list = MediaLibrary.scan(context)
+        galleryCache = now to list
+        return list
     }
 
     private fun videoDurationMs(token: String): Long {
@@ -1181,25 +1192,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         if (sseJob?.isActive == true) return
         sseJob = serverScope.launch {
             val buildPayload = { withStatus: Boolean ->
-                val payload = JSONObject().put(
-                    "items",
-                    JSONArray().apply {
-                        App.engine.items.value.forEach { item ->
-                            val o = JSONObject()
-                            o.put("id", item.id)
-                            o.put("fileName", item.fileName)
-                            o.put("state", item.state.name)
-                            o.put("bytesDownloaded", item.bytesDownloaded)
-                            o.put("totalBytes", item.totalBytes)
-                            o.put("progress", item.progressPercent)
-                            o.put("speedBps", item.speedBps)
-                            o.put("etaSeconds", item.etaSeconds)
-                            o.put("addedAt", item.addedAt)
-                            item.error?.let { o.put("error", it) }
-                            put(o)
-                        }
-                    }
-                )
+                val payload = JSONObject().put("items", itemsJson())
                 if (withStatus) payload.put("status", statusObject())
                 payload.toString()
             }
@@ -1216,7 +1209,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             launch {
                 runCatching {
                     App.engine.items.collect {
-                        pushFrame(buildPayload(true))
+                        if (sseClients.isNotEmpty()) pushFrame(buildPayload(true))
                     }
                 }
             }
@@ -1224,7 +1217,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             // supaya baterai/penyimpanan/port selalu segar.
             while (true) {
                 delay(3_000)
-                pushFrame(buildPayload(true))
+                if (sseClients.isNotEmpty()) pushFrame(buildPayload(true))
             }
         }
     }
@@ -1340,7 +1333,6 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     }
 
     companion object {
-        const val DEFAULT_PORT = StoragePrefs.DEFAULT_PORT
         private const val FS_PREFIX = "f:"
         private const val MS_PREFIX = "m:"
         private const val MAX_BODY_SIZE = 1_048_576L
@@ -1348,6 +1340,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         private const val MAX_UPLOAD_MB = 2048
         private const val SHARE_TTL_HOURS = 24
         private const val SHARE_TTL_MS = SHARE_TTL_HOURS * 60L * 60 * 1000
+        private const val GALLERY_SCAN_TTL_MS = 5_000L
 
         fun ipv4Addresses(): List<String> = runCatching {
             NetworkInterface.getNetworkInterfaces().toList().flatMap { ni ->
@@ -1356,6 +1349,18 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     .map { it.hostAddress.orEmpty() }
             }
         }.getOrDefault(emptyList())
+    }
+}
+
+private class DeleteOnCloseStream(
+    private val delegate: InputStream,
+    private val fileToDelete: File?
+) : InputStream() {
+    override fun read(): Int = delegate.read()
+    override fun read(b: ByteArray, off: Int, len: Int): Int = delegate.read(b, off, len)
+    override fun close() {
+        runCatching { delegate.close() }
+        if (fileToDelete != null) runCatching { fileToDelete.delete() }
     }
 }
 

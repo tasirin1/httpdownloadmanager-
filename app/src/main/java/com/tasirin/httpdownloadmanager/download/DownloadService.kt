@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 class DownloadService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var lastUiUpdate = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -41,14 +42,22 @@ class DownloadService : Service() {
                     }
                     val serverActive = StoragePrefs.isServerBackgroundEnabled(this@DownloadService) &&
                         App.httpServer.isAlive
-                    NotificationHelper.updateNotification(this@DownloadService, items, serverActive)
-                    DownloadWidgetProvider.update(this@DownloadService, items)
                     if (!active && !serverActive) {
+                        NotificationHelper.updateNotification(this@DownloadService, items, serverActive)
+                        DownloadWidgetProvider.update(this@DownloadService, items)
                         ServiceCompat.stopForeground(
                             this@DownloadService,
                             ServiceCompat.STOP_FOREGROUND_REMOVE
                         )
                         stopSelf()
+                    } else {
+                        // Progress berubah ~4x/detik; batasi refresh UI jadi 1x/detik
+                        // agar tidak boros baterai/CPU.
+                        val now = System.currentTimeMillis()
+                        if (now - lastUiUpdate < 1000) return@runCatching
+                        lastUiUpdate = now
+                        NotificationHelper.updateNotification(this@DownloadService, items, serverActive)
+                        DownloadWidgetProvider.update(this@DownloadService, items)
                     }
                 }
             }

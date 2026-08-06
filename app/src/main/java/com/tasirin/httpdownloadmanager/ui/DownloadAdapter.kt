@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.tasirin.httpdownloadmanager.R
 import com.tasirin.httpdownloadmanager.data.DownloadItem
 import com.tasirin.httpdownloadmanager.data.DownloadState
+import com.tasirin.httpdownloadmanager.util.Formats
 import com.tasirin.httpdownloadmanager.databinding.ItemDownloadBinding
 import java.io.File
 import java.util.Locale
@@ -43,11 +44,11 @@ class DownloadAdapter(private val listener: Listener) :
             String.format(
                 Locale.US, "%d%% \u2022 %s / %s",
                 item.progressPercent,
-                formatSize(item.bytesDownloaded),
-                formatSize(item.totalBytes)
+                Formats.bytes(item.bytesDownloaded),
+                Formats.bytes(item.totalBytes)
             )
         } else {
-            formatSize(item.bytesDownloaded)
+            Formats.bytes(item.bytesDownloaded)
         }
 
         val showSpeed = item.state == DownloadState.DOWNLOADING && item.speedBps > 0
@@ -55,8 +56,8 @@ class DownloadAdapter(private val listener: Listener) :
         if (showSpeed) {
             b.textSpeed.text = b.root.context.getString(
                 R.string.speed_and_eta,
-                formatSpeed(item.speedBps),
-                formatEta(item.etaSeconds)
+                Formats.speed(item.speedBps),
+                Formats.eta(item.etaSeconds)
             )
         }
 
@@ -129,34 +130,6 @@ class DownloadAdapter(private val listener: Listener) :
             DownloadState.COMPLETED -> context.getString(R.string.status_completed)
             DownloadState.CANCELLED -> context.getString(R.string.status_cancelled)
             DownloadState.FAILED -> item.error ?: context.getString(R.string.status_failed)
-        }
-    }
-
-    private fun formatSize(bytes: Long): String {
-        if (bytes < 1024) return "$bytes B"
-        val kb = bytes / 1024.0
-        if (kb < 1024) return String.format(Locale.US, "%.1f KB", kb)
-        val mb = kb / 1024.0
-        if (mb < 1024) return String.format(Locale.US, "%.1f MB", mb)
-        return String.format(Locale.US, "%.2f GB", mb / 1024.0)
-    }
-
-    private fun formatSpeed(bps: Long): String {
-        if (bps < 1024) return "$bps B/s"
-        val kb = bps / 1024.0
-        if (kb < 1024) return String.format(Locale.US, "%.1f KB/s", kb)
-        return String.format(Locale.US, "%.2f MB/s", kb / 1024.0)
-    }
-
-    private fun formatEta(seconds: Long): String {
-        if (seconds <= 0) return "0s"
-        val h = seconds / 3600
-        val m = (seconds % 3600) / 60
-        val s = seconds % 60
-        return when {
-            h > 0 -> String.format(Locale.US, "%dh %02dm", h, m)
-            m > 0 -> String.format(Locale.US, "%dm %02ds", m, s)
-            else -> "${s}s"
         }
     }
 

@@ -100,6 +100,7 @@
   .spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.6; }
   .conn-banner { position: sticky; top: 0; z-index: 60; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; background: #b00020; color: #fff; font-size: 13px; font-weight: 600; padding: 8px 14px; }
   .conn-banner button { border: 0; border-radius: 999px; background: #fff; color: #b00020; font-weight: 700; font-size: 12.5px; padding: 6px 14px; cursor: pointer; }
+  .st-item.warn { color: #e53935; font-weight: 700; }
   .gal-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
   .gal-search { margin-bottom: 10px; }
   .gal-toolbar h2 { margin: 0; font-size: 16px; }
@@ -637,6 +638,9 @@ function renderStatus(st) {
     text += '<span class="st-item">&#128190; Sisa <b>' + fmt(st.storageFree) + '</b></span>';
   }
   text += '<span class="st-item">&#128424; Port <b>' + st.port + '</b></span>';
+  if (st.storageWriteOk === false) {
+    text += '<span class="st-item warn">&#9888;&#65039; Izin Penyimpanan/Akses file penuh belum aktif — transfer ke folder f: akan gagal. Buka aplikasi &gt; Pengaturan &gt; izinkan.</span>';
+  }
   el.innerHTML = text;
   el.classList.remove('offline');
   if (st.port && location.port && Number(st.port) !== Number(location.port)) {

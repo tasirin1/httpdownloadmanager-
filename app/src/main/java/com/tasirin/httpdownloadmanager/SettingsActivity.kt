@@ -20,6 +20,7 @@ import android.text.TextWatcher
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
@@ -349,26 +350,28 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun wireStorageSection() {
-        activeStorageCurrent = binding.currentStorage
-        activeStorageInput = binding.inputStoragePath
+        // View binding tidak mengekspos view dari <include>, jadi pakai
+        // findViewById (pola yang sama seperti MainActivity).
+        val currentStorage = findViewById<TextView>(R.id.current_storage)
+        val pathInput = findViewById<EditText>(R.id.input_storage_path)
+        activeStorageCurrent = currentStorage
+        activeStorageInput = pathInput
         storagePathEdited = false
-        binding.currentStorage.text = currentStorageLabel()
-        binding.inputStoragePath.setText(
-            StoragePrefs.getTextFolder(this) ?: defaultDownloadsPath()
-        )
-        binding.inputStoragePath.setSelection(binding.inputStoragePath.text.length)
-        binding.inputStoragePath.addTextChangedListener(object : TextWatcher {
+        currentStorage.text = currentStorageLabel()
+        pathInput.setText(StoragePrefs.getTextFolder(this) ?: defaultDownloadsPath())
+        pathInput.setSelection(pathInput.text.length)
+        pathInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
                 if (!updatingStorageInput) storagePathEdited = true
             }
         })
-        binding.btnPickStorage.setOnClickListener {
+        findViewById<Button>(R.id.btn_pick_storage).setOnClickListener {
             if (Build.VERSION.SDK_INT >= 23) requestPermissionsIfNeeded()
             launchDocumentTree(folderPicker)
         }
-        binding.btnResetStorage.setOnClickListener {
+        findViewById<Button>(R.id.btn_reset_storage).setOnClickListener {
             StoragePrefs.saveFolder(this, null, null)
             StoragePrefs.setTextFolder(this, null)
             refreshActiveStorageUi()
@@ -378,7 +381,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun wireSave() {
         binding.btnSave.setOnClickListener {
-            applyStoragePath(binding.inputStoragePath)
+            applyStoragePath(findViewById<EditText>(R.id.input_storage_path))
             StoragePrefs.setServerPin(
                 this,
                 binding.inputPin.text?.toString()?.trim().orEmpty()

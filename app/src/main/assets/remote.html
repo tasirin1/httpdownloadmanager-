@@ -851,6 +851,7 @@ async function loadGallery(reset) {
     const res = await fetch(API + '/api/gallery?' + params.toString());
     if (res.status === 401) {
       galleryStatus.textContent = 'PIN diperlukan. Muat ulang halaman untuk login.';
+      if (gallerySentinel) { gallerySentinel.remove(); gallerySentinel = null; }
       galleryGrid.innerHTML = '';
       return;
     }
@@ -862,6 +863,7 @@ async function loadGallery(reset) {
       galleryItems = items;
       galleryPage = 1;
       galleryLoaded = 0;
+      if (gallerySentinel) { gallerySentinel.remove(); gallerySentinel = null; }
       galleryGrid.innerHTML = '';
       galleryCount.textContent = (data.total || items.length) + ' file';
       if (!items.length) {
@@ -884,6 +886,7 @@ async function loadGallery(reset) {
   } catch (e) {
     if (reset) {
       galleryStatus.textContent = 'Gagal memuat galeri: ' + e;
+      if (gallerySentinel) { gallerySentinel.remove(); gallerySentinel = null; }
       galleryGrid.innerHTML = emptyHtml('\u26A0\uFE0F', 'Gagal memuat galeri', String(e));
     }
   }
@@ -892,6 +895,7 @@ async function loadGallery(reset) {
 
 function showGallerySkeleton() {
   galleryLoaded = 0;
+  if (gallerySentinel) { gallerySentinel.remove(); gallerySentinel = null; }
   let html = '<div class="sk-grid">';
   for (let i = 0; i < 6; i++) {
     html += '<div class="sk-cell"><div class="sk-thumb skeleton"></div><div class="sk-cap">' +

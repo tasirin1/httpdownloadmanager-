@@ -1169,7 +1169,7 @@ function renderFs(items) {
         if (FS_MEDIA_EXTS.indexOf(extOf(it.name).toLowerCase()) >= 0) {
           actions += '<a class="fs-stream" href="' + media + '" target="_blank">&#9654; Stream</a>';
         }
-        actions += '<a class="fs-dl" href="' + media + '?dl=1" download>&#11015; Download</a>';
+        actions += '<a class="fs-dl" href="' + media + '&dl=1" download>&#11015; Download</a>';
       } else {
         actions += '<a class="fs-dl" href="' + API + '/api/fs_zip?path=' +
           encodeURIComponent(it.path) + '" download title="Download folder sebagai ZIP">&#128230; ZIP</a>';
@@ -1318,7 +1318,7 @@ function openFsSheet(it) {
   if (it.kind === 'file') {
     const media = API + '/api/media?token=' + encodeURIComponent(it.token);
     acts.push({label: '\u25B6 Stream', stream: media});
-    acts.push({label: '\u2B07 Download', dl: media + '?dl=1'});
+    acts.push({label: '\u2B07 Download', dl: media + '&dl=1'});
   } else {
     acts.push({label: '\u{1F4E6} Download folder (ZIP)', dl: API + '/api/fs_zip?path=' + encodeURIComponent(it.path)});
   }
@@ -1484,7 +1484,9 @@ let fsUploading = false;
 function uploadFiles(files, path, statusEl, progressBox, progressText, progressPct, progressBar, done) {
   fsUploading = true;
   const jobs = Array.from(files).map(function (f) {
-    return (f && f.file) ? f : { file: f, path: path };
+    const j = (f && f.file) ? f : { file: f, path: path };
+    j.id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    return j;
   });
   const total = jobs.length;
   if (!total) return;
@@ -1504,7 +1506,7 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
     statusEl.textContent = 'Mengunggah ' + file.name + ' (' + (idx + 1) + '/' + total + ')' +
       (attempt > 1 ? ' \u00b7 coba ke-' + attempt : '') + ' \u2026';
     progressText.textContent = file.name + (attempt > 1 ? ' (coba ' + attempt + ')' : '');
-    const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const id = job.id;
     const chunks = Math.max(1, Math.ceil(file.size / UPLOAD_CHUNK));
     let chunkIdx = 0;
     let chunkFails = 0;

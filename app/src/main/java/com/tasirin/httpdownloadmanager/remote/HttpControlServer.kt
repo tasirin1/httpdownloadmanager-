@@ -83,6 +83,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     @Volatile private var loginFailures = 0
     @Volatile private var loginLockUntil = 0L
     private val fsStatsCache = ConcurrentHashMap<String, Pair<Long, Pair<Int, Long>>>()
+    private val completedUploads = ConcurrentHashMap<String, Pair<String, Long>>()
     @Volatile private var batteryCache: Pair<Long, Pair<Int, Boolean>>? = null
 
     override fun serve(session: IHTTPSession): Response {
@@ -505,6 +506,13 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         }
     }
 
+    private fun pruneCompletedUploads() {
+        val cutoff = System.currentTimeMillis() - 30 * 60 * 1000L
+        completedUploads.entries.filter { it.value.second < cutoff }
+            .forEach { completedUploads.remove(it.key) }
+        if (completedUploads.size > 400) completedUploads.clear()
+    }
+
     private fun uploadUniqueName(name: String, folderPath: String): String {
         val clean = folderPath.trim().removePrefix("f:")
         if (clean.isBlank() || clean.startsWith("m:")) return name
@@ -565,6 +573,12 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                 }
             }
             if (chunkIdx == chunks - 1) {
+                // Retry potongan terakhir setelah upload selesai (respons hilang):
+                // jangan buat salinan kedua, cukup laporkan nama yang sudah ada.
+                completedUploads[id]?.let { done ->
+                    tmp.delete()
+                    return jsonResponse(JSONObject().put("ok", true).put("name", done.first))
+                }
                 if (tmp.length() > MAX_UPLOAD_BYTES) {
                     tmp.delete()
                     return jsonResponse(
@@ -585,6 +599,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                 } finally {
                     tmp.delete()
                 }
+                completedUploads[id] = finalName to System.currentTimeMillis()
+                pruneCompletedUploads()
                 resultName = finalName
             }
             jsonResponse(JSONObject().put("ok", true).put("name", resultName))

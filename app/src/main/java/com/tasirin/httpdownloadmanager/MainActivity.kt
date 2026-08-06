@@ -480,9 +480,10 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         headersInput.addTextChangedListener(fileInfoWatcher)
         probeFileInfo()
 
-        val mirrors = mirrorInput.text?.toString()?.trim().orEmpty()
-            .split(URL_SPLIT)
-            .filter { it.startsWith("http://") || it.startsWith("https://") }
+        fun parseMirrors(): List<String> =
+            mirrorInput.text?.toString()?.trim().orEmpty()
+                .split(URL_SPLIT)
+                .filter { it.startsWith("http://") || it.startsWith("https://") }
 
         fun addAll(
             urls: List<String>,
@@ -492,7 +493,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             headers: String,
             perSpeed: Int,
             priority: Int,
-            checksum: String
+            checksum: String,
+            mirrors: List<String>
         ) {
             urls.forEachIndexed { index, url ->
                 App.engine.addDownload(
@@ -534,7 +536,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                             runCatching { App.engine.probeHlsVariants(urls[0]) }.getOrNull()
                         }
                         if (variants.isNullOrEmpty()) {
-                            addAll(urls, name, username, password, headers, perSpeed, priority, checksum)
+                            val mirrors = parseMirrors()
+                            addAll(urls, name, username, password, headers, perSpeed, priority, checksum, mirrors)
                         } else {
                             showHlsPicker(
                                 variants = variants,
@@ -545,12 +548,13 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                                 headers = headers,
                                 perSpeed = perSpeed,
                                 priority = priority,
-                                checksum = checksum
+                                checksum = checksum,
+                                mirrors = parseMirrors()
                             )
                         }
                     }
                 } else {
-                    addAll(urls, name, username, password, headers, perSpeed, priority, checksum)
+                    addAll(urls, name, username, password, headers, perSpeed, priority, checksum, parseMirrors())
                 }
             }
             .show()
@@ -565,7 +569,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         headers: String,
         perSpeed: Int,
         priority: Int,
-        checksum: String
+        checksum: String,
+        mirrors: List<String> = emptyList()
     ) {
         val labels = variants.map { it.name } + getString(R.string.hls_direct)
         MaterialAlertDialogBuilder(this)
@@ -585,7 +590,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                     headers,
                     perSpeed,
                     priority,
-                    checksum
+                    checksum,
+                    mirrors = mirrors
                 )
             }
             .setNegativeButton(R.string.cancel, null)

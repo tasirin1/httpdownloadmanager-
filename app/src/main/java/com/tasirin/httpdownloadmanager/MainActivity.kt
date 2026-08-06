@@ -929,7 +929,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         portInput.setText(StoragePrefs.serverPort(this).toString())
 
         val segmentOptions = resources.getStringArray(R.array.segment_options)
-        val segmentValues = intArrayOf(1, 2, 3)
+        val segmentValues = intArrayOf(1, 2, 4, 6, 8)
         val spinnerSegments = view.findViewById<Spinner>(R.id.spinner_segments)
         spinnerSegments.adapter = ArrayAdapter(
             this, android.R.layout.simple_spinner_item, segmentOptions

@@ -563,31 +563,6 @@ class DownloadEngine(private val context: Context) {
     private fun handleFailure(id: String, message: String?) {
         val item = _items.value.find { it.id == id } ?: return
         speedTracker.reset(id)
-        // Server tidak mendukung Range: turunkan ke mode 1 koneksi, bukan gagal.
-        if (item.segments.isNotEmpty() &&
-            message?.contains("tidak mendukung range", ignoreCase = true) == true
-        ) {
-            retryAttempts.remove(id)
-            updateItem(id) {
-                it.copy(
-                    segments = emptyList(),
-                    state = DownloadState.PENDING,
-                    error = null,
-                    autoResume = true,
-                    bytesDownloaded = 0,
-                    totalBytes = 0,
-                    speedBps = 0,
-                    etaSeconds = 0
-                )
-            }
-            scope.launch {
-                delay(1_500)
-                if (_items.value.find { it.id == id }?.state == DownloadState.PENDING) {
-                    attemptStart(id)
-                }
-            }
-            return
-        }
         val maxRetries = StoragePrefs.maxRetries(context)
         val attempts = (retryAttempts[id] ?: 0) + 1
         // Fitur mirror: gagal dari URL aktif -> pindah ke URL cadangan berikutnya.
@@ -609,22 +584,6 @@ class DownloadEngine(private val context: Context) {
                     attemptStart(id)
                 }
             }
-            return
-        }
-        // Error permanen (4xx selain 408/425/429, SSL/cert): langsung FAILED.
-        // Diletakkan setelah mirror supaya URL cadangan tetap diberi kesempatan.
-        if (isPermanentError(message)) {
-            retryAttempts.remove(id)
-            updateItem(id) {
-                it.copy(
-                    state = DownloadState.FAILED,
-                    error = message,
-                    autoResume = false,
-                    speedBps = 0,
-                    etaSeconds = 0
-                )
-            }
-            flushSave()
             return
         }
         if (maxRetries > 0 && attempts <= maxRetries && item.autoResume) {
@@ -671,21 +630,6 @@ class DownloadEngine(private val context: Context) {
         }
     }
 
-    private fun isPermanentError(message: String?): Boolean {
-        if (message.isNullOrBlank()) return false
-        val m = message.lowercase()
-        if (m.contains("ssl") || m.contains("certificate") || m.contains("handshake") ||
-            m.contains("pkix") || m.contains("file not found") || m.contains("tidak ditemukan")
-        ) {
-            return true
-        }
-        val code = Regex("http\\s+(\\d{3})").find(m)?.groupValues?.get(1)?.toIntOrNull()
-        if (code == null) return false
-        // 4xx permanen; 408/425/429 = sementara (boleh retry).
-        if (code in 400..499) return code != 408 && code != 425 && code != 429
-        return false
-    }
-
     private fun isNetworkError(message: String?): Boolean {
         if (message.isNullOrBlank()) return false
         val m = message.lowercase()
@@ -724,36 +668,32 @@ class DownloadEngine(private val context: Context) {
         var useSegments = false
         var segmentedTotal = 0L
         var probeHeaders: ServerHeaders? = null
-        // Resume: lewati probe HEAD (hemat 1 koneksi ekstra) — langsung GET
-        // dengan Range; runSingle menangani server yang tidak mendukung resume.
-        if (item.bytesDownloaded <= 0) {
-            val probe = URL(item.url).openConnection() as HttpURLConnection
-            try {
-                probe.requestMethod = "HEAD"
-                probe.connectTimeout = 15_000
-                probe.readTimeout = 30_000
-                probe.setRequestProperty("User-Agent", "HttpDownloadManager/1.0")
-                applyAuthHeaders(probe, item)
-                probe.connect()
-                val code = probe.responseCode
-                if (code in 200..299) {
-                    probeHeaders = headersOf(probe)
-                    val total = contentLength(probe)
-                    val ranges = probe.getHeaderField("Accept-Ranges") == "bytes"
-                    if (ranges && total >= SEGMENT_MIN_BYTES &&
-                        StoragePrefs.segmentCount(context) > 1
-                    ) {
-                        useSegments = true
-                        segmentedTotal = total
-                    }
+        val probe = URL(item.url).openConnection() as HttpURLConnection
+        try {
+            probe.requestMethod = "HEAD"
+            probe.connectTimeout = 15_000
+            probe.readTimeout = 30_000
+            probe.setRequestProperty("User-Agent", "HttpDownloadManager/1.0")
+            applyAuthHeaders(probe, item)
+            probe.connect()
+            val code = probe.responseCode
+            if (code in 200..299) {
+                probeHeaders = headersOf(probe)
+                val total = contentLength(probe)
+                val ranges = probe.getHeaderField("Accept-Ranges") == "bytes"
+                if (ranges && total >= SEGMENT_MIN_BYTES &&
+                    StoragePrefs.segmentCount(context) > 1
+                ) {
+                    useSegments = true
+                    segmentedTotal = total
                 }
-            } catch (_: Exception) {
-                // HEAD tidak didukung; lanjut dengan GET biasa
-            } finally {
-                probe.disconnect()
             }
-            coroutineContext.ensureActive()
+        } catch (_: Exception) {
+            // HEAD tidak didukung; lanjut dengan GET biasa
+        } finally {
+            probe.disconnect()
         }
+        coroutineContext.ensureActive()
 
         if (useSegments) {
             runSegmented(item, saver, throttle, segmentedTotal, probeHeaders)
@@ -763,8 +703,8 @@ class DownloadEngine(private val context: Context) {
         val conn = URL(item.url).openConnection() as HttpURLConnection
         try {
             conn.requestMethod = "GET"
-            conn.connectTimeout = 30_000
-            conn.readTimeout = 120_000
+            conn.connectTimeout = 15_000
+            conn.readTimeout = 30_000
             conn.setRequestProperty("User-Agent", "HttpDownloadManager/1.0")
             conn.setRequestProperty("Accept-Encoding", "identity")
             applyAuthHeaders(conn, item)
@@ -783,20 +723,14 @@ class DownloadEngine(private val context: Context) {
         var downloaded = item.bytesDownloaded
         var fileName = item.fileName
         var partialFile = saver.partialFile(fileName)
-        // Resume anti-korup: sumber kebenaran = ukuran file .part yang sudah
-        // tertulis di disk. Catatan bytes bisa tertinggal (UI di-refresh tiap
-        // 250 ms), jadi selisih kecil jangan di-reset ke 0 — lanjut dari file.
-        if (partialFile.exists()) {
-            val fileLen = partialFile.length()
-            if (fileLen > 0 && item.totalBytes > 0 && fileLen > item.totalBytes) {
-                // File parsial lebih besar dari target: korup, mulai dari awal.
-                downloaded = 0
-                partialFile.delete()
-            } else if (fileLen != downloaded) {
-                downloaded = fileLen
-            }
-        } else {
+        // Resume anti-korup: catatan bytes harus sinkron dengan ukuran file parsial.
+        if (downloaded > 0 && partialFile.length() != downloaded) {
             downloaded = 0
+            partialFile.delete()
+        } else if (downloaded == 0L && partialFile.exists()) {
+            // Mulai dari nol tapi ada sisa .part lama (crash/save belum sempat):
+            // tanpa ini data baru akan di-append di belakang data lama -> file korup.
+            partialFile.delete()
         }
         coroutineContext.ensureActive()
         activeConns[item.id] = conn
@@ -989,98 +923,66 @@ class DownloadEngine(private val context: Context) {
     ) {
         val item = _items.value.find { it.id == id } ?: return
         val partial = saver.partialFile(fileName, segment.index)
-        val segLen = segment.end - segment.start + 1
         var downloaded = segment.downloaded
-        // Resume anti-korup per segmen: sumber kebenaran = ukuran file .part.
-        // Catatan bisa tertinggal saat pause, jadi lanjut dari posisi file,
-        // bukan reset ke 0 (menghindari progress mundur).
-        if (partial.exists()) {
-            val fileLen = partial.length()
-            if (fileLen > 0 && item.totalBytes > 0 && fileLen > item.totalBytes) {
-                downloaded = 0
-                partial.delete()
-            } else if (fileLen != downloaded) {
-                downloaded = fileLen
-            }
-        } else {
+        // Resume anti-korup per segmen: ukuran file parsial harus sinkron.
+        if (downloaded > 0 && partial.length() != downloaded) {
             downloaded = 0
+            partial.delete()
+            updateSegment(id, segment.index, 0)
+        } else if (downloaded == 0L && partial.exists()) {
+            // Sisa .part dari proses sebelumnya dengan catatan 0 byte: buang biar
+            // Range + append tidak menulis di belakang data lama (file korup).
+            partial.delete()
         }
-        if (downloaded >= segLen) {
-            // Segmen ternyata sudah lengkap (crash setelah selesai menulis).
-            updateSegment(id, segment.index, segLen)
-            return
-        }
-        updateSegment(id, segment.index, downloaded)
-
         coroutineContext.ensureActive()
-        // Retry internal: jaringan Android sering putus sebentar; coba lagi
-        // beberapa kali sebelum menyerah ke retry item.
-        val maxAttempts = 3
-        var attempt = 1
-        while (true) {
-            coroutineContext.ensureActive()
-            try {
-                val conn = URL(item.url).openConnection() as HttpURLConnection
-                activeConns[id] = conn
-                try {
-                    conn.requestMethod = "GET"
-                    conn.connectTimeout = 30_000
-                    conn.readTimeout = 120_000
-                    conn.setRequestProperty("User-Agent", "HttpDownloadManager/1.0")
-                    conn.setRequestProperty("Accept-Encoding", "identity")
-                    applyAuthHeaders(conn, item)
-                    conn.setRequestProperty("Range", "bytes=${segment.start + downloaded}-${segment.end}")
-                    conn.connect()
-                    val code = conn.responseCode
-                    if (code != 206) throw IOException("Server tidak mendukung Range (HTTP $code)")
+        val conn = URL(item.url).openConnection() as HttpURLConnection
+        activeConns[id] = conn
+        try {
+            conn.requestMethod = "GET"
+            conn.connectTimeout = 15_000
+            conn.readTimeout = 30_000
+            conn.setRequestProperty("User-Agent", "HttpDownloadManager/1.0")
+            conn.setRequestProperty("Accept-Encoding", "identity")
+            applyAuthHeaders(conn, item)
+            conn.setRequestProperty("Range", "bytes=${segment.start + downloaded}-${segment.end}")
+            conn.connect()
+            val code = conn.responseCode
+            if (code != 206) throw IOException("Server tidak mendukung Range (HTTP $code)")
 
-                    val input = conn.inputStream
-                    val output = BufferedOutputStream(FileOutputStream(partial, true))
-                    val buffer = ByteArray(BUFFER_SIZE)
-                    var lastNotify = 0L
-                    try {
-                        while (true) {
-                            val read = input.read(buffer)
-                            if (read == -1) break
-                            output.write(buffer, 0, read)
-                            downloaded += read
-                            throttle.sleepIfNeeded(totalDownloaded(id))
-                            val now = System.currentTimeMillis()
-                            if (now - lastNotify >= 250) {
-                                lastNotify = now
-                                coroutineContext.ensureActive()
-                                updateSegment(id, segment.index, downloaded)
-                            }
-                        }
-                        output.flush()
+            val input = conn.inputStream
+            val output = BufferedOutputStream(FileOutputStream(partial, true))
+            val buffer = ByteArray(BUFFER_SIZE)
+            var lastNotify = 0L
+            try {
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read == -1) break
+                    output.write(buffer, 0, read)
+                    downloaded += read
+                    throttle.sleepIfNeeded(totalDownloaded(id))
+                    val now = System.currentTimeMillis()
+                    if (now - lastNotify >= 250) {
+                        lastNotify = now
                         coroutineContext.ensureActive()
-                    } finally {
-                        runCatching { input.close() }
-                        runCatching { output.close() }
+                        updateSegment(id, segment.index, downloaded)
                     }
-                    if (downloaded < segLen) {
-                        throw IOException("Segmen ${segment.index} tidak lengkap")
-                    }
-                    updateSegment(id, segment.index, downloaded)
-                    return
-                } finally {
-                    activeConns.remove(id)
-                    conn.disconnect()
                 }
-            } catch (e: IOException) {
-                if (!coroutineContext.isActive) throw CancellationException()
-                // Hanya retry error jaringan/segmen terpotong — HTTP/Range yang
-                // salah tidak di-retry (percuma, hanya buang waktu & terlihat agresif).
-                val msg = e.message.orEmpty()
-                val transient = isNetworkError(msg) ||
-                    msg.contains("tidak lengkap", ignoreCase = true)
-                if (!transient || attempt >= maxAttempts) throw e
-                attempt++
-                delay(attempt * 5_000L)
-                // Mulai ulang dari ukuran file yang benar-benar tersimpan.
-                downloaded = partial.length()
-                updateSegment(id, segment.index, downloaded)
+                output.flush()
+                coroutineContext.ensureActive()
+            } finally {
+                runCatching { input.close() }
+                runCatching { output.close() }
             }
+            if (downloaded < (segment.end - segment.start + 1)) {
+                throw IOException("Segmen ${segment.index} tidak lengkap")
+            }
+            updateSegment(id, segment.index, downloaded)
+        } catch (e: IOException) {
+            if (!coroutineContext.isActive) throw CancellationException()
+            throw e
+        } finally {
+            activeConns.remove(id)
+            conn.disconnect()
         }
     }
 
@@ -1312,8 +1214,8 @@ class DownloadEngine(private val context: Context) {
 
     companion object {
         private const val BUFFER_SIZE = 64 * 1024
-        private const val SEGMENT_MIN_BYTES = 20L * 1024 * 1024
-        private const val RETRY_DELAY_1_MS = 15_000L
+        private const val SEGMENT_MIN_BYTES = 5L * 1024 * 1024
+        private const val RETRY_DELAY_1_MS = 5_000L
         private const val RETRY_DELAY_MAX_MS = 300_000L
         private const val MIN_FREE_BYTES = 2L * 1024 * 1024
         private const val SAVE_DEBOUNCE_MS = 400L

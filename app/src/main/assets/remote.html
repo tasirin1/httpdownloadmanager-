@@ -100,7 +100,6 @@
   .spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.6; }
   .conn-banner { position: sticky; top: 0; z-index: 60; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; background: #b00020; color: #fff; font-size: 13px; font-weight: 600; padding: 8px 14px; }
   .conn-banner button { border: 0; border-radius: 999px; background: #fff; color: #b00020; font-weight: 700; font-size: 12.5px; padding: 6px 14px; cursor: pointer; }
-  .st-item.warn { color: #e53935; font-weight: 700; }
   .gal-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
   .gal-search { margin-bottom: 10px; }
   .gal-toolbar h2 { margin: 0; font-size: 16px; }
@@ -552,10 +551,6 @@ function hideConnBanner() {
   connBanner.classList.add('hidden');
 }
 connReloadBtn.addEventListener('click', function () {
-  if (typeof fsUploading !== 'undefined' && fsUploading) {
-    mmShowToast('Tunggu upload selesai sebelum memuat ulang.');
-    return;
-  }
   if (connReloadTarget) window.location.href = connReloadTarget;
   else window.location.reload();
 });
@@ -638,9 +633,6 @@ function renderStatus(st) {
     text += '<span class="st-item">&#128190; Sisa <b>' + fmt(st.storageFree) + '</b></span>';
   }
   text += '<span class="st-item">&#128424; Port <b>' + st.port + '</b></span>';
-  if (st.storageWriteOk === false) {
-    text += '<span class="st-item warn">&#9888;&#65039; Izin Penyimpanan/Akses file penuh belum aktif — transfer ke folder f: akan gagal. Buka aplikasi &gt; Pengaturan &gt; izinkan.</span>';
-  }
   el.innerHTML = text;
   el.classList.remove('offline');
   if (st.port && location.port && Number(st.port) !== Number(location.port)) {
@@ -1174,8 +1166,7 @@ function renderFs(items) {
         if (FS_MEDIA_EXTS.indexOf(extOf(it.name).toLowerCase()) >= 0) {
           actions += '<a class="fs-stream" href="' + media + '" target="_blank">&#9654; Stream</a>';
         }
-        actions += '<a class="fs-dl" href="' + media + '?dl=1" download data-fsdl="1" data-name="' +
-          escapeHtml(it.name) + '" data-size="' + it.size + '">&#11015; Download</a>';
+        actions += '<a class="fs-dl" href="' + media + '?dl=1" download>&#11015; Download</a>';
       } else {
         actions += '<a class="fs-dl" href="' + API + '/api/fs_zip?path=' +
           encodeURIComponent(it.path) + '" download title="Download folder sebagai ZIP">&#128230; ZIP</a>';
@@ -1483,21 +1474,14 @@ document.getElementById('fsMkdirBtn').addEventListener('click', async function (
   });
 });
 
-const UPLOAD_CHUNK = 512 * 1024;
-
-// Error dari server yang tidak akan hilang walau di-retry — tampilkan saja.
-function isPermanentUploadErr(msg) {
-  return /tidak diizinkan|tidak valid|tidak cukup|terlalu besar|izin|permission|denied|not allowed|not found/i.test(msg || '');
-}
+const UPLOAD_CHUNK = 2 * 1024 * 1024;
 
 let fsUploading = false;
 
 function uploadFiles(files, path, statusEl, progressBox, progressText, progressPct, progressBar, done) {
   fsUploading = true;
   const jobs = Array.from(files).map(function (f) {
-    const j = (f && f.file) ? f : { file: f, path: path };
-    j.lastErr = '';
-    return j;
+    return (f && f.file) ? f : { file: f, path: path };
   });
   const total = jobs.length;
   if (!total) return;
@@ -1506,7 +1490,7 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
   let sentBytes = 0;
   let totalBytes = 0;
   for (const j of jobs) totalBytes += j.file.size;
-  let lastProgress = 0;
+  let lastBytes = 0;
   let lastTime = Date.now();
   let speed = 0;
   progressBox.classList.remove('hidden');
@@ -1525,82 +1509,54 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
     function nextChunk() {
       if (chunkIdx >= chunks) {
         sentBytes += file.size;
-        lastProgress = sentBytes;
         finishOne();
         return;
       }
       const start = chunkIdx * UPLOAD_CHUNK;
       const end = Math.min(start + UPLOAD_CHUNK, file.size);
-      lastProgress = Math.max(lastProgress, sentBytes + start);
-      lastTime = Date.now();
-      // Jeda kecil antar chunk supaya tidak membanjiri server/router.
-      setTimeout(function () {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', API + '/api/upload?name=' + encodeURIComponent(file.name) +
-          '&path=' + encodeURIComponent(target) +
-          '&id=' + encodeURIComponent(id) +
-          '&chunk=' + chunkIdx + '&chunks=' + chunks +
-          '&offset=' + start);
-        xhr.timeout = 90000;
-        xhr.upload.onprogress = function (e) {
-          if (!e.lengthComputable) return;
-          const now = Date.now();
-          const progress = Math.max(lastProgress, sentBytes + start + e.loaded);
-          const dt = (now - lastTime) / 1000;
-          if (dt >= 0.3 && progress > lastProgress) {
-            speed = (progress - lastProgress) / dt;
-            lastTime = now;
-            lastProgress = progress;
-          }
-          const pct = totalBytes > 0 ? Math.round(progress * 100 / totalBytes) : 0;
-          progressBar.style.width = pct + '%';
-          progressPct.textContent = pct + '% \u00b7 ' + fmtSpeed(speed);
-        };
-        xhr.onload = function () {
-          let ok = false;
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              ok = xhr.responseText && JSON.parse(xhr.responseText).ok;
-            } catch (e) {}
-          }
-          if (ok) {
-            chunkIdx++;
-            chunkFails = 0;
-            nextChunk();
-          } else if (xhr.status === 401) {
-            failed.push(file.name);
-            statusEl.textContent = 'Gagal: ' + file.name + ' \u2014 sesi PIN kedaluwarsa, muat ulang halaman.';
-            finishOne();
-          } else {
-            let emsg = '';
-            try { emsg = (JSON.parse(xhr.responseText || '{}').error || ''); } catch (e) {}
-            if (emsg) job.lastErr = emsg;
-            if (isPermanentUploadErr(emsg)) {
-              // Error permanen (izin folder, disk penuh, path salah): jangan retry
-              // 6x3 percuma — berhenti dan tampilkan alasannya.
-              failed.push(file.name);
-              statusEl.textContent = 'Gagal: ' + file.name + ' \u2014 ' + emsg;
-              finishOne();
-              return;
-            }
-            if (emsg.indexOf('potongan pertama') >= 0 && attempt < 3) {
-              // Potongan di server hilang (server restart) — mulai file lagi dari awal.
-              setTimeout(function () { uploadOne(job, attempt + 1); }, 600);
-              return;
-            }
-            retryChunk();
-          }
-        };
-        xhr.onerror = function () { retryChunk(); };
-        xhr.onabort = function () { retryChunk(); };
-        xhr.ontimeout = function () { retryChunk(); };
-        xhr.send(file.slice(start, end));
-      }, chunkIdx === 0 ? 0 : 250);
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', API + '/api/upload?name=' + encodeURIComponent(file.name) +
+        '&path=' + encodeURIComponent(target) +
+        '&id=' + encodeURIComponent(id) +
+        '&chunk=' + chunkIdx + '&chunks=' + chunks +
+        '&offset=' + start);
+      xhr.upload.onprogress = function (e) {
+        if (!e.lengthComputable) return;
+        const now = Date.now();
+        const dt = (now - lastTime) / 1000;
+        if (dt > 0.3) {
+          speed = (e.loaded - lastBytes) / dt;
+          lastBytes = e.loaded;
+          lastTime = now;
+        }
+        const doneNow = sentBytes + start + e.loaded;
+        const pct = totalBytes > 0 ? Math.round(doneNow * 100 / totalBytes) : 0;
+        progressBar.style.width = pct + '%';
+        progressPct.textContent = pct + '% \u00b7 ' + fmtSpeed(speed);
+      };
+      xhr.onload = function () {
+        let ok = false;
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            ok = xhr.responseText && JSON.parse(xhr.responseText).ok;
+          } catch (e) {}
+        }
+        if (ok) {
+          chunkIdx++;
+          chunkFails = 0;
+          nextChunk();
+        } else {
+          retryChunk();
+        }
+      };
+      xhr.onerror = function () { retryChunk(); };
+      xhr.onabort = function () { retryChunk(); };
+      xhr.send(file.slice(start, end));
     }
 
     function retryChunk() {
       chunkFails++;
-      if (chunkFails < 6) {
+      if (chunkFails < 3) {
         setTimeout(nextChunk, 600);
         return;
       }
@@ -1609,7 +1565,7 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
         return;
       }
       failed.push(file.name);
-      statusEl.textContent = 'Gagal: ' + file.name + (job.lastErr ? ' \u2014 ' + job.lastErr : '');
+      statusEl.textContent = 'Gagal: ' + file.name;
       finishOne();
     }
 
@@ -1624,8 +1580,7 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
       if (done) done(failed.length === 0, failed);
       return;
     }
-    // Napas sejenak antar file supaya server tidak dibanjiri beruntun.
-    setTimeout(function () { uploadOne(jobs[idx], 1); }, 1200);
+    uploadOne(jobs[idx], 1);
   }
 
   uploadOne(jobs[0], 1);
@@ -1646,11 +1601,6 @@ window.addEventListener('beforeunload', function (e) {
   function arm() {
     clearTimeout(timer);
     timer = setTimeout(function () {
-      if (typeof fsUploading !== 'undefined' && fsUploading) {
-        // Upload sedang berjalan: jangan navigasi/logout — itu membatalkan upload.
-        arm();
-        return;
-      }
       window.location.href = API + '/api/logout';
     }, LOCK_MS);
   }
@@ -1679,10 +1629,6 @@ function fsUploadJobsFrom(files) {
 
 function startFsUpload(jobs) {
   if (!jobs.length) return;
-  if (fsUploading) {
-    mmShowToast('Upload sedang berjalan, tunggu selesai.');
-    return;
-  }
   const btn = document.getElementById('fsUploadBtn');
   btn.disabled = true;
   uploadFiles(
@@ -1749,40 +1695,6 @@ fsUploadDir.addEventListener('change', function () {
   const jobs = fsUploadJobsFrom(fsUploadDir.files);
   if (!jobs.length) return;
   startFsUpload(jobs);
-});
-
-// Unduh file: cek dulu (Range 1 byte) supaya error server muncul sebagai pesan,
-// bukan terunduh sebagai file teks kecil yang membingungkan.
-fsList.addEventListener('click', function (e) {
-  const a = e.target.closest('a.fs-dl[data-fsdl]');
-  if (!a || a.dataset.checked === '1') return;
-  e.preventDefault();
-  // File besar (>150MB): unduh langsung lewat navigasi (tanpa buffer memori).
-  if (Number(a.dataset.size || 0) > 150 * 1024 * 1024) {
-    a.dataset.checked = '1';
-    location.href = a.href;
-    return;
-  }
-  // Unduh via fetch+blob: andal dan error server muncul sebagai pesan,
-  // bukan file teks kecil yang membingungkan.
-  fetch(a.href).then(function (r) {
-    if (!r.ok) {
-      return r.text().then(function (t) {
-        throw new Error('HTTP ' + r.status + (t ? ' — ' + t.slice(0, 200) : ''));
-      });
-    }
-    return r.blob();
-  }).then(function (blob) {
-    const url = URL.createObjectURL(blob);
-    const b = document.createElement('a');
-    b.href = url;
-    b.download = a.dataset.name || 'file';
-    document.body.appendChild(b);
-    b.click();
-    setTimeout(function () { URL.revokeObjectURL(url); b.remove(); }, 4000);
-  }).catch(function (err) {
-    mmShowToast('Gagal unduh: ' + err.message);
-  });
 });
 
 fsList.addEventListener('dragover', function (e) {
@@ -2575,14 +2487,12 @@ applyRoute();
 refreshStatus();
 let sse = null;
 let sseFailCount = 0;
-let lastSseAt = 0;
 function connectEvents() {
   if (sse) { try { sse.close(); } catch (e) {} }
   sse = new EventSource(API + '/api/events');
-  sse.onopen = function () { sseFailCount = 0; lastSseAt = Date.now(); hideConnBanner(); };
+  sse.onopen = function () { sseFailCount = 0; hideConnBanner(); };
   sse.onmessage = function (ev) {
     sseFailCount = 0;
-    lastSseAt = Date.now();
     hasLoadedItems = true;
     document.getElementById('deviceStatus').classList.remove('offline');
     try {
@@ -2599,7 +2509,6 @@ function connectEvents() {
   };
   sse.onerror = function () {
     sseFailCount++;
-    if (typeof fsUploading !== 'undefined' && fsUploading) return;
     if (sseFailCount > 2) {
       document.getElementById('deviceStatus').classList.add('offline');
       showConnBanner('Koneksi realtime terputus. Cek server di aplikasi masih hidup.');
@@ -2608,16 +2517,14 @@ function connectEvents() {
 }
 if (typeof EventSource !== 'undefined') {
   connectEvents();
-  // Watchdog: SSE tidak tersambung ATAU diam >8 dtk (koneksi macet diam-diam,
-  // mis. WebView/Chrome membekukan tab) -> ambil ulang data tanpa reload halaman.
-  // Saat normal (SSE hidup & ada frame tiap ~2 dtk) watchdog tidak aktif sama sekali.
+  // Fallback polling: aktif hanya saat SSE tidak terhubung (mis. jaringan
+  // memblokir streaming), EventSource akan coba menyambung ulang sendiri.
   setInterval(function () {
-    const alive = sse && sse.readyState === EventSource.OPEN &&
-      (Date.now() - lastSseAt) < 8000;
-    if (alive) return;
-    if (currentRoute() === 'downloads') refresh();
-    refreshStatus();
-  }, 2500);
+    if (!sse || sse.readyState !== EventSource.OPEN) {
+      if (currentRoute() === 'downloads') refresh();
+      refreshStatus();
+    }
+  }, 6000);
 } else {
   setInterval(function () {
     if (currentRoute() === 'downloads') refresh();

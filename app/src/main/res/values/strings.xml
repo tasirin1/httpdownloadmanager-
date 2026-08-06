@@ -226,7 +226,9 @@
     <string-array name="segment_options">
         <item>1 (tanpa paralel)</item>
         <item>2</item>
-        <item>3</item>
+        <item>4</item>
+        <item>6</item>
+        <item>8</item>
     </string-array>
 
     <string name="mirrors_hint_optional">URL cadangan (opsional, satu per baris) — otomatis dipakai bila URL utama gagal</string>

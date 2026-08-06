@@ -1,12 +1,10 @@
 package com.tasirin.httpdownloadmanager.remote
 
-import android.Manifest
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
@@ -416,9 +414,11 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             val o = JSONObject()
             o.put("id", item.id)
             o.put("fileName", item.fileName)
+            o.put("url", item.url)
             o.put("state", item.state.name)
             o.put("bytesDownloaded", item.bytesDownloaded)
             o.put("totalBytes", item.totalBytes)
+            o.put("progress", item.progressPercent)
             o.put("speedBps", item.speedBps)
             o.put("etaSeconds", item.etaSeconds)
             o.put("speedLimitKbps", item.speedLimitKbps)
@@ -498,9 +498,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                 copyUploadBody(session, length, out)
             }
             jsonResponse(JSONObject().put("ok", true).put("name", published.fileName ?: finalName))
-        }.getOrElse { e ->
-            logError(e)
-            jsonResponse(JSONObject().put("ok", false).put("error", e.message ?: "gagal upload"))
+        }.getOrElse {
+            jsonResponse(JSONObject().put("ok", false).put("error", it.message ?: "gagal upload"))
         }
     }
 
@@ -587,9 +586,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                 resultName = finalName
             }
             jsonResponse(JSONObject().put("ok", true).put("name", resultName))
-        }.getOrElse { e ->
-            logError(e)
-            jsonResponse(JSONObject().put("ok", false).put("error", e.message ?: "gagal upload"))
+        }.getOrElse {
+            jsonResponse(JSONObject().put("ok", false).put("error", it.message ?: "gagal upload"))
         }
     }
 
@@ -1570,20 +1568,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         obj.put("batteryCharging", charging)
         obj.put("storageFree", App.engine.freeSpaceBytes())
         obj.put("port", listeningPort)
-        obj.put("storageWriteOk", storageWriteOk())
         return obj
-    }
-
-    private fun storageWriteOk(): Boolean {
-        // True = aplikasi boleh menulis ke folder f: (path langsung) di perangkat.
-        return if (Build.VERSION.SDK_INT >= 30) {
-            Environment.isExternalStorageManager()
-        } else if (Build.VERSION.SDK_INT >= 23) {
-            context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
-                PackageManager.PERMISSION_GRANTED
-        } else {
-            true
-        }
     }
 
     private fun batteryStatus(): Pair<Int, Boolean> = runCatching {
@@ -1635,7 +1620,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             val pushFrame = { payloadText: String ->
                 runCatching {
                     val now = System.currentTimeMillis()
-                    if (payloadText != sseLastPayload || now - sseLastPushAt > 2_000) {
+                    if (payloadText != sseLastPayload || now - sseLastPushAt > 10_000) {
                         sseLastPayload = payloadText
                         sseLastPushAt = now
                         val frame = "data: $payloadText\n\n"
@@ -1661,7 +1646,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             // Ticker status: tetap push walau tidak ada perubahan item,
             // supaya baterai/penyimpanan/port selalu segar.
             while (true) {
-                delay(2_000)
+                delay(3_000)
                 runCatching {
                     if (sseClients.isNotEmpty()) pushFrame(buildPayload(true))
                 }
@@ -1760,7 +1745,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         out.toByteArray()
     }.getOrNull()
 
-    private fun logError(e: Throwable) {
+    private fun logError(e: Exception) {
         runCatching {
             val file = File(context.filesDir, App.CRASH_LOG_FILE)
             val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
@@ -1792,7 +1777,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         private const val SHARE_TTL_MS = SHARE_TTL_HOURS * 60L * 60 * 1000
         private const val GALLERY_SCAN_TTL_MS = 5_000L
         private const val GALLERY_PAGE_SIZE = 100
-        private const val DEFAULT_CHUNK_BYTES = 512L * 1024
+        private const val DEFAULT_CHUNK_BYTES = 2L * 1024 * 1024
         private const val MAX_LOGIN_ATTEMPTS = 5
         private const val LOGIN_LOCK_MS = 30_000L
         private const val FS_STATS_TTL_MS = 10_000L

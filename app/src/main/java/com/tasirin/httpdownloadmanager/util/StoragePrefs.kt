@@ -143,7 +143,7 @@ object StoragePrefs {
 
     fun maxConcurrent(context: Context): Int =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getInt(KEY_MAX_CONCURRENT, 1).coerceIn(1, 5)
+            .getInt(KEY_MAX_CONCURRENT, 2).coerceIn(1, 5)
 
     fun setMaxConcurrent(context: Context, value: Int) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
@@ -231,11 +231,11 @@ object StoragePrefs {
 
     fun segmentCount(context: Context): Int =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getInt(KEY_SEGMENTS, 2).coerceIn(1, 3)
+            .getInt(KEY_SEGMENTS, 4).coerceIn(1, 8)
 
     fun setSegmentCount(context: Context, value: Int) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putInt(KEY_SEGMENTS, value.coerceIn(1, 3))
+            .putInt(KEY_SEGMENTS, value.coerceIn(1, 8))
             .apply()
     }
 

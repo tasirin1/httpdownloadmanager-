@@ -433,7 +433,11 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         val html = runCatching {
             context.assets.open("remote.html").bufferedReader().use { it.readText() }
         }.getOrDefault("<h1>Halaman remote tidak tersedia</h1>")
-        return newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8", html)
+        return newFixedLengthResponse(
+            Response.Status.OK,
+            "text/html; charset=utf-8",
+            html
+        ).also { it.addHeader("Cache-Control", "no-store, must-revalidate") }
     }
 
     private fun downloadsJson(): Response {

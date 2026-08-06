@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.provider.MediaStore
 import android.util.Base64
 import com.tasirin.httpdownloadmanager.App
 import com.tasirin.httpdownloadmanager.data.DownloadItem
@@ -14,6 +15,7 @@ import com.tasirin.httpdownloadmanager.util.FileSaver
 import com.tasirin.httpdownloadmanager.util.Formats
 import com.tasirin.httpdownloadmanager.util.MimeTypes
 import com.tasirin.httpdownloadmanager.util.StoragePrefs
+import com.tasirin.httpdownloadmanager.util.TlsCompat
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +37,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.OutputStream
 import java.net.HttpURLConnection
+import javax.net.ssl.HttpsURLConnection
 import java.net.URL
 import java.net.URLDecoder
 import java.security.MessageDigest
@@ -45,6 +48,15 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 class DownloadEngine(private val context: Context) {
+
+    /** Buka koneksi; untuk https tambahkan trust anchor CA lama (Android 6-7). */
+    private fun openConn(url: String): HttpURLConnection {
+        val conn = URL(url).openConnection() as HttpURLConnection
+        if (conn is HttpsURLConnection) {
+            TlsCompat.apply(conn, context)
+        }
+        return conn
+    }
 
     private val repository = DownloadRepository(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -217,13 +229,42 @@ class DownloadEngine(private val context: Context) {
         val path = if (raw.startsWith("f:")) raw.substring(2) else null
         val uri = if (raw.startsWith("u:")) runCatching { Uri.parse(raw.substring(2)) }.getOrNull() else null
         if (path == null && uri == null) return false
-        val deleted = runCatching {
-            when {
-                path != null -> File(path).delete()
-                uri != null -> context.contentResolver.delete(uri, null, null) > 0
-                else -> false
+        val deleted = if (path != null) {
+            val fileGone = runCatching { File(path).delete() }.getOrDefault(false)
+            // Hapus juga baris MediaStore yang menunjuk file ini (bila ada).
+            val rowGone = runCatching {
+                context.contentResolver.delete(
+                    MediaStore.Files.getContentUri("external"),
+                    "${MediaStore.MediaColumns.DATA}=?", arrayOf(path)
+                )
+            }.getOrDefault(0) > 0
+            fileGone || rowGone
+        } else {
+            // u: URI — Android 6-9: baris MediaStore bisa dihapus tanpa file fisik
+            // ikut hilang (atau sebaliknya), jadi hapus KEDUANYA. Android 10+:
+            // hapus baris MediaStore (cara resmi di scoped storage).
+            val data = runCatching {
+                context.contentResolver.query(
+                    uri!!, arrayOf(MediaStore.MediaColumns.DATA), null, null, null
+                )?.use { c ->
+                    if (c.moveToFirst()) {
+                        c.getString(c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA))
+                    } else {
+                        null
+                    }
+                }
+            }.getOrNull()
+            val rowGone = runCatching {
+                context.contentResolver.delete(uri!!, null, null) > 0
+            }.getOrDefault(false)
+            if (data.isNullOrBlank()) {
+                rowGone
+            } else if (Build.VERSION.SDK_INT >= 29) {
+                rowGone
+            } else {
+                runCatching { File(data).delete() }.getOrDefault(false) || rowGone
             }
-        }.getOrDefault(false)
+        }
         if (deleted) {
             update(
                 _items.value.filterNot { item ->
@@ -240,7 +281,7 @@ class DownloadEngine(private val context: Context) {
 
     fun probeHlsVariants(url: String): List<HlsVariant>? {
         return runCatching {
-            val conn = URL(url).openConnection() as HttpURLConnection
+            val conn = openConn(url)
             try {
                 conn.requestMethod = "GET"
                 conn.connectTimeout = 15_000
@@ -298,7 +339,7 @@ class DownloadEngine(private val context: Context) {
         if (clean.isEmpty()) return null
         if (!clean.startsWith("http://") && !clean.startsWith("https://")) return null
         return runCatching {
-            val conn = URL(clean).openConnection() as HttpURLConnection
+            val conn = openConn(clean)
             try {
                 conn.requestMethod = "HEAD"
                 conn.connectTimeout = 8_000
@@ -684,7 +725,7 @@ class DownloadEngine(private val context: Context) {
         var useSegments = false
         var segmentedTotal = 0L
         var probeHeaders: ServerHeaders? = null
-        val probe = URL(item.url).openConnection() as HttpURLConnection
+        val probe = openConn(item.url)
         try {
             probe.requestMethod = "HEAD"
             probe.connectTimeout = 15_000
@@ -716,7 +757,7 @@ class DownloadEngine(private val context: Context) {
             return
         }
 
-        val conn = URL(item.url).openConnection() as HttpURLConnection
+        val conn = openConn(item.url)
         try {
             conn.requestMethod = "GET"
             conn.connectTimeout = 15_000
@@ -953,7 +994,7 @@ class DownloadEngine(private val context: Context) {
             partial.delete()
         }
         coroutineContext.ensureActive()
-        val conn = URL(item.url).openConnection() as HttpURLConnection
+        val conn = openConn(item.url)
         activeConns[id] = conn
         try {
             conn.requestMethod = "GET"

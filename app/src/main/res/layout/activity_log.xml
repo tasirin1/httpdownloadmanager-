@@ -51,12 +51,28 @@
             android:textColor="?android:attr/textColorPrimary" />
     </ScrollView>
 
-    <Button
-        android:id="@+id/log_clear"
-        style="?attr/materialButtonOutlinedStyle"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="12dp"
         android:layout_marginBottom="12dp"
-        android:text="@string/remote_log_clear" />
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/log_export"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/remote_log_export" />
+
+        <Button
+            android:id="@+id/log_clear"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="@string/remote_log_clear" />
+    </LinearLayout>
 </LinearLayout>

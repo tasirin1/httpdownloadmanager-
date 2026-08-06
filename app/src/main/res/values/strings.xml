@@ -74,8 +74,7 @@
     <string name="server_status_running">Server: aktif</string>
     <string name="server_status_stopped">Server: mati</string>
     <string name="action_about">Tentang</string>
-    <string name="action_export_log">Ekspor Log Error (.txt)</string>
-    <string name="log_exported">Log diekspor ke folder Download (httpdm-log-*.txt)</string>
+    <string name="log_exported">Log server diekspor ke folder Download (httpdm-serverlog-*.txt)</string>
     <string name="log_export_failed">Gagal mengekspor log</string>
     <string name="about_title">Tentang Download Manager</string>
     <string name="about_version">Versi %1$s</string>
@@ -251,6 +250,7 @@
     <string name="remote_log_label">Log server (realtime)</string>
     <string name="remote_log_autoscroll">Auto-scroll ke bawah</string>
     <string name="remote_log_copy">Salin</string>
+    <string name="remote_log_export">Export ke txt</string>
     <string name="remote_log_clear">Bersihkan</string>
     <string name="remote_log_empty">(Belum ada aktivitas — buka halaman remote di browser lalu coba upload)</string>
     <string name="remote_log_copied">Log disalin ke clipboard</string>

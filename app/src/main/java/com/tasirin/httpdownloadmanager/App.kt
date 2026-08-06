@@ -2,12 +2,10 @@ package com.tasirin.httpdownloadmanager
 
 import android.app.Application
 import android.content.Context
-import android.content.ContentValues
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import android.provider.MediaStore
 import android.os.Build
 import android.util.Log
 import com.tasirin.httpdownloadmanager.download.DownloadEngine
@@ -94,35 +92,6 @@ class App : Application() {
                 val existing = if (file.exists()) file.readText() else ""
                 val merged = (existing + text).takeLast(100_000)
                 file.writeText(merged)
-                copyLogToPublic(context, merged)
-            }
-        }
-
-        fun copyLogToPublic(context: android.content.Context, text: String) {
-            runCatching {
-                val name = "httpdm-crash.log"
-                if (Build.VERSION.SDK_INT >= 29) {
-                    val resolver = context.contentResolver
-                    val values = ContentValues().apply {
-                        put(MediaStore.Downloads.DISPLAY_NAME, name)
-                        put(MediaStore.Downloads.MIME_TYPE, "text/plain")
-                        put(MediaStore.Downloads.IS_PENDING, 1)
-                    }
-                    val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                    if (uri != null) {
-                        resolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) }
-                        val done = ContentValues().apply {
-                            put(MediaStore.Downloads.IS_PENDING, 0)
-                        }
-                        resolver.update(uri, done, null, null)
-                    }
-                } else {
-                    val dir = android.os.Environment
-                        .getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
-                    if (dir != null && dir.isDirectory && dir.canWrite()) {
-                        File(dir, name).writeText(text)
-                    }
-                }
             }
         }
     }

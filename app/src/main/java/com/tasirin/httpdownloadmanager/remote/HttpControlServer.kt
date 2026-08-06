@@ -240,24 +240,139 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
 <title>PIN Diperlukan</title>
 <style>
   * { box-sizing: border-box; }
-  body { font-family: system-ui, -apple-system, sans-serif; background: #f2f4f8; margin: 0; padding: 24px; color: #1c1c1c; }
-  .box { background: #fff; border-radius: 12px; padding: 24px; max-width: 360px; margin: 40px auto; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-  h1 { font-size: 20px; margin: 0 0 8px; }
-  p { margin: 4px 0 12px; font-size: 14px; color: #555; }
-  input, button { font-size: 16px; padding: 12px; border-radius: 8px; border: 1px solid #cbd2dd; width: 100%; margin-bottom: 10px; }
-  button { background: #0D47A1; color: #fff; border: none; cursor: pointer; }
-  .err { color: #b00020; font-size: 13px; }
+  html, body { height: 100%; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: linear-gradient(135deg, #0D47A1 0%, #1565C0 45%, #1976D2 100%);
+    color: #1c1c1c;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(600px 300px at 15% 8%, rgba(255,255,255,.16), transparent 60%),
+      radial-gradient(520px 280px at 85% 92%, rgba(255,255,255,.10), transparent 60%);
+    pointer-events: none;
+  }
+  .card {
+    position: relative;
+    width: 100%;
+    max-width: 384px;
+    background: #fff;
+    border-radius: 22px;
+    padding: 36px 32px 28px;
+    box-shadow: 0 24px 60px rgba(0, 18, 55, .38);
+    animation: rise .5s cubic-bezier(.2, .8, .3, 1);
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(18px) scale(.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    color: #fff;
+    background: linear-gradient(135deg, #0D47A1, #1976D2);
+    box-shadow: 0 10px 22px rgba(13, 71, 161, .35);
+  }
+  .icon svg { width: 32px; height: 32px; }
+  h1 { font-size: 22px; margin: 0 0 4px; text-align: center; color: #0d2040; }
+  .sub { margin: 0 0 24px; font-size: 14px; color: #6b7a90; text-align: center; }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #33415c;
+    margin-bottom: 6px;
+  }
+  .field { margin-bottom: 18px; }
+  .field input {
+    width: 100%;
+    font-size: 20px;
+    letter-spacing: 12px;
+    text-align: center;
+    padding: 14px;
+    border: 2px solid #dbe2ee;
+    border-radius: 14px;
+    outline: none;
+    background: #f7f9fc;
+    color: #0d2040;
+    font-variant-numeric: tabular-nums;
+    transition: border-color .15s, box-shadow .15s, background .15s;
+  }
+  .field input:focus {
+    border-color: #1565C0;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(21, 101, 192, .15);
+  }
+  button {
+    width: 100%;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 14px;
+    border: none;
+    border-radius: 14px;
+    color: #fff;
+    background: linear-gradient(135deg, #0D47A1, #1976D2);
+    cursor: pointer;
+    box-shadow: 0 10px 20px rgba(13, 71, 161, .30);
+    transition: transform .12s, box-shadow .12s, filter .12s;
+  }
+  button:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  button:active { transform: translateY(1px); box-shadow: 0 4px 10px rgba(13, 71, 161, .25); }
+  .err {
+    display: none;
+    margin: 16px 0 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #fdecea;
+    color: #b00020;
+    font-size: 13px;
+    text-align: center;
+  }
+  .err.show { display: block; animation: shake .35s; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+  .foot { margin-top: 20px; font-size: 12px; color: #9aa7bb; text-align: center; }
+  @media (max-width: 420px) {
+    .card { padding: 28px 22px 24px; }
+    body { padding: 16px; }
+  }
 </style>
 </head>
 <body>
-<div class="box">
-  <h1>&#11015; Download Manager</h1>
-  <p>Masukkan PIN untuk mengakses server remote.</p>
-  <form method="POST" action="/api/login">
-    <input type="password" name="pin" placeholder="PIN" autofocus>
-    <button type="submit">Masuk</button>
+<div class="card">
+  <div class="icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+  </div>
+  <h1>Download Manager</h1>
+  <p class="sub">Server remote terkunci &middot; masukkan PIN untuk melanjutkan</p>
+  <form method="POST" action="/api/login" autocomplete="off">
+    <label for="pin">PIN</label>
+    <div class="field">
+      <input type="password" id="pin" name="pin" placeholder="&#9679;&#9679;&#9679;&#9679;" inputmode="numeric" maxlength="10" autofocus>
+    </div>
+    <button type="submit">Masuk &rarr;</button>
   </form>
-  <div class="err">$error</div>
+  <div class="err ${if (error.isEmpty()) "" else "show"}">&#9888;&#65039; $error</div>
+  <div class="foot">HTTP Download Manager &middot; akses lokal jaringan Anda</div>
 </div>
 </body>
 </html>"""

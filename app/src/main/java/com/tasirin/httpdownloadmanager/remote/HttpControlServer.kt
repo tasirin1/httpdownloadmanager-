@@ -139,7 +139,10 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
 
     fun startServer() {
         try {
-            super.start()
+            // NanoHTTPD default SOCKET_READ_TIMEOUT = 5 dtk; terlalu pendek
+            // untuk potongan upload 2MB di jaringan lambat -> koneksi diputus
+            // saat upload tersendat. Naikkan jadi 60 dtk.
+            super.start(SERVER_SOCKET_TIMEOUT_MS)
             lastError = null
             cleanupCache()
         } catch (e: IOException) {
@@ -1838,6 +1841,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     }
 
     companion object {
+        private const val SERVER_SOCKET_TIMEOUT_MS = 60_000
         private const val FS_PREFIX = "f:"
         private const val MS_PREFIX = "m:"
         private const val MAX_BODY_SIZE = 4L * 1024 * 1024

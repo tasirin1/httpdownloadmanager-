@@ -1575,8 +1575,8 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
           retryChunk();
         }
       };
-      xhr.onerror = function () { retryChunk(); };
-      xhr.onabort = function () { retryChunk(); };
+      xhr.onerror = function () { lastErr = 'koneksi terputus'; retryChunk(); };
+      xhr.onabort = function () { lastErr = 'permintaan dibatalkan'; retryChunk(); };
       xhr.ontimeout = function () {
         lastErr = 'waktu habis, koneksi macet (akan dicoba lagi)';
         retryChunk();

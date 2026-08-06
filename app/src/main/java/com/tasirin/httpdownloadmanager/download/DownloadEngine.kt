@@ -695,7 +695,7 @@ class DownloadEngine(private val context: Context) {
         if (downloaded > 0 && partialFile.length() != downloaded) {
             downloaded = 0
             partialFile.delete()
-        } else if (downloaded == 0 && partialFile.exists()) {
+        } else if (downloaded == 0L && partialFile.exists()) {
             // Mulai dari nol tapi ada sisa .part lama (crash/save belum sempat):
             // tanpa ini data baru akan di-append di belakang data lama -> file korup.
             partialFile.delete()
@@ -886,7 +886,7 @@ class DownloadEngine(private val context: Context) {
             downloaded = 0
             partial.delete()
             updateSegment(id, segment.index, 0)
-        } else if (downloaded == 0 && partial.exists()) {
+        } else if (downloaded == 0L && partial.exists()) {
             // Sisa .part dari proses sebelumnya dengan catatan 0 byte: buang biar
             // Range + append tidak menulis di belakang data lama (file korup).
             partial.delete()

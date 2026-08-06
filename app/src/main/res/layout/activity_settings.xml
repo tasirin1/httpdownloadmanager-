@@ -147,62 +147,13 @@
                 android:importantForAutofill="no"
                 android:inputType="number" />
 
-            <TextView
+            <Button
+                android:id="@+id/btn_log"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:text="@string/remote_log_label"
-                android:textColor="@color/primary"
-                android:textSize="14sp"
-                android:textStyle="bold" />
-
-            <CheckBox
-                android:id="@+id/log_autoscroll"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/remote_log_autoscroll" />
-
-            <ScrollView
-                android:id="@+id/log_scroll"
-                android:layout_width="match_parent"
-                android:layout_height="150dp"
-                android:layout_marginTop="6dp"
-                android:background="?attr/colorSurfaceVariant"
-                android:padding="8dp">
-
-                <TextView
-                    android:id="@+id/log"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="monospace"
-                    android:textIsSelectable="true"
-                    android:textSize="11sp"
-                    android:textColor="?android:attr/textColorPrimary" />
-            </ScrollView>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/log_copy"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/remote_log_copy" />
-
-                <Button
-                    android:id="@+id/log_clear"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:layout_weight="1"
-                    android:text="@string/remote_log_clear" />
-            </LinearLayout>
+                android:layout_marginTop="16dp"
+                android:text="@string/remote_log_label" />
 
             <TextView
                 android:layout_width="match_parent"

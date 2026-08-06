@@ -1,8 +1,6 @@
 package com.tasirin.httpdownloadmanager
 
 import android.Manifest
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -42,8 +40,6 @@ import com.tasirin.httpdownloadmanager.util.StoragePrefs
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
-
-    private var logAutoScroll = true
 
     private var activeStorageCurrent: TextView? = null
     private var activeStorageInput: EditText? = null
@@ -87,31 +83,12 @@ class SettingsActivity : AppCompatActivity() {
         renderServer()
         wireServerSwitch()
         wireServerChecks()
-        wireLog()
+        binding.btnLog.setOnClickListener {
+            startActivity(Intent(this, LogActivity::class.java))
+        }
         wireDownloadSettings()
         wireStorageSection()
         wireSave()
-
-        val pollLog = object : Runnable {
-            override fun run() {
-                if (isDestroyed || isFinishing) return
-                val prevScroll = binding.logScroll.scrollY
-                binding.log.text = App.httpServer.snapshotLog()
-                    .ifEmpty { getString(R.string.remote_log_empty) }
-                binding.logScroll.post {
-                    if (logAutoScroll) {
-                        binding.logScroll.fullScroll(View.FOCUS_DOWN)
-                    } else {
-                        // Auto-scroll dimatikan: pertahankan posisi baca.
-                        val max = binding.logScroll.getChildAt(0)?.height?.minus(binding.logScroll.height)
-                            ?: 0
-                        binding.logScroll.scrollTo(0, prevScroll.coerceIn(0, max.coerceAtLeast(0)))
-                    }
-                }
-                binding.log.postDelayed(this, 1000)
-            }
-        }
-        binding.log.postDelayed(pollLog, 1000)
     }
 
     override fun onResume() {
@@ -244,24 +221,6 @@ class SettingsActivity : AppCompatActivity() {
         }
         binding.inputPin.setText(StoragePrefs.getServerPin(this).orEmpty())
         binding.inputPort.setText(StoragePrefs.serverPort(this).toString())
-    }
-
-    private fun wireLog() {
-        binding.logAutoscroll.isChecked = logAutoScroll
-        binding.logAutoscroll.setOnCheckedChangeListener { _, checked ->
-            logAutoScroll = checked
-        }
-        binding.logCopy.setOnClickListener {
-            val text = App.httpServer.snapshotLog()
-                .ifEmpty { getString(R.string.remote_log_empty) }
-            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            cm.setPrimaryClip(ClipData.newPlainText("server log", text))
-            Snackbar.make(binding.root, R.string.remote_log_copied, Snackbar.LENGTH_SHORT).show()
-        }
-        binding.logClear.setOnClickListener {
-            App.httpServer.clearLog()
-            binding.log.text = getString(R.string.remote_log_empty)
-        }
     }
 
     private fun wireDownloadSettings() {

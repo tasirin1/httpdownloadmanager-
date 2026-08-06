@@ -58,6 +58,11 @@
             android:exported="false"
             android:theme="@style/Theme.HttpDownloadManager" />
 
+        <activity
+            android:name=".LogActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HttpDownloadManager" />
+
         <service
             android:name=".download.DownloadService"
             android:exported="false"

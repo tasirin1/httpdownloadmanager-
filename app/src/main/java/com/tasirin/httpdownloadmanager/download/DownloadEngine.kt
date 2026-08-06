@@ -703,8 +703,8 @@ class DownloadEngine(private val context: Context) {
         val conn = URL(item.url).openConnection() as HttpURLConnection
         try {
             conn.requestMethod = "GET"
-            conn.connectTimeout = 20_000
-            conn.readTimeout = 60_000
+            conn.connectTimeout = 30_000
+            conn.readTimeout = 120_000
             conn.setRequestProperty("User-Agent", "HttpDownloadManager/1.0")
             conn.setRequestProperty("Accept-Encoding", "identity")
             applyAuthHeaders(conn, item)
@@ -964,8 +964,8 @@ class DownloadEngine(private val context: Context) {
                 activeConns[id] = conn
                 try {
                     conn.requestMethod = "GET"
-                    conn.connectTimeout = 20_000
-                    conn.readTimeout = 60_000
+                    conn.connectTimeout = 30_000
+                    conn.readTimeout = 120_000
                     conn.setRequestProperty("User-Agent", "HttpDownloadManager/1.0")
                     conn.setRequestProperty("Accept-Encoding", "identity")
                     applyAuthHeaders(conn, item)
@@ -1009,9 +1009,14 @@ class DownloadEngine(private val context: Context) {
                 }
             } catch (e: IOException) {
                 if (!coroutineContext.isActive) throw CancellationException()
-                if (attempt >= maxAttempts) throw e
+                // Hanya retry error jaringan/segmen terpotong — HTTP/Range yang
+                // salah tidak di-retry (percuma, hanya buang waktu & terlihat agresif).
+                val msg = e.message.orEmpty()
+                val transient = isNetworkError(msg) ||
+                    msg.contains("tidak lengkap", ignoreCase = true)
+                if (!transient || attempt >= maxAttempts) throw e
                 attempt++
-                delay(attempt * 1_000L)
+                delay(attempt * 2_000L)
                 // Mulai ulang dari ukuran file yang benar-benar tersimpan.
                 downloaded = partial.length()
                 updateSegment(id, segment.index, downloaded)

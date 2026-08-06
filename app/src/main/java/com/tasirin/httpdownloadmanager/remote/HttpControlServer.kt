@@ -414,11 +414,9 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             val o = JSONObject()
             o.put("id", item.id)
             o.put("fileName", item.fileName)
-            o.put("url", item.url)
             o.put("state", item.state.name)
             o.put("bytesDownloaded", item.bytesDownloaded)
             o.put("totalBytes", item.totalBytes)
-            o.put("progress", item.progressPercent)
             o.put("speedBps", item.speedBps)
             o.put("etaSeconds", item.etaSeconds)
             o.put("speedLimitKbps", item.speedLimitKbps)
@@ -1620,7 +1618,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             val pushFrame = { payloadText: String ->
                 runCatching {
                     val now = System.currentTimeMillis()
-                    if (payloadText != sseLastPayload || now - sseLastPushAt > 10_000) {
+                    if (payloadText != sseLastPayload || now - sseLastPushAt > 2_000) {
                         sseLastPayload = payloadText
                         sseLastPushAt = now
                         val frame = "data: $payloadText\n\n"
@@ -1646,7 +1644,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             // Ticker status: tetap push walau tidak ada perubahan item,
             // supaya baterai/penyimpanan/port selalu segar.
             while (true) {
-                delay(3_000)
+                delay(2_000)
                 runCatching {
                     if (sseClients.isNotEmpty()) pushFrame(buildPayload(true))
                 }

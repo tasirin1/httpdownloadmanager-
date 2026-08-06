@@ -107,7 +107,13 @@ class FileSaver(context: Context) {
                 throw IOException("Folder tujuan tidak valid atau tidak bisa ditulis: $cleanFolder")
             }
             val target = uniqueTargetFile(File(dir, fileName))
-            target.outputStream().use { out -> writer(out) }
+            try {
+                target.outputStream().use { out -> writer(out) }
+            } catch (e: Exception) {
+                // Gagal di tengah upload: buang file setengah jadi.
+                runCatching { target.delete() }
+                throw e
+            }
             return PublishResult(filePath = target.absolutePath, fileName = target.name)
         }
         when (destination) {
@@ -138,7 +144,12 @@ class FileSaver(context: Context) {
 
     private fun writeInternal(fileName: String, writer: (OutputStream) -> Unit): PublishResult {
         val target = uniqueTargetFile(File(downloadDir, fileName))
-        target.outputStream().use { out -> writer(out) }
+        try {
+            target.outputStream().use { out -> writer(out) }
+        } catch (e: Exception) {
+            runCatching { target.delete() }
+            throw e
+        }
         return PublishResult(filePath = target.absolutePath, fileName = target.name)
     }
 
@@ -149,7 +160,12 @@ class FileSaver(context: Context) {
         runCatching { publicDir.mkdirs() }
         if (!publicDir.isDirectory || !publicDir.canWrite()) return null
         val target = uniqueTargetFile(File(publicDir, fileName))
-        target.outputStream().use { out -> writer(out) }
+        try {
+            target.outputStream().use { out -> writer(out) }
+        } catch (e: Exception) {
+            runCatching { target.delete() }
+            throw e
+        }
         return PublishResult(filePath = target.absolutePath, fileName = target.name)
     }
 
@@ -194,7 +210,12 @@ class FileSaver(context: Context) {
             ?: tree.createFile(MimeTypes.forFile(unique), unique)
             ?: return null
         val output = appContext.contentResolver.openOutputStream(target.uri, "wt") ?: return null
-        output.use { writer(it) }
+        try {
+            output.use { writer(it) }
+        } catch (e: Exception) {
+            runCatching { target.delete() }
+            throw e
+        }
         PublishResult(contentUri = target.uri.toString(), fileName = unique)
     }.getOrNull()
 

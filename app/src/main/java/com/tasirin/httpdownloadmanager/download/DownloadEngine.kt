@@ -21,6 +21,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,6 +41,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 class DownloadEngine(private val context: Context) {
 
@@ -47,6 +49,7 @@ class DownloadEngine(private val context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val jobs = mutableMapOf<String, Job>()
     private val retryAttempts = mutableMapOf<String, Int>()
+    private val activeConns = ConcurrentHashMap<String, HttpURLConnection>()
     private val speedTracker = SpeedTracker()
     private var saveJob: Job? = null
 
@@ -115,6 +118,7 @@ class DownloadEngine(private val context: Context) {
         retryAttempts.remove(id)
         speedTracker.reset(id)
         jobs.remove(id)?.cancel()
+        activeConns.remove(id)?.disconnect()
         updateItem(id) {
             it.copy(state = DownloadState.PAUSED, autoResume = false, speedBps = 0, etaSeconds = 0)
         }
@@ -144,6 +148,7 @@ class DownloadEngine(private val context: Context) {
         retryAttempts.remove(id)
         speedTracker.reset(id)
         jobs.remove(id)?.cancel()
+        activeConns.remove(id)?.disconnect()
         if (StoragePrefs.isDeletePartialOnCancel(context)) {
             _items.value.find { it.id == id }?.let { item ->
                 FileSaver(context).partialFiles(item).forEach { runCatching { it.delete() } }
@@ -159,6 +164,7 @@ class DownloadEngine(private val context: Context) {
         retryAttempts.remove(id)
         speedTracker.reset(id)
         jobs.remove(id)?.cancel()
+        activeConns.remove(id)?.disconnect()
         _items.value.find { it.id == id }?.let { FileSaver(context).deleteFiles(it) }
         update(_items.value.filterNot { it.id == id })
         flushSave()
@@ -403,7 +409,8 @@ class DownloadEngine(private val context: Context) {
                 }
                 if (alreadyActive) return@runCatching
                 val probe = probeUrl(item.url, item.username, item.password, item.headers) ?: return@runCatching
-                val sizeChanged = probe.sizeBytes > 0 && probe.sizeBytes != item.totalBytes
+                val sizeChanged = item.totalBytes > 0 && probe.sizeBytes > 0 &&
+                    probe.sizeBytes != item.totalBytes
                 val etagChanged = item.etag.isNotBlank() && !probe.etag.isNullOrBlank() &&
                     probe.etag != item.etag
                 if (sizeChanged || etagChanged) {
@@ -642,6 +649,7 @@ class DownloadEngine(private val context: Context) {
                 "Penyimpanan hampir penuh (sisa ${Formats.bytes(freeNow)})"
             )
         }
+        coroutineContext.ensureActive()
         val globalLimit = StoragePrefs.speedLimitKbps(context)
         val limit = if (item.speedLimitKbps > 0) item.speedLimitKbps else globalLimit
         // Limit global dipakai bersama antar item (total throughput global),
@@ -685,6 +693,7 @@ class DownloadEngine(private val context: Context) {
         } finally {
             probe.disconnect()
         }
+        coroutineContext.ensureActive()
 
         if (useSegments) {
             runSegmented(item, saver, throttle, segmentedTotal, probeHeaders)
@@ -723,6 +732,9 @@ class DownloadEngine(private val context: Context) {
             // tanpa ini data baru akan di-append di belakang data lama -> file korup.
             partialFile.delete()
         }
+        coroutineContext.ensureActive()
+        activeConns[item.id] = conn
+        try {
         if (downloaded > 0) conn.setRequestProperty("Range", "bytes=$downloaded-")
         conn.connect()
 
@@ -779,6 +791,7 @@ class DownloadEngine(private val context: Context) {
                 val now = System.currentTimeMillis()
                 if (now - lastNotify >= 250) {
                     lastNotify = now
+                    coroutineContext.ensureActive()
                     val (speed, eta) = speedTracker.sample(item.id, downloaded, total)
                     updateItem(item.id) {
                         it.copy(
@@ -823,6 +836,12 @@ class DownloadEngine(private val context: Context) {
             )
         }
         flushSave()
+        } catch (e: IOException) {
+            if (!coroutineContext.isActive) throw CancellationException()
+            throw e
+        } finally {
+            activeConns.remove(item.id)
+        }
     }
 
     private suspend fun runSegmented(
@@ -832,6 +851,7 @@ class DownloadEngine(private val context: Context) {
         total: Long,
         headers: ServerHeaders?
     ) {
+        coroutineContext.ensureActive()
         var fileName = item.fileName
         var segments = item.segments
         if (segments.isEmpty()) {
@@ -914,7 +934,9 @@ class DownloadEngine(private val context: Context) {
             // Range + append tidak menulis di belakang data lama (file korup).
             partial.delete()
         }
+        coroutineContext.ensureActive()
         val conn = URL(item.url).openConnection() as HttpURLConnection
+        activeConns[id] = conn
         try {
             conn.requestMethod = "GET"
             conn.connectTimeout = 15_000
@@ -941,6 +963,7 @@ class DownloadEngine(private val context: Context) {
                     val now = System.currentTimeMillis()
                     if (now - lastNotify >= 250) {
                         lastNotify = now
+                        coroutineContext.ensureActive()
                         updateSegment(id, segment.index, downloaded)
                     }
                 }
@@ -954,7 +977,11 @@ class DownloadEngine(private val context: Context) {
                 throw IOException("Segmen ${segment.index} tidak lengkap")
             }
             updateSegment(id, segment.index, downloaded)
+        } catch (e: IOException) {
+            if (!coroutineContext.isActive) throw CancellationException()
+            throw e
         } finally {
+            activeConns.remove(id)
             conn.disconnect()
         }
     }

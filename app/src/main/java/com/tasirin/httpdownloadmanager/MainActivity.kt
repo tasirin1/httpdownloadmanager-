@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.PowerManager
 import android.provider.DocumentsContract
+import android.provider.MediaStore
 import android.provider.Settings
 import android.text.Editable
 import android.text.TextUtils
@@ -1355,9 +1356,24 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 }
             }
             !item.contentUri.isNullOrEmpty() -> {
+                val uri = Uri.parse(item.contentUri)
+                val rel = runCatching {
+                    if (Build.VERSION.SDK_INT >= 29 && uri.authority == MediaStore.AUTHORITY) {
+                        contentResolver.query(
+                            uri,
+                            arrayOf(MediaStore.MediaColumns.RELATIVE_PATH),
+                            null, null, null
+                        )?.use { c ->
+                            if (c.moveToFirst()) {
+                                c.getString(c.getColumnIndexOrThrow(MediaStore.MediaColumns.RELATIVE_PATH))
+                            } else null
+                        }
+                    } else null
+                }.getOrNull()?.trim('/')
+                val targetRel = rel?.takeIf { it.isNotBlank() } ?: "Download"
                 Intent(Intent.ACTION_VIEW).setDataAndType(
                     DocumentsContract.buildDocumentUri(
-                        "com.android.externalstorage.documents", "primary:Download"
+                        "com.android.externalstorage.documents", "primary:$targetRel"
                     ),
                     "vnd.android.document/directory"
                 )

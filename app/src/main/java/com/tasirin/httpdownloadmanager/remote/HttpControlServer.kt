@@ -434,6 +434,13 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         val checksum = params["checksum"]?.trim().orEmpty()
         val storage = params["storage"]?.trim().orEmpty()
         val folderPath = params["path"]?.trim().orEmpty()
+        if (folderPath.startsWith(FS_PREFIX) &&
+            !isFsPathAllowed(folderPath.removePrefix(FS_PREFIX))
+        ) {
+            return jsonResponse(
+                JSONObject().put("ok", false).put("error", "Folder tujuan tidak diizinkan")
+            )
+        }
         App.engine.addDownload(
             url, params["name"],
             speedLimitKbps = speed,
@@ -452,6 +459,13 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             ?: "upload_${System.currentTimeMillis()}"
         val storage = session.parms["storage"]?.trim().orEmpty()
         val folderPath = session.parms["path"]?.trim().orEmpty()
+        if (folderPath.startsWith(FS_PREFIX) &&
+            !isFsPathAllowed(folderPath.removePrefix(FS_PREFIX))
+        ) {
+            return jsonResponse(
+                JSONObject().put("ok", false).put("error", "Folder tujuan tidak diizinkan")
+            )
+        }
         val chunkIdx = session.parms["chunk"]?.toIntOrNull() ?: -1
         val chunks = (session.parms["chunks"]?.toIntOrNull() ?: 1).coerceAtLeast(1)
         val length = (session.headers["content-length"]?.toLongOrNull() ?: 0L)
@@ -582,12 +596,23 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                 out.write(buffer, 0, read)
                 remaining -= read
             }
+            if (remaining > 0) {
+                throw IOException(
+                    "Koneksi terputus: hanya ${length - remaining} dari $length byte diterima"
+                )
+            }
         }
     }
 
     private fun fsZip(session: IHTTPSession): Response {
         val raw = session.parms["path"].orEmpty()
         if (raw.isEmpty()) return notFound()
+        if (raw.startsWith(FS_PREFIX) && !isFsPathAllowed(raw.removePrefix(FS_PREFIX))) {
+            return notFound()
+        }
+        if (raw.startsWith(MS_PREFIX) && raw.removePrefix(MS_PREFIX).contains("..")) {
+            return notFound()
+        }
         val folderName = when {
             raw.startsWith(MS_PREFIX) -> raw.removePrefix(MS_PREFIX).trim('/').substringAfterLast('/')
             else -> File(raw.removePrefix(FS_PREFIX)).name
@@ -691,6 +716,16 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         if (raw.isNullOrEmpty()) {
             return jsonResponse(JSONObject().put("ok", false).put("error", "token tidak valid"))
         }
+        val allowed = when {
+            raw.startsWith(FS_PREFIX) -> isFsPathAllowed(raw.removePrefix(FS_PREFIX))
+            raw.startsWith("u:") -> runCatching {
+                isMediaUriAllowed(Uri.parse(raw.removePrefix("u:")))
+            }.getOrDefault(false)
+            else -> false
+        }
+        if (!allowed) {
+            return jsonResponse(JSONObject().put("ok", false).put("error", "tidak diizinkan"))
+        }
         val deleted = App.engine.deleteMedia(raw)
         return jsonResponse(JSONObject().put("ok", deleted))
     }
@@ -782,9 +817,27 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         if (item.state == DownloadState.COMPLETED) return notFound()
         // Stream file parsial (.part) yang masih berjalan; dukung Range biar
         // player eksternal bisa memutar progresif dan seek dalam batas terunduh.
+        val mime = MimeTypes.forFile(item.fileName)
+        if (item.segments.isNotEmpty()) {
+            // Download segmen: gabungkan potongan yang sudah terunduh secara
+            // berurutan agar tetap bisa distream (Range relatif ke gabungan).
+            val parts = item.segments.sortedBy { it.index }.mapNotNull { seg ->
+                File(File(context.filesDir, "downloads"), "${item.fileName}.part.${seg.index}")
+                    .takeIf { it.isFile }
+            }
+            if (parts.isEmpty()) return notFound()
+            val total = parts.sumOf { it.length() }
+            return streamMedia(
+                name = item.fileName,
+                mime = mime,
+                input = ChainInputStream(parts),
+                total = total,
+                rangeHeader = session.headers["range"] ?: session.headers["Range"],
+                download = false
+            )
+        }
         val partial = File(File(context.filesDir, "downloads"), item.fileName + ".part")
         if (!partial.exists() || !partial.isFile) return notFound()
-        val mime = MimeTypes.forFile(item.fileName)
         return streamMedia(
             name = item.fileName,
             mime = mime,
@@ -838,7 +891,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             when {
                 raw.startsWith("f:") -> {
                     val file = File(raw.substring(2))
-                    if (!file.isFile) return null
+                    if (!file.isFile || !isFsPathAllowed(file.absolutePath)) return null
                     if (MediaLibrary.mediaKind(file.name) == "video") {
                         videoThumb(path = file.absolutePath)
                     } else {
@@ -847,6 +900,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                 }
                 raw.startsWith("u:") -> {
                     val uri = Uri.parse(raw.substring(2))
+                    if (!isMediaUriAllowed(uri)) return null
                     val name = DocumentFile.fromSingleUri(context, uri)?.name.orEmpty()
                     if (MediaLibrary.mediaKind(name) == "video") {
                         videoThumb(uri = uri)
@@ -933,13 +987,14 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         when {
             raw.startsWith("f:") -> {
                 val file = File(raw.substring(2))
-                if (!file.isFile) return notFound()
+                if (!file.isFile || !isFsPathAllowed(file.absolutePath)) return notFound()
                 input = FileInputStream(file)
                 total = file.length()
                 name = file.name
             }
             raw.startsWith("u:") -> {
                 val uri = Uri.parse(raw.substring(2))
+                if (!isMediaUriAllowed(uri)) return notFound()
                 val resolver = context.contentResolver
                 val stream = resolver.openInputStream(uri) ?: return notFound()
                 val len = resolver.openAssetFileDescriptor(uri, "r")?.length ?: -1L
@@ -1190,7 +1245,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     private fun fsListFiles(path: String): Response {
         val items = JSONArray()
         val dir = File(path)
-        if (dir.isDirectory) {
+        if (dir.isDirectory && isFsPathAllowed(path)) {
             runCatching { dir.listFiles() }.getOrNull()
                 ?.sortedWith(compareBy({ it.isFile }, { it.name.lowercase() }))
                 ?.forEach { f ->
@@ -1304,6 +1359,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     }
 
     private fun fsActionFiles(action: String, path: String, name: String, dest: String): Boolean {
+        if (!isFsPathAllowed(path)) return false
         val file = File(path)
         return when (action) {
             "delete" -> runCatching {
@@ -1323,7 +1379,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     }.getOrDefault(false)
                 }
                 val destDir = File(dest.removePrefix(FS_PREFIX))
-                if (!destDir.isDirectory) return false
+                if (!destDir.isDirectory || !isFsPathAllowed(destDir.absolutePath)) return false
                 if (file.parentFile?.absolutePath == destDir.absolutePath) return true
                 val target = File(destDir, file.name)
                 if (target.exists()) return false
@@ -1347,6 +1403,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         val resolver = context.contentResolver
         return runCatching {
             val uri = Uri.parse(uriStr)
+            if (!isMediaUriAllowed(uri)) return@runCatching false
             when (action) {
                 "delete" -> resolver.delete(uri, null, null) > 0
                 "rename" -> {
@@ -1380,6 +1437,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
 
     private fun moveFileToMediaStore(file: File, relative: String): Boolean {
         if (Build.VERSION.SDK_INT < 29) return false
+        if (!isFsPathAllowed(file.absolutePath)) return false
         val rel = relative.trim('/')
         val resolver = context.contentResolver
         val name = FileSaver(context).uniqueMediaStoreName(file.name, rel)
@@ -1402,6 +1460,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     }
 
     private fun moveMediaToFile(uri: Uri, dest: String): Boolean {
+        if (!isFsPathAllowed(dest)) return false
         val dir = File(dest)
         if (!dir.isDirectory && !dir.mkdirs()) return false
         val sourceName = mediaStoreName(uri) ?: return false
@@ -1430,6 +1489,65 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             uri, arrayOf(MediaStore.Downloads.RELATIVE_PATH), null, null, null
         )?.use { c ->
             if (c.moveToFirst()) c.getString(c.getColumnIndexOrThrow(MediaStore.Downloads.RELATIVE_PATH)) else null
+        }
+    }.getOrNull()
+
+    // ---------- Keamanan FS: hanya izinkan path di dalam root yang sah ----------
+
+    private fun allowedFsRoots(): List<File> {
+        val roots = mutableListOf<File>()
+        roots.add(File(context.filesDir, "downloads"))
+        StoragePrefs.getTextFolder(context)?.let { roots.add(File(it)) }
+        if (StoragePrefs.isFsFullAccessEnabled(context)) {
+            roots.add(File("/storage/emulated/0"))
+        }
+        if (Build.VERSION.SDK_INT < 29) {
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                ?.let { roots.add(it) }
+        }
+        return roots
+    }
+
+    private fun isFsPathAllowed(path: String): Boolean {
+        if (path.isBlank()) return false
+        val target = runCatching { File(path).canonicalFile.absolutePath }.getOrNull()
+            ?: return false
+        return allowedFsRoots().any { root ->
+            val rp = runCatching { root.canonicalFile.absolutePath }.getOrNull() ?: return@any false
+            target == rp || target.startsWith(rp + File.separator)
+        }
+    }
+
+    /** URI konten hanya sah bila berasal dari MediaStore Download (area aplikasi)
+     *  atau dokumen SAF yang memang diberi izin oleh pengguna. */
+    private fun isMediaUriAllowed(uri: Uri): Boolean {
+        return runCatching {
+            when (uri.authority) {
+                MediaStore.AUTHORITY -> {
+                    if (Build.VERSION.SDK_INT >= 29) {
+                        val rel = mediaStoreRelativePath(uri) ?: return@runCatching true
+                        rel.trim('/').startsWith("Download")
+                    } else {
+                        // Di bawah API 29 MediaStore.Downloads belum ada; file sah
+                        // aplikasi disimpan lewat path/SAF. Token u: MediaStore
+                        // buatan = akses baca media umum -> wajib cocok dengan root.
+                        val data = mediaStoreData(uri) ?: return@runCatching false
+                        isFsPathAllowed(data)
+                    }
+                }
+                "com.android.externalstorage.documents",
+                "com.android.providers.downloads.documents" -> true
+                else -> false
+            }
+        }.getOrDefault(false)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun mediaStoreData(uri: Uri): String? = runCatching {
+        context.contentResolver.query(
+            uri, arrayOf(MediaStore.MediaColumns.DATA), null, null, null
+        )?.use { c ->
+            if (c.moveToFirst()) c.getString(c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)) else null
         }
     }.getOrNull()
 
@@ -1644,6 +1762,44 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     .map { it.hostAddress.orEmpty() }
             }
         }.getOrDefault(emptyList())
+    }
+}
+
+private class ChainInputStream(private val files: List<File>) : InputStream() {
+    private var current: InputStream? = null
+    private var idx = 0
+
+    private fun next(): InputStream? {
+        current?.let { runCatching { it.close() } }
+        if (idx >= files.size) return null
+        val f = files[idx++]
+        val stream = FileInputStream(f)
+        current = stream
+        return stream
+    }
+
+    override fun read(): Int {
+        while (true) {
+            val cur = current ?: next() ?: return -1
+            val b = cur.read()
+            if (b != -1) return b
+            current = null
+        }
+    }
+
+    override fun read(b: ByteArray, off: Int, len: Int): Int {
+        if (len == 0) return 0
+        while (true) {
+            val cur = current ?: next() ?: return -1
+            val n = cur.read(b, off, len)
+            if (n != -1) return n
+            current = null
+        }
+    }
+
+    override fun close() {
+        current?.let { runCatching { it.close() } }
+        current = null
     }
 }
 

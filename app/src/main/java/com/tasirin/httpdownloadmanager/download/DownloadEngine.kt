@@ -619,13 +619,22 @@ class DownloadEngine(private val context: Context) {
         val maxRetries = StoragePrefs.maxRetries(context)
         val attempts = (retryAttempts[id] ?: 0) + 1
         // Fitur mirror: gagal dari URL aktif -> pindah ke URL cadangan berikutnya.
-        if (item.mirrors.isNotEmpty()) {
-            val next = item.mirrors.first()
+        // Bila host GitHub tak terjangkau, buat mirror proxy otomatis.
+        val autoMirrors = if (item.mirrors.isEmpty() && isConnectError(message) &&
+            isGitHubUrl(item.url)
+        ) {
+            githubMirrors(item.url)
+        } else {
+            emptyList()
+        }
+        val allMirrors = if (item.mirrors.isNotEmpty()) item.mirrors else autoMirrors
+        if (allMirrors.isNotEmpty()) {
+            val next = allMirrors.first()
             App.logEvent("DOWNLOAD GAGAL: ${item.fileName} — ${message ?: "?"} (pindah ke mirror: $next)")
             updateItem(id) {
                 it.copy(
                     url = next,
-                    mirrors = it.mirrors.drop(1),
+                    mirrors = allMirrors.drop(1),
                     state = DownloadState.PENDING,
                     error = null,
                     autoResume = true
@@ -685,6 +694,32 @@ class DownloadEngine(private val context: Context) {
             }
             flushSave()
         }
+    }
+
+    private fun isConnectError(message: String?): Boolean {
+        val m = message.orEmpty().lowercase()
+        return m.contains("failed to connect") ||
+            m.contains("unable to resolve host") ||
+            m.contains("unknownhost") ||
+            m.contains("connect timed out") ||
+            m.contains("connection refused") ||
+            m.contains("network is unreachable") ||
+            m.contains("timeout")
+    }
+
+    private fun isGitHubUrl(url: String): Boolean =
+        url.startsWith("https://") &&
+            (url.contains("github.com") ||
+                url.contains("githubusercontent.com") ||
+                url.contains("github.io"))
+
+    private fun githubMirrors(url: String): List<String> {
+        val prefixes = listOf(
+            "https://ghfast.top/",
+            "https://gh-proxy.com/",
+            "https://ghproxy.net/"
+        )
+        return prefixes.map { it + url }
     }
 
     private fun isNetworkError(message: String?): Boolean {

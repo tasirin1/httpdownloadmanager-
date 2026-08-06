@@ -2,15 +2,24 @@ package com.tasirin.httpdownloadmanager.util
 
 import android.content.ContentUris
 import android.content.Context
+import android.database.ContentObserver
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.Handler
+import android.os.HandlerThread
 import android.provider.MediaStore
 import android.util.Base64
 import androidx.documentfile.provider.DocumentFile
 import java.io.File
 
 object MediaLibrary {
+
+    private const val SCAN_TTL_MS = 5_000L
+
+    @Volatile
+    private var scanCache: Pair<Long, List<MediaEntry>>? = null
+    private var observerRegistered = false
 
     /** Koleksi MediaStore untuk root folder media (dipakai saat browsing). */
     fun mediaCollectionForRoot(root: String): Uri {
@@ -73,7 +82,62 @@ object MediaLibrary {
         )
     }.getOrNull()
 
+    /** Scan dengan cache 5 detik + auto-invalidasi saat MediaStore berubah. */
     fun scan(context: Context, partialProgress: Map<String, Int> = emptyMap()): List<MediaEntry> {
+        val base = scanCached(context)
+        if (partialProgress.isEmpty()) return base
+        return base.map { entry ->
+            if (entry.isPartial) {
+                val p = partialProgress[entry.name]
+                if (p != null) entry.copy(progressPercent = p) else entry
+            } else {
+                entry
+            }
+        }
+    }
+
+    private fun scanCached(context: Context): List<MediaEntry> {
+        ensureObserver(context)
+        val now = System.currentTimeMillis()
+        scanCache?.let { (ts, list) ->
+            if (now - ts < SCAN_TTL_MS) return list
+        }
+        val list = scanUncached(context)
+        scanCache = now to list
+        return list
+    }
+
+    /** Invalidasi cache saat ada foto/video/file baru atau terhapus. */
+    private fun ensureObserver(context: Context) {
+        if (observerRegistered) return
+        synchronized(this) {
+            if (observerRegistered) return
+            observerRegistered = true
+            runCatching {
+                val appContext = context.applicationContext
+                val thread = HandlerThread("media-scan-observer").apply { start() }
+                val observer = object : ContentObserver(Handler(thread.looper)) {
+                    override fun onChange(selfChange: Boolean) {
+                        scanCache = null
+                    }
+                }
+                val resolver = appContext.contentResolver
+                resolver.registerContentObserver(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, observer
+                )
+                resolver.registerContentObserver(
+                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI, true, observer
+                )
+                if (Build.VERSION.SDK_INT >= 29) {
+                    resolver.registerContentObserver(
+                        MediaStore.Downloads.EXTERNAL_CONTENT_URI, true, observer
+                    )
+                }
+            }
+        }
+    }
+
+    private fun scanUncached(context: Context): List<MediaEntry> {
         val list = mutableListOf<MediaEntry>()
 
         fun addFile(f: File, isPartial: Boolean = false) {

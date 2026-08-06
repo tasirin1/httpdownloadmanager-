@@ -38,6 +38,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
+import java.security.MessageDigest
 
 class GalleryActivity : AppCompatActivity() {
 
@@ -225,31 +227,97 @@ class GalleryActivity : AppCompatActivity() {
             withContext(Dispatchers.IO) {
                 val cache = cacheFor(context)
                 cache.get(e.token)?.let { return@withContext it }
-                val bmp = when {
-                    e.isVideo && !e.filePath.isNullOrEmpty() -> runCatching {
+                diskThumb(context, e.token)?.let {
+                    cache.put(e.token, it)
+                    return@withContext it
+                }
+                val bmp = generateThumb(context, e, req)
+                if (bmp != null) {
+                    cache.put(e.token, bmp)
+                    saveDiskThumb(context, e.token, bmp)
+                }
+                bmp
+            }
+
+        /** Pakai thumbnail bawaan MediaStore (cepat) dulu, lalu fallback decode. */
+        private fun generateThumb(
+            context: Context,
+            e: MediaLibrary.MediaEntry,
+            req: Int
+        ): Bitmap? {
+            val uri = e.contentUri?.let { runCatching { Uri.parse(it) }.getOrNull() }
+            val id = uri?.lastPathSegment?.toLongOrNull()
+            if (uri != null && id != null) {
+                val native = if (Build.VERSION.SDK_INT >= 29) {
+                    runCatching {
+                        context.contentResolver.loadThumbnail(uri, Size(req, req), null)
+                    }.getOrNull()
+                } else if (e.isVideo) {
+                    runCatching {
+                        MediaStore.Video.Thumbnails.getThumbnail(
+                            context.contentResolver, id,
+                            MediaStore.Video.Thumbnails.MINI_KIND, null
+                        )
+                    }.getOrNull()
+                } else {
+                    runCatching {
+                        MediaStore.Images.Thumbnails.getThumbnail(
+                            context.contentResolver, id,
+                            MediaStore.Images.Thumbnails.MINI_KIND, null
+                        )
+                    }.getOrNull()
+                }
+                if (native != null) return scaleDown(native, req)
+            }
+            if (!e.filePath.isNullOrEmpty()) {
+                return if (e.isVideo) {
+                    runCatching {
                         ThumbnailUtils.createVideoThumbnail(
                             e.filePath, MediaStore.Images.Thumbnails.MINI_KIND
                         )
-                    }.getOrNull()
-
-                    e.isVideo && !e.contentUri.isNullOrEmpty() &&
-                        Build.VERSION.SDK_INT >= 29 -> runCatching {
-                        context.contentResolver.loadThumbnail(
-                            Uri.parse(e.contentUri), Size(req, req), null
-                        )
-                    }.getOrNull()
-
-                    !e.isVideo && !e.filePath.isNullOrEmpty() ->
-                        decodeFile(context, e.filePath, req)
-
-                    !e.isVideo && !e.contentUri.isNullOrEmpty() ->
-                        decodeUri(context, e.contentUri, req)
-
-                    else -> null
+                    }.getOrNull()?.let { scaleDown(it, req) }
+                } else {
+                    decodeFile(context, e.filePath, req)
                 }
-                if (bmp != null) cache.put(e.token, bmp)
-                bmp
             }
+            if (!e.contentUri.isNullOrEmpty()) {
+                return decodeUri(context, e.contentUri, req)
+            }
+            return null
+        }
+
+        private fun scaleDown(src: Bitmap, max: Int): Bitmap {
+            if (src.width <= max && src.height <= max) return src
+            val scale = max.toDouble() / maxOf(src.width, src.height)
+            val w = (src.width * scale).toInt().coerceAtLeast(1)
+            val h = (src.height * scale).toInt().coerceAtLeast(1)
+            val out = Bitmap.createScaledBitmap(src, w, h, true)
+            if (out !== src) src.recycle()
+            return out
+        }
+
+        private fun thumbDir(context: Context): File =
+            File(context.cacheDir, "thumbs").apply { runCatching { mkdirs() } }
+
+        private fun thumbKey(token: String): String = runCatching {
+            MessageDigest.getInstance("SHA-256")
+                .digest(token.toByteArray())
+                .joinToString("") { "%02x".format(it) }
+        }.getOrDefault(token.hashCode().toString()) + ".jpg"
+
+        private fun diskThumb(context: Context, token: String): Bitmap? = runCatching {
+            val f = File(thumbDir(context), thumbKey(token))
+            if (f.isFile && f.length() > 0) BitmapFactory.decodeFile(f.absolutePath) else null
+        }.getOrNull()
+
+        private fun saveDiskThumb(context: Context, token: String, bmp: Bitmap) {
+            runCatching {
+                val f = File(thumbDir(context), thumbKey(token))
+                FileOutputStream(f).use { out ->
+                    bmp.compress(Bitmap.CompressFormat.JPEG, 78, out)
+                }
+            }
+        }
 
         private fun decodeFile(context: Context, path: String, req: Int): Bitmap? =
             runCatching {

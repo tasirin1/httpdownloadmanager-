@@ -1717,6 +1717,12 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         obj.put("storageFree", App.engine.freeSpaceBytes())
         obj.put("port", listeningPort)
         obj.put("storageWriteOk", storageWriteOk())
+        obj.put("appVersion", runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrDefault("?"))
+        obj.put("appBuild", runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionCode
+        }.getOrDefault(0))
         return obj
     }
 

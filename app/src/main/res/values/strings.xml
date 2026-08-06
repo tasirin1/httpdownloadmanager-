@@ -254,4 +254,8 @@
     <string name="remote_log_clear">Bersihkan</string>
     <string name="remote_log_empty">(Belum ada aktivitas — buka halaman remote di browser lalu coba upload)</string>
     <string name="remote_log_copied">Log disalin ke clipboard</string>
+    <string name="settings_section_cleanup">Pembersihan</string>
+    <string name="cleanup_button">Bersihkan file sampah</string>
+    <string name="cleanup_done">Bersih: %1$d file (%2$s) dihapus</string>
+    <string name="cleanup_empty">Tidak ada file sampah yang ditemukan</string>
 </resources>

@@ -34,7 +34,9 @@ import com.tasirin.httpdownloadmanager.data.DownloadState
 import com.tasirin.httpdownloadmanager.databinding.ActivitySettingsBinding
 import com.tasirin.httpdownloadmanager.download.DownloadService
 import com.tasirin.httpdownloadmanager.remote.HttpControlServer
+import com.tasirin.httpdownloadmanager.util.Formats
 import com.tasirin.httpdownloadmanager.util.StoragePrefs
+import java.io.File
 
 /** Halaman pengaturan: server remote, keamanan, log, unduhan, dan penyimpanan. */
 class SettingsActivity : AppCompatActivity() {
@@ -86,6 +88,14 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnLog.setOnClickListener {
             startActivity(Intent(this, LogActivity::class.java))
         }
+        binding.btnCleanup.setOnClickListener {
+            val (files, bytes) = cleanupJunkFiles()
+            binding.cleanupResult.text = if (files > 0) {
+                getString(R.string.cleanup_done, files, Formats.bytes(bytes))
+            } else {
+                getString(R.string.cleanup_empty)
+            }
+        }
         wireDownloadSettings()
         wireStorageSection()
         wireSave()
@@ -99,6 +109,32 @@ class SettingsActivity : AppCompatActivity() {
     override fun onSupportNavigateUp(): Boolean {
         finish()
         return true
+    }
+
+    /** Hapus file .part menggantung + cache thumbnail. Tidak menyentuh file
+     *  milik download yang masih berjalan/antre/jeda. */
+    private fun cleanupJunkFiles(): Pair<Int, Long> {
+        var files = 0
+        var bytes = 0L
+        fun deleteIf(f: File) {
+            if (!f.isFile) return
+            bytes += f.length()
+            if (f.delete()) files++
+        }
+        val itemNames = App.engine.items.value.map { it.fileName }.toSet()
+        val partPattern = Regex("\\.part(\\.\\d+)?$")
+        runCatching {
+            File(filesDir, "downloads").listFiles()?.forEach { f ->
+                val base = f.name.replace(partPattern, "")
+                if (partPattern.containsMatchIn(f.name) && base !in itemNames) {
+                    deleteIf(f)
+                }
+            }
+        }
+        runCatching {
+            File(cacheDir, "thumbs").listFiles()?.forEach { deleteIf(it) }
+        }
+        return files to bytes
     }
 
     private fun renderServer() {

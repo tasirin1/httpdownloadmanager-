@@ -254,4 +254,8 @@
     <string name="remote_log_clear">Clear</string>
     <string name="remote_log_empty">(No activity yet — open the remote page in a browser and try an upload)</string>
     <string name="remote_log_copied">Log copied to clipboard</string>
+    <string name="settings_section_cleanup">Cleanup</string>
+    <string name="cleanup_button">Clean up junk files</string>
+    <string name="cleanup_done">Cleaned: %1$d file (%2$s) removed</string>
+    <string name="cleanup_empty">No junk files found</string>
 </resources>

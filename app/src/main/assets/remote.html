@@ -104,6 +104,9 @@
   .gal-toolbar h2 { margin: 0; font-size: 16px; }
   .gal-toolbar .count { font-size: 12px; color: var(--muted); }
   .gal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 16px 14px; }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .item:focus-visible, .fs-row:focus-visible, .fs-root:focus-visible, .gal-cell:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 12px; }
+  .app-footer { text-align: center; color: var(--muted); font-size: 11.5px; padding: 12px 0 6px; }
   .gal-cell { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; cursor: pointer; box-shadow: var(--shadow-sm); transition: transform .15s ease, box-shadow .15s ease; }
   .gal-cell:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
   .gal-thumb { position: relative; aspect-ratio: 16 / 9; background: #1c2230; overflow: hidden; }
@@ -457,6 +460,7 @@
 
   <div id="status"></div>
   <ul id="list" class="list"></ul>
+  <div class="app-footer" id="appFooter"></div>
 </div>
 
 <button id="fabNewBtn" class="fab" type="button" title="Tambah download">+</button>
@@ -650,6 +654,10 @@ function renderStatus(st) {
   }
   el.innerHTML = text;
   el.classList.remove('offline');
+  const footer = document.getElementById('appFooter');
+  if (footer && st.appVersion) {
+    footer.textContent = 'Server v' + st.appVersion + (st.appBuild ? ' (build ' + st.appBuild + ')' : '') + ' \u00b7 HTTP Download Manager';
+  }
   if (st.port && location.port && Number(st.port) !== Number(location.port)) {
     const proto = location.protocol;
     const host = location.hostname;
@@ -939,6 +947,7 @@ if (gallerySearch) {
 function renderGalleryCell(it) {
   const cell = document.createElement('div');
   cell.className = 'gal-cell';
+  cell.setAttribute('tabindex', '0');
   const thumb = API + '/api/thumb?token=' + encodeURIComponent(it.token);
   const media = API + '/api/media?token=' + encodeURIComponent(it.token);
   cell.innerHTML =
@@ -1198,6 +1207,7 @@ function renderFs(items) {
     for (const r of items) {
       const row = document.createElement('div');
       row.className = 'fs-root';
+      row.setAttribute('tabindex', '0');
       row.innerHTML = '<div class="icon">&#128193;</div>' +
         '<div class="fs-main"><div class="fs-name">' + escapeHtml(r.name) + '</div>' +
         '<div class="fs-rcap"><small>' + escapeHtml(r.path) + '</small></div></div>';
@@ -1216,6 +1226,7 @@ function renderFs(items) {
   for (const it of items) {
     const row = document.createElement('div');
     row.className = 'fs-row';
+    row.setAttribute('tabindex', '0');
     if (it.kind === 'dir') row.classList.add('fs-dir');
     const icon = it.kind === 'dir' ? '\u{1F4C1}' : fileIcon(it.name);
     let meta = '';
@@ -1870,6 +1881,17 @@ document.addEventListener('click', function (e) {
   }
 });
 
+// D-pad/remote TV box: Enter/Space menjalankan baris yang difokus.
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const t = e.target;
+  if (t && t.getAttribute && t.getAttribute('tabindex') === '0' &&
+      !t.closest('button,a,input,select,textarea')) {
+    e.preventDefault();
+    t.click();
+  }
+});
+
 fsUploadFile.addEventListener('change', function () {
   const jobs = fsUploadJobsFrom(fsUploadFile.files);
   if (!jobs.length) return;
@@ -2466,6 +2488,7 @@ function rebuildList(items) {
   for (const it of filtered) {
     const li = document.createElement('li');
     li.className = 'item';
+    li.setAttribute('tabindex', '0');
     li.setAttribute('data-id', it.id);
     if (firstRender || idsChanged) {
       li.classList.add('anim');

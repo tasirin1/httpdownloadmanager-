@@ -551,6 +551,10 @@ function hideConnBanner() {
   connBanner.classList.add('hidden');
 }
 connReloadBtn.addEventListener('click', function () {
+  if (typeof fsUploading !== 'undefined' && fsUploading) {
+    mmShowToast('Tunggu upload selesai sebelum memuat ulang.');
+    return;
+  }
   if (connReloadTarget) window.location.href = connReloadTarget;
   else window.location.reload();
 });
@@ -1552,6 +1556,12 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
             chunkFails = 0;
             nextChunk();
           } else {
+            const emsg = (xhr.responseText || '');
+            if (emsg.indexOf('potongan pertama') >= 0 && attempt < 3) {
+              // Potongan di server hilang (server restart) — mulai file lagi dari awal.
+              setTimeout(function () { uploadOne(job, attempt + 1); }, 600);
+              return;
+            }
             retryChunk();
           }
         };
@@ -1564,7 +1574,7 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
 
     function retryChunk() {
       chunkFails++;
-      if (chunkFails < 4) {
+      if (chunkFails < 6) {
         setTimeout(nextChunk, 600);
         return;
       }
@@ -1610,6 +1620,11 @@ window.addEventListener('beforeunload', function (e) {
   function arm() {
     clearTimeout(timer);
     timer = setTimeout(function () {
+      if (typeof fsUploading !== 'undefined' && fsUploading) {
+        // Upload sedang berjalan: jangan navigasi/logout — itu membatalkan upload.
+        arm();
+        return;
+      }
       window.location.href = API + '/api/logout';
     }, LOCK_MS);
   }
@@ -2520,6 +2535,7 @@ function connectEvents() {
   };
   sse.onerror = function () {
     sseFailCount++;
+    if (typeof fsUploading !== 'undefined' && fsUploading) return;
     if (sseFailCount > 2) {
       document.getElementById('deviceStatus').classList.add('offline');
       showConnBanner('Koneksi realtime terputus. Cek server di aplikasi masih hidup.');

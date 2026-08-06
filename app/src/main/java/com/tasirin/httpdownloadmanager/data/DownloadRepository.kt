@@ -1,6 +1,7 @@
 package com.tasirin.httpdownloadmanager.data
 
 import android.content.Context
+import com.tasirin.httpdownloadmanager.util.Crypto
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -42,8 +43,8 @@ class DownloadRepository(context: Context) {
                 addedAt = o.optLong("addedAt", 0),
                 nameIsCustom = o.optBoolean("nameIsCustom", false),
                 autoResume = o.optBoolean("autoResume", false),
-                username = o.optString("username"),
-                password = o.optString("password"),
+                username = Crypto.decrypt(o.optString("username")),
+                password = Crypto.decrypt(o.optString("password")),
                 headers = o.optString("headers"),
                 destination = o.optString("destination"),
                 folderPath = o.optString("folderPath"),
@@ -72,8 +73,8 @@ class DownloadRepository(context: Context) {
             o.put("addedAt", item.addedAt)
             o.put("nameIsCustom", item.nameIsCustom)
             o.put("autoResume", item.autoResume)
-            o.put("username", item.username)
-            o.put("password", item.password)
+            o.put("username", Crypto.encrypt(item.username))
+            o.put("password", Crypto.encrypt(item.password))
             o.put("headers", item.headers)
             o.put("destination", item.destination)
             o.put("folderPath", item.folderPath)

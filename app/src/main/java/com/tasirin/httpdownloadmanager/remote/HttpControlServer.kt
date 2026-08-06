@@ -39,6 +39,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
 import java.io.InputStream
+import java.io.RandomAccessFile
 import java.io.FileOutputStream
 import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
@@ -71,6 +72,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     @Volatile private var sseLastPushAt = 0L
     private val shareTokens = ConcurrentHashMap<String, ShareEntry>()
     @Volatile private var galleryCache: Pair<Long, List<MediaLibrary.MediaEntry>>? = null
+    @Volatile private var loginFailures = 0
+    @Volatile private var loginLockUntil = 0L
 
     override fun serve(session: IHTTPSession): Response {
         return try {
@@ -88,7 +91,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     session.method == Method.GET && session.uri == "/api/events" -> sseResponse()
                     session.method == Method.POST && session.uri == "/api/share" -> createShare(session)
                     session.method == Method.GET && session.uri == "/api/qr" -> qrPngResponse(session)
-                    session.method == Method.GET && session.uri == "/api/gallery" -> galleryJson()
+                    session.method == Method.GET && session.uri == "/api/gallery" -> galleryJson(session)
                     session.method == Method.GET && session.uri == "/api/fs" -> fsList(session)
                     session.method == Method.GET && session.uri == "/api/thumb" -> serveThumb(session)
                     session.method == Method.GET && session.uri == "/api/media" -> serveMedia(session)
@@ -154,6 +157,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     fun stopServer() {
         sseJob?.cancel()
         sseJob = null
+        val frame = "data: {\"shutdown\":true}\n\n"
+        sseClients.forEach { it.push(frame) }
         sseClients.forEach { it.closeStream() }
         sseClients.clear()
         shareTokens.clear()
@@ -179,10 +184,16 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     }.getOrDefault("")
 
     private fun login(session: IHTTPSession): Response {
+        val now = System.currentTimeMillis()
+        if (now < loginLockUntil) {
+            val waitSec = ((loginLockUntil - now) / 1000) + 1
+            return loginPage("Terlalu banyak percobaan. Coba lagi dalam $waitSec detik.")
+        }
         val params = readForm(session)
         val pin = params["pin"].orEmpty()
         val stored = StoragePrefs.getServerPin(context).orEmpty()
         return if (stored.isNotEmpty() && pin == stored) {
+            loginFailures = 0
             val r = newFixedLengthResponse(
                 Response.Status.REDIRECT,
                 "text/html",
@@ -192,6 +203,11 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             r.addHeader("Location", "/")
             r
         } else {
+            loginFailures++
+            if (loginFailures >= MAX_LOGIN_ATTEMPTS) {
+                loginLockUntil = now + LOGIN_LOCK_MS
+                loginFailures = 0
+            }
             loginPage("PIN salah, coba lagi.")
         }
     }
@@ -372,24 +388,32 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     .put("error", "Penyimpanan tidak cukup untuk upload")
             )
         }
+        val offset = session.parms["offset"]?.toLongOrNull()
+            ?: chunkIdx.toLong() * DEFAULT_CHUNK_BYTES
+        if (offset < 0 || offset > MAX_UPLOAD_BYTES) {
+            return jsonResponse(JSONObject().put("ok", false).put("error", "offset tidak valid"))
+        }
         val id = session.parms["id"]?.trim()?.take(64) ?: "x"
         val tmp = File(context.cacheDir, "up_$id.tmp")
         var resultName = name
         return runCatching {
             when {
-                chunkIdx == 0 -> {
+                chunkIdx == 0 && !tmp.isFile -> {
+                    // Potongan pertama: buat file baru.
                     tmp.parentFile?.mkdirs()
-                    tmp.outputStream().use { out -> copyUploadBody(session, length, out) }
+                    RandomAccessFile(tmp, "rw").use { raf ->
+                        raf.setLength(0)
+                        copyUploadBody(session, length, RandomAccessOutputStream(raf))
+                    }
                 }
                 !tmp.isFile -> return jsonResponse(
                     JSONObject().put("ok", false).put("error", "Upload harus dimulai dari potongan pertama")
                 )
                 else -> {
-                    val out = FileOutputStream(tmp, true)
-                    try {
-                        copyUploadBody(session, length, out)
-                    } finally {
-                        out.close()
+                    // Tulis di offset persis: retry potongan sama tidak menggandakan data.
+                    RandomAccessFile(tmp, "rw").use { raf ->
+                        raf.seek(offset)
+                        copyUploadBody(session, length, RandomAccessOutputStream(raf))
                     }
                 }
             }
@@ -872,11 +896,20 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         return map
     }
 
-    private fun galleryJson(): Response {
+    private fun galleryJson(session: IHTTPSession): Response {
+        val q = session.parms["q"]?.trim()?.lowercase().orEmpty()
+        val page = (session.parms["page"]?.toIntOrNull() ?: 0).coerceAtLeast(0)
+        val all = scannedGallery().filter {
+            q.isEmpty() || it.name.lowercase().contains(q)
+        }
+        val start = (page * GALLERY_PAGE_SIZE).coerceAtMost(all.size)
+        val end = minOf(start + GALLERY_PAGE_SIZE, all.size)
+        val hasMore = end < all.size
         val arr = JSONArray()
         val cache = loadVideoDurations()
         var extracted = 0
-        scannedGallery().forEach { e ->
+        for (i in start until end) {
+            val e = all[i]
             val o = JSONObject()
             o.put("name", e.name)
             o.put("size", e.size)
@@ -895,7 +928,12 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             arr.put(o)
         }
         if (extracted > 0) saveVideoDurations(cache)
-        return jsonResponse(JSONObject().put("items", arr))
+        return jsonResponse(
+            JSONObject()
+                .put("items", arr)
+                .put("hasMore", hasMore)
+                .put("total", all.size)
+        )
     }
 
     private fun scannedGallery(): List<MediaLibrary.MediaEntry> {
@@ -1341,6 +1379,10 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         private const val SHARE_TTL_HOURS = 24
         private const val SHARE_TTL_MS = SHARE_TTL_HOURS * 60L * 60 * 1000
         private const val GALLERY_SCAN_TTL_MS = 5_000L
+        private const val GALLERY_PAGE_SIZE = 100
+        private const val DEFAULT_CHUNK_BYTES = 2L * 1024 * 1024
+        private const val MAX_LOGIN_ATTEMPTS = 5
+        private const val LOGIN_LOCK_MS = 30_000L
 
         fun ipv4Addresses(): List<String> = runCatching {
             NetworkInterface.getNetworkInterfaces().toList().flatMap { ni ->
@@ -1350,6 +1392,11 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             }
         }.getOrDefault(emptyList())
     }
+}
+
+private class RandomAccessOutputStream(private val raf: RandomAccessFile) : java.io.OutputStream() {
+    override fun write(b: Int) = raf.write(b)
+    override fun write(b: ByteArray, off: Int, len: Int) = raf.write(b, off, len)
 }
 
 private class DeleteOnCloseStream(

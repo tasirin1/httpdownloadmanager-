@@ -146,6 +146,5 @@ object MediaLibrary {
         return list
             .distinctBy { it.token }
             .sortedByDescending { it.modified }
-            .take(300)
     }
 }

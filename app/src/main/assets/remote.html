@@ -98,7 +98,10 @@
   .item-menu-btn { display: none; }
   .spark { width: 100%; height: 26px; display: block; margin-top: 8px; }
   .spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+  .conn-banner { position: sticky; top: 0; z-index: 60; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; background: #b00020; color: #fff; font-size: 13px; font-weight: 600; padding: 8px 14px; }
+  .conn-banner button { border: 0; border-radius: 999px; background: #fff; color: #b00020; font-weight: 700; font-size: 12.5px; padding: 6px 14px; cursor: pointer; }
   .gal-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .gal-search { margin-bottom: 10px; }
   .gal-toolbar h2 { margin: 0; font-size: 16px; }
   .gal-toolbar .count { font-size: 12px; color: var(--muted); }
   .gal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 16px 14px; }
@@ -346,6 +349,11 @@
   </div>
 </div>
 
+<div id="connBanner" class="conn-banner hidden">
+  <span id="connBannerText">Koneksi server terputus.</span>
+  <button id="connReloadBtn" type="button">Muat Ulang</button>
+</div>
+
 <div class="wrap">
   <div class="status-card" id="deviceStatus">
     <span><span class="dot"></span>Menghubungkan ke device…</span>
@@ -396,6 +404,7 @@
 
   <div id="galleryView" class="hidden">
     <div class="gal-toolbar"><h2>&#128247; Galeri Device</h2><span class="count" id="galleryCount"></span></div>
+    <div class="gal-search"><input id="gallerySearch" type="search" placeholder="Cari foto/video…" autocomplete="off"></div>
     <div id="galleryStatus"></div>
     <div id="galleryGrid" class="gal-grid"></div>
   </div>
@@ -529,6 +538,22 @@
 
 <script>
 const API = '';
+const connBanner = document.getElementById('connBanner');
+const connBannerText = document.getElementById('connBannerText');
+const connReloadBtn = document.getElementById('connReloadBtn');
+let connReloadTarget = '';
+function showConnBanner(msg, target) {
+  connBannerText.textContent = msg;
+  connReloadTarget = target || '';
+  connBanner.classList.remove('hidden');
+}
+function hideConnBanner() {
+  connBanner.classList.add('hidden');
+}
+connReloadBtn.addEventListener('click', function () {
+  if (connReloadTarget) window.location.href = connReloadTarget;
+  else window.location.reload();
+});
 const themeBtn = document.getElementById('themeBtn');
 const THEME_ORDER = ['auto', 'light', 'dark'];
 function systemDark() {
@@ -610,6 +635,14 @@ function renderStatus(st) {
   text += '<span class="st-item">&#128424; Port <b>' + st.port + '</b></span>';
   el.innerHTML = text;
   el.classList.remove('offline');
+  if (st.port && location.port && Number(st.port) !== Number(location.port)) {
+    const proto = location.protocol;
+    const host = location.hostname;
+    showConnBanner(
+      'Server pindah ke port ' + st.port + ' — muat ulang ke alamat baru.',
+      proto + '//' + host + ':' + st.port + location.pathname
+    );
+  }
 }
 async function refreshStatus() {
   const el = document.getElementById('deviceStatus');
@@ -633,6 +666,10 @@ let galleryItems = [];
 const GALLERY_CHUNK = 24;
 let galleryLoaded = 0;
 let gallerySentinel = null;
+let galleryPage = 0;
+let galleryHasMore = false;
+let galleryLoading = false;
+const gallerySearch = document.getElementById('gallerySearch');
 const mediaModal = document.getElementById('mediaModal');
 const mmBody = document.getElementById('mmBody');
 const mmImage = document.getElementById('mmImage');
@@ -774,10 +811,16 @@ document.addEventListener('webkitfullscreenchange', function () {
   if (!document.webkitFullscreenElement) mmUnlockOrientation();
 });
 
-async function loadGallery() {
-  showGallerySkeleton();
+async function loadGallery(reset) {
+  if (galleryLoading) return;
+  galleryLoading = true;
+  if (reset) showGallerySkeleton();
   try {
-    const res = await fetch(API + '/api/gallery');
+    const q = gallerySearch ? gallerySearch.value.trim() : '';
+    const params = new URLSearchParams();
+    params.set('page', reset ? 0 : galleryPage);
+    if (q) params.set('q', q);
+    const res = await fetch(API + '/api/gallery?' + params.toString());
     if (res.status === 401) {
       galleryStatus.textContent = 'PIN diperlukan. Muat ulang halaman untuk login.';
       galleryGrid.innerHTML = '';
@@ -786,19 +829,36 @@ async function loadGallery() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     galleryStatus.textContent = '';
-    galleryItems = data.items || [];
-    const grid = galleryGrid;
-    grid.innerHTML = '';
-    galleryCount.textContent = data.items && data.items.length ? data.items.length + ' file' : '';
-    if (!data.items || !data.items.length) {
-      grid.innerHTML = emptyHtml('\u{1F5BC}\uFE0F', 'Belum ada foto/video', 'File di folder download akan muncul di sini.');
-      return;
+    const items = data.items || [];
+    if (reset) {
+      galleryItems = items;
+      galleryPage = 1;
+      galleryLoaded = 0;
+      galleryGrid.innerHTML = '';
+      galleryCount.textContent = (data.total || items.length) + ' file';
+      if (!items.length) {
+        galleryGrid.innerHTML = emptyHtml(
+          '\u{1F50D}',
+          q ? 'Tidak ada hasil' : 'Belum ada foto/video',
+          q ? 'Coba kata kunci lain.' : 'File di folder download akan muncul di sini.'
+        );
+        galleryHasMore = false;
+        galleryLoading = false;
+        return;
+      }
+    } else {
+      galleryItems = galleryItems.concat(items);
+      galleryPage++;
     }
+    galleryHasMore = !!data.hasMore;
     loadMoreGallery();
   } catch (e) {
-    galleryStatus.textContent = 'Gagal memuat galeri: ' + e;
-    galleryGrid.innerHTML = emptyHtml('\u26A0\uFE0F', 'Gagal memuat galeri', String(e));
+    if (reset) {
+      galleryStatus.textContent = 'Gagal memuat galeri: ' + e;
+      galleryGrid.innerHTML = emptyHtml('\u26A0\uFE0F', 'Gagal memuat galeri', String(e));
+    }
   }
+  galleryLoading = false;
 }
 
 function showGallerySkeleton() {
@@ -811,20 +871,35 @@ function showGallerySkeleton() {
   galleryGrid.innerHTML = html + '</div>';
 }
 
+function ensureGallerySentinel() {
+  if (!gallerySentinel) {
+    gallerySentinel = document.createElement('div');
+    gallerySentinel.className = 'gal-sentinel';
+    galleryGrid.appendChild(gallerySentinel);
+  }
+}
+
 function loadMoreGallery() {
-  const next = galleryItems.slice(galleryLoaded, galleryLoaded + GALLERY_CHUNK);
-  for (const it of next) renderGalleryCell(it);
-  galleryLoaded += next.length;
   if (galleryLoaded < galleryItems.length) {
-    if (!gallerySentinel) {
-      gallerySentinel = document.createElement('div');
-      gallerySentinel.className = 'gal-sentinel';
-      galleryGrid.appendChild(gallerySentinel);
-    }
+    const next = galleryItems.slice(galleryLoaded, galleryLoaded + GALLERY_CHUNK);
+    for (const it of next) renderGalleryCell(it);
+    galleryLoaded += next.length;
+  }
+  if (galleryLoaded < galleryItems.length || galleryHasMore) {
+    ensureGallerySentinel();
+    if (galleryLoaded >= galleryItems.length) loadGallery(false);
   } else if (gallerySentinel) {
     gallerySentinel.remove();
     gallerySentinel = null;
   }
+}
+
+let gallerySearchTimer = null;
+if (gallerySearch) {
+  gallerySearch.addEventListener('input', function () {
+    clearTimeout(gallerySearchTimer);
+    gallerySearchTimer = setTimeout(function () { loadGallery(true); }, 350);
+  });
 }
 
 function renderGalleryCell(it) {
@@ -914,7 +989,7 @@ function applyRoute() {
   if (route === 'gallery') {
     restartAnim(galleryView);
     toggleAddForm(false);
-    loadGallery();
+    loadGallery(true);
   } else if (route === 'files') {
     restartAnim(fsView);
     toggleAddForm(false);
@@ -1413,7 +1488,8 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
       xhr.open('POST', API + '/api/upload?name=' + encodeURIComponent(file.name) +
         '&path=' + encodeURIComponent(target) +
         '&id=' + encodeURIComponent(id) +
-        '&chunk=' + chunkIdx + '&chunks=' + chunks);
+        '&chunk=' + chunkIdx + '&chunks=' + chunks +
+        '&offset=' + start);
       xhr.upload.onprogress = function (e) {
         if (!e.lengthComputable) return;
         const now = Date.now();
@@ -1938,6 +2014,7 @@ async function refresh() {
     hasLoadedItems = true;
     document.getElementById('status').textContent = '';
     document.getElementById('deviceStatus').classList.remove('offline');
+    hideConnBanner();
     (data.items || []).forEach(sampleSpeed);
     render(data.items);
   } catch (e) {
@@ -2341,13 +2418,17 @@ let sseFailCount = 0;
 function connectEvents() {
   if (sse) { try { sse.close(); } catch (e) {} }
   sse = new EventSource(API + '/api/events');
-  sse.onopen = function () { sseFailCount = 0; };
+  sse.onopen = function () { sseFailCount = 0; hideConnBanner(); };
   sse.onmessage = function (ev) {
     sseFailCount = 0;
     hasLoadedItems = true;
     document.getElementById('deviceStatus').classList.remove('offline');
     try {
       const data = JSON.parse(ev.data);
+      if (data.shutdown) {
+        showConnBanner('Server dihentikan atau port berubah. Cek aplikasi → Remote (HTTP) untuk alamat baru.');
+        return;
+      }
       const items = data.items || [];
       if (data.status) renderStatus(data.status);
       items.forEach(sampleSpeed);
@@ -2358,6 +2439,7 @@ function connectEvents() {
     sseFailCount++;
     if (sseFailCount > 2) {
       document.getElementById('deviceStatus').classList.add('offline');
+      showConnBanner('Koneksi realtime terputus. Cek server di aplikasi masih hidup.');
     }
   };
 }

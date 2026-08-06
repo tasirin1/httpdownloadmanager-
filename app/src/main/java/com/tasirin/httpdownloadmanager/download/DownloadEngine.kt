@@ -396,6 +396,12 @@ class DownloadEngine(private val context: Context) {
         }
         for (item in targets) {
             runCatching {
+                // Jangan tumpuk bila versi baru sudah sedang diunduh/diantre.
+                val alreadyActive = _items.value.any {
+                    it.id != item.id && it.fileName == item.fileName &&
+                        (it.state == DownloadState.PENDING || it.state == DownloadState.DOWNLOADING)
+                }
+                if (alreadyActive) return@runCatching
                 val probe = probeUrl(item.url, item.username, item.password, item.headers) ?: return@runCatching
                 val sizeChanged = probe.sizeBytes > 0 && probe.sizeBytes != item.totalBytes
                 val etagChanged = item.etag.isNotBlank() && !probe.etag.isNullOrBlank() &&
@@ -689,6 +695,10 @@ class DownloadEngine(private val context: Context) {
         if (downloaded > 0 && partialFile.length() != downloaded) {
             downloaded = 0
             partialFile.delete()
+        } else if (downloaded == 0 && partialFile.exists()) {
+            // Mulai dari nol tapi ada sisa .part lama (crash/save belum sempat):
+            // tanpa ini data baru akan di-append di belakang data lama -> file korup.
+            partialFile.delete()
         }
         if (downloaded > 0) conn.setRequestProperty("Range", "bytes=$downloaded-")
         conn.connect()
@@ -876,6 +886,10 @@ class DownloadEngine(private val context: Context) {
             downloaded = 0
             partial.delete()
             updateSegment(id, segment.index, 0)
+        } else if (downloaded == 0 && partial.exists()) {
+            // Sisa .part dari proses sebelumnya dengan catatan 0 byte: buang biar
+            // Range + append tidak menulis di belakang data lama (file korup).
+            partial.delete()
         }
         val conn = URL(item.url).openConnection() as HttpURLConnection
         try {

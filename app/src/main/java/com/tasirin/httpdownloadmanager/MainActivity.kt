@@ -938,6 +938,16 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                     this,
                     pinInput.text?.toString()?.trim().orEmpty()
                 )
+                // PIN wajib tapi dikosongkan: hentikan server supaya tidak
+                // terbuka tanpa proteksi di jaringan.
+                if (StoragePrefs.isPinEnforced(this) &&
+                    StoragePrefs.getServerPin(this).isNullOrEmpty()
+                ) {
+                    StoragePrefs.setServerBackgroundEnabled(this, false)
+                    StoragePrefs.setServerAutoStartEnabled(this, false)
+                    runCatching { App.httpServer.stopServer() }
+                    stopServiceIfIdle()
+                }
                 if (checkBattery.isChecked) {
                     requestBatteryExemption()
                 }

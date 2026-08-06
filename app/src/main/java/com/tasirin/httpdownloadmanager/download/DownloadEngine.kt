@@ -1250,19 +1250,31 @@ private class SpeedThrottle(
     }
 }
 
-/** Pembatas kecepatan bersama antar item: akumulasi byte lalu jaga rata-rata. */
+/** Pembatas kecepatan bersama antar item: sliding window 10 dtk.
+ *  Window di-reset saat idle > 10 dtk, jadi pause/resume tidak menghentikan
+ *  throttle (akumulasi sejak dibuat membuat throttle mati setelah jeda lama). */
 private class GlobalRateLimiter(private val limitKbps: Int) {
     private val lock = Any()
-    private var totalBytes = 0L
-    private val startedAt = System.currentTimeMillis()
+    private var windowStart = System.currentTimeMillis()
+    private var windowBytes = 0L
 
     fun waitFor(bytes: Long): Long {
         synchronized(lock) {
-            totalBytes += bytes
-            val elapsed = System.currentTimeMillis() - startedAt
-            val target = (totalBytes * 1000L) / (limitKbps * 1024L)
-            return (target - elapsed).coerceAtLeast(0L)
+            val now = System.currentTimeMillis()
+            if (now - windowStart > GLOBAL_WINDOW_MS) {
+                windowStart = now
+                windowBytes = 0
+            }
+            windowBytes += bytes
+            val limit = limitKbps * 1024L
+            val elapsed = now - windowStart
+            val targetMs = (windowBytes * 1000L) / limit
+            return if (targetMs > elapsed) (targetMs - elapsed) else 0L
         }
+    }
+
+    companion object {
+        private const val GLOBAL_WINDOW_MS = 10_000L
     }
 }
 

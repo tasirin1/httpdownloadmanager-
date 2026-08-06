@@ -116,6 +116,17 @@
         android:layout_marginTop="12dp"
         android:hint="@string/checksum_hint_optional" />
 
+    <EditText
+        android:id="@+id/input_mirrors"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="@string/mirrors_hint_optional"
+        android:importantForAutofill="no"
+        android:inputType="textUri|textMultiLine"
+        android:minLines="2"
+        android:maxLines="4" />
+
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

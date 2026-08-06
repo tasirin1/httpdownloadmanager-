@@ -230,4 +230,12 @@
         <item>6</item>
         <item>8</item>
     </string-array>
+
+    <string name="mirrors_hint_optional">URL cadangan (opsional, satu per baris) — otomatis dipakai bila URL utama gagal</string>
+    <string name="action_monitor_on">Pantau pembaruan file</string>
+    <string name="action_monitor_off">Berhenti memantau</string>
+    <string name="status_monitor">memantau</string>
+    <string name="gallery_partial_badge">belum selesai · streaming</string>
+    <string name="speed_zero">0 B/s</string>
+    <string name="speed_chart_desc">Grafik kecepatan unduhan 60 detik terakhir</string>
 </resources>

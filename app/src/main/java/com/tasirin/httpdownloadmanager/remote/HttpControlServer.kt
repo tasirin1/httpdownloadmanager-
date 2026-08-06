@@ -83,6 +83,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                 session.method == Method.GET && session.uri == "/api/logout" -> logout()
                 session.method == Method.GET && session.uri.startsWith("/share/") ->
                     serveShare(session)
+                session.method == Method.GET && session.uri.startsWith("/stream_part/") ->
+                    servePartial(session)
                 pinOk(session) -> when {
                     session.method == Method.GET && session.uri == "/" -> htmlPage()
                     session.method == Method.GET && session.uri == "/api/pin_enabled" ->
@@ -642,6 +644,25 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             total = total,
             rangeHeader = session.headers["range"] ?: session.headers["Range"],
             download = download
+        )
+    }
+
+    private fun servePartial(session: IHTTPSession): Response {
+        val id = session.uri.removePrefix("/stream_part/")
+        val item = App.engine.items.value.find { it.id == id } ?: return notFound()
+        if (item.state == DownloadState.COMPLETED) return notFound()
+        // Stream file parsial (.part) yang masih berjalan; dukung Range biar
+        // player eksternal bisa memutar progresif dan seek dalam batas terunduh.
+        val partial = File(File(context.filesDir, "downloads"), item.fileName + ".part")
+        if (!partial.exists() || !partial.isFile) return notFound()
+        val mime = MimeTypes.forFile(item.fileName)
+        return streamMedia(
+            name = item.fileName,
+            mime = mime,
+            input = FileInputStream(partial),
+            total = partial.length(),
+            rangeHeader = session.headers["range"] ?: session.headers["Range"],
+            download = false
         )
     }
 

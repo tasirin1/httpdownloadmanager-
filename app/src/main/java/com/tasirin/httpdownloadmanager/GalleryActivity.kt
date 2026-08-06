@@ -25,6 +25,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.tasirin.httpdownloadmanager.data.DownloadState
 import com.tasirin.httpdownloadmanager.databinding.ActivityGalleryBinding
 import com.tasirin.httpdownloadmanager.databinding.ItemGalleryBinding
 import com.tasirin.httpdownloadmanager.util.MediaLibrary
@@ -66,7 +67,12 @@ class GalleryActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             binding.progress.visibility = View.VISIBLE
-            fullList = withContext(Dispatchers.IO) { MediaLibrary.scan(this@GalleryActivity) }
+            fullList = withContext(Dispatchers.IO) {
+                val partials = App.engine.items.value
+                    .filter { it.state != DownloadState.COMPLETED }
+                    .associate { it.fileName to it.progressPercent }
+                MediaLibrary.scan(this@GalleryActivity, partials)
+            }
             binding.progress.visibility = View.GONE
             applyFilterUi()
         }
@@ -138,6 +144,7 @@ class GalleryActivity : AppCompatActivity() {
     private fun openEntry(e: MediaLibrary.MediaEntry) {
         val mime = MimeTypes.forFile(e.name)
         val intent = when {
+            e.isPartial -> partialPlayIntent(e, mime)
             !e.contentUri.isNullOrEmpty() ->
                 Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(e.contentUri), mime)
             !e.filePath.isNullOrEmpty() -> {
@@ -155,6 +162,25 @@ class GalleryActivity : AppCompatActivity() {
                 Toast.makeText(this, R.string.gallery_open_error, Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    /** File belum selesai: putar progresif via server lokal (mendukung Range/seek)
+     *  agar bisa diputar dan bertambah terus; fallback FileProvider offline. */
+    private fun partialPlayIntent(e: MediaLibrary.MediaEntry, mime: String): Intent? {
+        val item = App.engine.items.value.find { it.fileName == e.name }
+        if (item != null && App.httpServer.isAlive) {
+            val url = "http://127.0.0.1:${App.httpServer.listeningPort}/stream_part/${item.id}"
+            return Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(url), mime)
+        }
+        if (!e.filePath.isNullOrEmpty()) {
+            val uri = FileProvider.getUriForFile(
+                this, "$packageName.fileprovider", File(e.filePath)
+            )
+            return Intent(Intent.ACTION_VIEW)
+                .setDataAndType(uri, mime)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        return null
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -302,7 +328,13 @@ private class GalleryAdapter(
         val b = holder.binding
         b.textName.text = e.name
         b.textExt.text = e.name.substringAfterLast('.', "").uppercase()
-        b.textInfo.text = Formats.bytes(e.size) + " · " + formatDate(e.modified)
+        val ctx = holder.itemView.context
+        b.textInfo.text = if (e.isPartial) {
+            val pct = if (e.progressPercent in 0..100) " · ${e.progressPercent}%" else ""
+            ctx.getString(R.string.gallery_partial_badge) + pct + " · " + Formats.bytes(e.size)
+        } else {
+            Formats.bytes(e.size) + " · " + formatDate(e.modified)
+        }
         b.imageThumb.setImageDrawable(null)
         val pos = position
         holder.itemView.setOnClickListener { onClick(e) }

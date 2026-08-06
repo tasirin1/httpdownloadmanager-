@@ -52,6 +52,9 @@ class DownloadRepository(context: Context) {
                 priority = o.optInt("priority", 0),
                 checksum = o.optString("checksum"),
                 checksumVerified = o.optBoolean("checksumVerified", false),
+                mirrors = parseStringList(o.optJSONArray("mirrors")),
+                monitor = o.optBoolean("monitor", false),
+                etag = o.optString("etag"),
                 segments = parseSegments(o)
             )
         }.getOrNull()
@@ -82,6 +85,11 @@ class DownloadRepository(context: Context) {
             o.put("priority", item.priority)
             o.put("checksum", item.checksum)
             o.put("checksumVerified", item.checksumVerified)
+            val mirrorArr = JSONArray()
+            item.mirrors.forEach { mirrorArr.put(it) }
+            o.put("mirrors", mirrorArr)
+            o.put("monitor", item.monitor)
+            o.put("etag", item.etag)
             val segArr = JSONArray()
             item.segments.forEach { seg ->
                 val so = JSONObject()
@@ -95,6 +103,18 @@ class DownloadRepository(context: Context) {
             arr.put(o)
         }
         prefs.edit().putString(KEY_ITEMS, arr.toString()).apply()
+    }
+
+    private fun parseStringList(arr: JSONArray?): List<String> {
+        if (arr == null) return emptyList()
+        return runCatching {
+            buildList {
+                for (j in 0 until arr.length()) {
+                    val v = arr.optString(j)
+                    if (v.isNotBlank()) add(v)
+                }
+            }
+        }.getOrDefault(emptyList())
     }
 
     private fun parseSegments(o: JSONObject): List<DownloadSegment> {

@@ -58,6 +58,15 @@ class DownloadEngine(private val context: Context) {
     )
     val items: StateFlow<List<DownloadItem>> = _items.asStateFlow()
 
+    init {
+        startBackgroundLoops()
+    }
+
+    private fun startBackgroundLoops() {
+        scope.launch { monitorLoop() }
+        scope.launch { speedSamplerLoop() }
+    }
+
     fun addDownload(
         url: String,
         fileName: String?,
@@ -68,7 +77,9 @@ class DownloadEngine(private val context: Context) {
         priority: Int = 0,
         checksum: String = "",
         destination: String = "",
-        folderPath: String = ""
+        folderPath: String = "",
+        mirrors: List<String> = emptyList(),
+        monitor: Boolean = false
     ) {
         val cleanUrl = url.trim()
         if (cleanUrl.isEmpty()) return
@@ -90,7 +101,9 @@ class DownloadEngine(private val context: Context) {
             folderPath = folderPath,
             speedLimitKbps = speedLimitKbps,
             priority = priority,
-            checksum = checksum
+            checksum = checksum,
+            mirrors = mirrors,
+            monitor = monitor
         )
         update(_items.value + item)
         flushSave()
@@ -285,7 +298,8 @@ class DownloadEngine(private val context: Context) {
                 UrlProbe(
                     fileName = contentDispositionName(conn.getHeaderField("Content-Disposition")),
                     sizeBytes = contentLength(conn),
-                    contentType = conn.getHeaderField("Content-Type")
+                    contentType = conn.getHeaderField("Content-Type"),
+                    etag = conn.getHeaderField("ETag")
                 )
             } finally {
                 conn.disconnect()
@@ -360,6 +374,68 @@ class DownloadEngine(private val context: Context) {
 
     fun setLimitAndPriority(id: String, speedLimitKbps: Int, priority: Int) {
         updateItem(id) { it.copy(speedLimitKbps = speedLimitKbps, priority = priority) }
+    }
+
+    fun setMonitor(id: String, enabled: Boolean) {
+        val item = _items.value.find { it.id == id } ?: return
+        updateItem(id) { it.copy(monitor = enabled && item.state == DownloadState.COMPLETED) }
+        flushSave()
+    }
+
+    private suspend fun monitorLoop() {
+        while (true) {
+            delay(MONITOR_INTERVAL_MS)
+            runCatching { checkForUpdates() }
+        }
+    }
+
+    private suspend fun checkForUpdates() {
+        val targets = _items.value.filter {
+            it.monitor && it.state == DownloadState.COMPLETED &&
+                (it.url.startsWith("http://") || it.url.startsWith("https://"))
+        }
+        for (item in targets) {
+            runCatching {
+                val probe = probeUrl(item.url, item.username, item.password, item.headers) ?: return@runCatching
+                val sizeChanged = probe.sizeBytes > 0 && probe.sizeBytes != item.totalBytes
+                val etagChanged = item.etag.isNotBlank() && !probe.etag.isNullOrBlank() &&
+                    probe.etag != item.etag
+                if (sizeChanged || etagChanged) {
+                    addDownload(
+                        item.url,
+                        item.fileName,
+                        item.username,
+                        item.password,
+                        item.headers,
+                        item.speedLimitKbps,
+                        item.priority,
+                        item.checksum,
+                        item.destination,
+                        item.folderPath
+                    )
+                }
+            }
+        }
+    }
+
+    // --- Grafik kecepatan realtime ---
+    private val speedHistory = ArrayDeque<Long>()
+
+    private suspend fun speedSamplerLoop() {
+        while (true) {
+            delay(1_000)
+            val total = _items.value
+                .filter { it.state == DownloadState.DOWNLOADING }
+                .sumOf { it.speedBps }
+            synchronized(speedHistory) {
+                speedHistory.addLast(total)
+                while (speedHistory.size > SPEED_HISTORY_POINTS) speedHistory.removeFirst()
+            }
+        }
+    }
+
+    fun speedHistorySnapshot(): List<Long> = synchronized(speedHistory) {
+        speedHistory.toList()
     }
 
     fun move(id: String, destTreeUri: Uri) {
@@ -459,6 +535,27 @@ class DownloadEngine(private val context: Context) {
         speedTracker.reset(id)
         val maxRetries = StoragePrefs.maxRetries(context)
         val attempts = (retryAttempts[id] ?: 0) + 1
+        // Fitur mirror: gagal dari URL aktif -> pindah ke URL cadangan berikutnya.
+        if (item.mirrors.isNotEmpty()) {
+            val next = item.mirrors.first()
+            updateItem(id) {
+                it.copy(
+                    url = next,
+                    mirrors = it.mirrors.drop(1),
+                    state = DownloadState.PENDING,
+                    error = null,
+                    autoResume = true
+                )
+            }
+            retryAttempts.remove(id)
+            scope.launch {
+                delay(1_500)
+                if (_items.value.find { it.id == id }?.state == DownloadState.PENDING) {
+                    attemptStart(id)
+                }
+            }
+            return
+        }
         if (maxRetries > 0 && attempts <= maxRetries && item.autoResume) {
             retryAttempts[id] = attempts
             val baseBackoff = (RETRY_DELAY_1_MS shl (attempts - 1))
@@ -588,6 +685,11 @@ class DownloadEngine(private val context: Context) {
         var downloaded = item.bytesDownloaded
         var fileName = item.fileName
         var partialFile = saver.partialFile(fileName)
+        // Resume anti-korup: catatan bytes harus sinkron dengan ukuran file parsial.
+        if (downloaded > 0 && partialFile.length() != downloaded) {
+            downloaded = 0
+            partialFile.delete()
+        }
         if (downloaded > 0) conn.setRequestProperty("Range", "bytes=$downloaded-")
         conn.connect()
 
@@ -610,6 +712,12 @@ class DownloadEngine(private val context: Context) {
         val lengthHeader = contentLength(conn)
         var total = if (lengthHeader > 0) lengthHeader else 0L
         if (code == 206) {
+            // Verifikasi server benar-benar melanjutkan dari posisi kita.
+            val cr = conn.getHeaderField("Content-Range")
+            val actualStart = cr?.substringAfter("bytes ")?.substringBefore("-")?.trim()?.toLongOrNull()
+            if (actualStart != null && actualStart != downloaded) {
+                throw IOException("Server melanjutkan dari byte $actualStart, bukan $downloaded")
+            }
             total += downloaded
         } else if (downloaded > 0) {
             // Server tidak mendukung resume; mulai dari awal.
@@ -666,6 +774,7 @@ class DownloadEngine(private val context: Context) {
         }
         val published = organizeIfEnabled(saver, published0, finalName)
         speedTracker.reset(item.id)
+        val serverEtag = conn.getHeaderField("ETag").orEmpty()
         updateItem(item.id) {
             it.copy(
                 state = DownloadState.COMPLETED,
@@ -676,7 +785,8 @@ class DownloadEngine(private val context: Context) {
                 filePath = published.filePath,
                 autoResume = false,
                 speedBps = 0,
-                etaSeconds = 0
+                etaSeconds = 0,
+                etag = serverEtag
             )
         }
         flushSave()
@@ -744,7 +854,8 @@ class DownloadEngine(private val context: Context) {
                 segments = emptyList(),
                 autoResume = false,
                 speedBps = 0,
-                etaSeconds = 0
+                etaSeconds = 0,
+                etag = headers?.etag.orEmpty()
             )
         }
         flushSave()
@@ -760,6 +871,12 @@ class DownloadEngine(private val context: Context) {
         val item = _items.value.find { it.id == id } ?: return
         val partial = saver.partialFile(fileName, segment.index)
         var downloaded = segment.downloaded
+        // Resume anti-korup per segmen: ukuran file parsial harus sinkron.
+        if (downloaded > 0 && partial.length() != downloaded) {
+            downloaded = 0
+            partial.delete()
+            updateSegment(id, segment.index, 0)
+        }
         val conn = URL(item.url).openConnection() as HttpURLConnection
         try {
             conn.requestMethod = "GET"
@@ -932,7 +1049,8 @@ class DownloadEngine(private val context: Context) {
     private fun headersOf(conn: HttpURLConnection): ServerHeaders {
         return ServerHeaders(
             contentDisposition = conn.getHeaderField("Content-Disposition"),
-            contentType = conn.getHeaderField("Content-Type")
+            contentType = conn.getHeaderField("Content-Type"),
+            etag = conn.getHeaderField("ETag")
         )
     }
 
@@ -1035,12 +1153,15 @@ class DownloadEngine(private val context: Context) {
         private const val RETRY_DELAY_MAX_MS = 300_000L
         private const val MIN_FREE_BYTES = 2L * 1024 * 1024
         private const val SAVE_DEBOUNCE_MS = 400L
+        private const val MONITOR_INTERVAL_MS = 30 * 60 * 1000L
+        private const val SPEED_HISTORY_POINTS = 60
     }
 }
 
 private data class ServerHeaders(
     val contentDisposition: String?,
-    val contentType: String?
+    val contentType: String?,
+    val etag: String? = null
 )
 
 data class HlsVariant(
@@ -1052,7 +1173,8 @@ data class HlsVariant(
 data class UrlProbe(
     val fileName: String?,
     val sizeBytes: Long,
-    val contentType: String?
+    val contentType: String?,
+    val etag: String? = null
 )
 
 private class SpeedThrottle(private val limitKbps: Int) {

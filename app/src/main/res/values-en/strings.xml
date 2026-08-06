@@ -230,4 +230,12 @@
         <item>6</item>
         <item>8</item>
     </string-array>
+
+    <string name="mirrors_hint_optional">Mirror URLs (optional, one per line) — used automatically if the main URL fails</string>
+    <string name="action_monitor_on">Watch for updates</string>
+    <string name="action_monitor_off">Stop watching</string>
+    <string name="status_monitor">watching</string>
+    <string name="gallery_partial_badge">not finished · streaming</string>
+    <string name="speed_zero">0 B/s</string>
+    <string name="speed_chart_desc">Download speed chart (last 60 s)</string>
 </resources>

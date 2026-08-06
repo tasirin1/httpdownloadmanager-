@@ -165,6 +165,16 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             }
         }
 
+        lifecycleScope.launch {
+            while (true) {
+                val points = App.engine.speedHistorySnapshot()
+                binding.speedChart.setData(points)
+                val now = points.lastOrNull() ?: 0L
+                binding.speedNow.text = if (now > 0) Formats.speed(now) else getString(R.string.speed_zero)
+                delay(1_000)
+            }
+        }
+
         setupFilterViews()
         findViewById<TextView>(R.id.server_status)?.setOnClickListener { showRemoteDialog() }
 
@@ -310,6 +320,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val passwordInput = view.findViewById<EditText>(R.id.input_password)
         val headersInput = view.findViewById<EditText>(R.id.input_headers)
         val checksumInput = view.findViewById<EditText>(R.id.input_checksum)
+        val mirrorInput = view.findViewById<EditText>(R.id.input_mirrors)
         val speedPerOptions = resources.getStringArray(R.array.speed_limit_per_options)
         val speedKbps = SPEED_KBPS
         val spinnerSpeedPer = view.findViewById<Spinner>(R.id.spinner_speed_limit_per)
@@ -451,6 +462,10 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         headersInput.addTextChangedListener(fileInfoWatcher)
         probeFileInfo()
 
+        val mirrors = mirrorInput.text?.toString()?.trim().orEmpty()
+            .split(Regex("[\\s,]+"))
+            .filter { it.startsWith("http://") || it.startsWith("https://") }
+
         fun addAll(
             urls: List<String>,
             name: String,
@@ -470,7 +485,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                     headers,
                     perSpeed,
                     priority,
-                    if (index == 0) checksum else ""
+                    if (index == 0) checksum else "",
+                    mirrors = if (index == 0) mirrors else emptyList()
                 )
             }
         }
@@ -617,6 +633,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             DownloadAdapter.Action.DELETE -> App.engine.remove(item.id)
             DownloadAdapter.Action.OPEN -> openDownload(item)
             DownloadAdapter.Action.OPEN_FOLDER -> openFolder(item)
+            DownloadAdapter.Action.MONITOR ->
+                App.engine.setMonitor(item.id, !item.monitor)
         }
     }
 

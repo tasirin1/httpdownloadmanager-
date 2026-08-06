@@ -18,7 +18,7 @@ import java.util.Locale
 class DownloadAdapter(private val listener: Listener) :
     ListAdapter<DownloadItem, DownloadAdapter.ViewHolder>(DIFF) {
 
-    enum class Action { PAUSE, RESUME, CANCEL, DELETE, OPEN, OPEN_FOLDER }
+    enum class Action { PAUSE, RESUME, CANCEL, DELETE, OPEN, OPEN_FOLDER, MONITOR }
 
     interface Listener {
         fun onAction(item: DownloadItem, action: Action)
@@ -119,6 +119,11 @@ class DownloadAdapter(private val listener: Listener) :
                 item.state == DownloadState.COMPLETED ||
                     item.state == DownloadState.FAILED ||
                     item.state == DownloadState.CANCELLED
+            val monitorItem = m.findItem(R.id.action_item_monitor)
+            monitorItem.isVisible = item.state == DownloadState.COMPLETED
+            monitorItem.title = v.context.getString(
+                if (item.monitor) R.string.action_monitor_off else R.string.action_monitor_on
+            )
             menu.setOnMenuItemClickListener { mi ->
                 when (mi.itemId) {
                     R.id.action_item_pause -> listener.onAction(item, Action.PAUSE)
@@ -127,6 +132,7 @@ class DownloadAdapter(private val listener: Listener) :
                     R.id.action_item_open -> listener.onAction(item, Action.OPEN)
                     R.id.action_item_folder -> listener.onAction(item, Action.OPEN_FOLDER)
                     R.id.action_item_delete -> listener.onAction(item, Action.DELETE)
+                    R.id.action_item_monitor -> listener.onAction(item, Action.MONITOR)
                 }
                 true
             }
@@ -147,6 +153,12 @@ class DownloadAdapter(private val listener: Listener) :
             DownloadState.COMPLETED -> context.getString(R.string.status_completed)
             DownloadState.CANCELLED -> context.getString(R.string.status_cancelled)
             DownloadState.FAILED -> item.error ?: context.getString(R.string.status_failed)
+        }.let { base ->
+            if (item.state == DownloadState.COMPLETED && item.monitor) {
+                "$base · ${context.getString(R.string.status_monitor)}"
+            } else {
+                base
+            }
         }
     }
 

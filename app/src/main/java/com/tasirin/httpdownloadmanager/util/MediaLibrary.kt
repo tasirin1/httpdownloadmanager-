@@ -18,7 +18,9 @@ object MediaLibrary {
         val isVideo: Boolean,
         val token: String,
         val filePath: String? = null,
-        val contentUri: String? = null
+        val contentUri: String? = null,
+        val isPartial: Boolean = false,
+        val progressPercent: Int = -1
     )
 
     private val IMAGE_EXTS = setOf("jpg", "jpeg", "png", "gif", "webp", "bmp")
@@ -46,20 +48,23 @@ object MediaLibrary {
         )
     }.getOrNull()
 
-    fun scan(context: Context): List<MediaEntry> {
+    fun scan(context: Context, partialProgress: Map<String, Int> = emptyMap()): List<MediaEntry> {
         val list = mutableListOf<MediaEntry>()
 
-        fun addFile(f: File) {
+        fun addFile(f: File, isPartial: Boolean = false) {
             if (!f.isFile) return
-            val kind = mediaKind(f.name) ?: return
+            val name = if (isPartial) f.name.removeSuffix(".part") else f.name
+            val kind = mediaKind(name) ?: return
             list.add(
                 MediaEntry(
-                    name = f.name,
+                    name = name,
                     size = f.length(),
                     modified = f.lastModified(),
                     isVideo = kind == "video",
                     token = tokenForPath(f.absolutePath),
-                    filePath = f.absolutePath
+                    filePath = f.absolutePath,
+                    isPartial = isPartial,
+                    progressPercent = if (isPartial) partialProgress[name] ?: -1 else -1
                 )
             )
         }
@@ -93,9 +98,16 @@ object MediaLibrary {
             }
         }
 
-        // 3) Folder internal aplikasi
+        // 3) Folder internal aplikasi (termasuk file .part yang masih berjalan)
         runCatching {
-            File(context.filesDir, "downloads").listFiles()?.forEach { addFile(it) }
+            val dir = File(context.filesDir, "downloads")
+            dir.listFiles()?.forEach { f ->
+                if (f.isFile && f.name.endsWith(".part")) {
+                    addFile(f, isPartial = true)
+                } else {
+                    addFile(f)
+                }
+            }
         }
 
         // 4) Folder Download publik (lama) / MediaStore (baru)

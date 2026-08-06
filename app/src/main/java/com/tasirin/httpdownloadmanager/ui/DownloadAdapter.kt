@@ -140,7 +140,8 @@ class DownloadAdapter(private val listener: Listener) :
 
     private fun statusText(item: DownloadItem, context: android.content.Context): String {
         return when (item.state) {
-            DownloadState.PENDING -> context.getString(R.string.status_pending)
+            DownloadState.PENDING ->
+                item.error ?: context.getString(R.string.status_pending)
             DownloadState.DOWNLOADING -> context.getString(R.string.status_downloading)
             DownloadState.PAUSED -> context.getString(R.string.status_paused)
             DownloadState.COMPLETED -> context.getString(R.string.status_completed)

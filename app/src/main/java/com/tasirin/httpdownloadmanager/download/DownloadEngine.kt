@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 import kotlin.coroutines.coroutineContext
 import java.io.BufferedOutputStream
 import java.io.File
@@ -130,6 +131,11 @@ class DownloadEngine(private val context: Context) {
         retryAttempts.remove(id)
         speedTracker.reset(id)
         jobs.remove(id)?.cancel()
+        if (StoragePrefs.isDeletePartialOnCancel(context)) {
+            _items.value.find { it.id == id }?.let { item ->
+                FileSaver(context).partialFiles(item).forEach { runCatching { it.delete() } }
+            }
+        }
         updateItem(id) {
             it.copy(state = DownloadState.CANCELLED, speedBps = 0, etaSeconds = 0)
         }
@@ -455,12 +461,16 @@ class DownloadEngine(private val context: Context) {
         val attempts = (retryAttempts[id] ?: 0) + 1
         if (maxRetries > 0 && attempts <= maxRetries && item.autoResume) {
             retryAttempts[id] = attempts
-            updateItem(id) { it.copy(state = DownloadState.PENDING, error = null) }
+            val baseBackoff = (RETRY_DELAY_1_MS shl (attempts - 1))
+                .coerceAtMost(RETRY_DELAY_MAX_MS)
+            // Jitter 0-25% agar beberapa item tidak retry serentak (thundering herd).
+            val backoff = baseBackoff + Random.nextLong(0, (baseBackoff / 4) + 1)
+            val retryInfo = "Gagal (percobaan $attempts/$maxRetries) — coba lagi dalam ${Formats.eta(backoff / 1000)}"
+            updateItem(id) { it.copy(state = DownloadState.PENDING, error = retryInfo) }
             scope.launch {
-                val backoff = (RETRY_DELAY_1_MS shl (attempts - 1))
-                    .coerceAtMost(RETRY_DELAY_MAX_MS)
                 delay(backoff)
                 if (_items.value.find { it.id == id }?.state == DownloadState.PENDING) {
+                    updateItem(id) { it.copy(error = null) }
                     attemptStart(id)
                 }
             }

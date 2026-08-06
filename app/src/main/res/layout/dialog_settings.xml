@@ -50,6 +50,12 @@
             android:layout_height="wrap_content"
             android:text="@string/settings_battery" />
 
+        <CheckBox
+            android:id="@+id/check_delete_partial"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_delete_partial_on_cancel" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

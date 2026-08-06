@@ -833,6 +833,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val checkBattery = view.findViewById<CheckBox>(R.id.check_battery)
         val checkAutoSort = view.findViewById<CheckBox>(R.id.check_auto_sort)
         val checkSmallFirst = view.findViewById<CheckBox>(R.id.check_small_first)
+        val checkDeletePartial = view.findViewById<CheckBox>(R.id.check_delete_partial)
         val pinInput = view.findViewById<EditText>(R.id.input_pin)
         wireStorageSection(view)
         checkBackground.isChecked = StoragePrefs.isBackgroundEnabled(this)
@@ -840,6 +841,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         checkBattery.isChecked = StoragePrefs.isBatteryExemptEnabled(this)
         checkAutoSort.isChecked = StoragePrefs.isAutoSortEnabled(this)
         checkSmallFirst.isChecked = StoragePrefs.isSmallFirstEnabled(this)
+        checkDeletePartial.isChecked = StoragePrefs.isDeletePartialOnCancel(this)
         pinInput.setText(StoragePrefs.getServerPin(this).orEmpty())
 
         val concurrentOptions = resources.getStringArray(R.array.concurrent_options)
@@ -905,6 +907,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 StoragePrefs.setBatteryExemptEnabled(this, checkBattery.isChecked)
                 StoragePrefs.setAutoSortEnabled(this, checkAutoSort.isChecked)
                 StoragePrefs.setSmallFirstEnabled(this, checkSmallFirst.isChecked)
+                StoragePrefs.setDeletePartialOnCancel(this, checkDeletePartial.isChecked)
                 StoragePrefs.setServerPin(
                     this,
                     pinInput.text?.toString()?.trim().orEmpty()

@@ -26,6 +26,7 @@ object StoragePrefs {
     private const val KEY_SORT_MODE = "sort_mode"
     private const val KEY_AUTO_SORT = "auto_sort"
     private const val KEY_SMALL_FIRST = "small_first"
+    private const val KEY_DELETE_PARTIAL_ON_CANCEL = "delete_partial_on_cancel"
 
     fun getFolderUri(context: Context): Uri? {
         val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -161,6 +162,16 @@ object StoragePrefs {
     fun setSmallFirstEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putBoolean(KEY_SMALL_FIRST, enabled)
+            .apply()
+    }
+
+    fun isDeletePartialOnCancel(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_DELETE_PARTIAL_ON_CANCEL, false)
+
+    fun setDeletePartialOnCancel(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_DELETE_PARTIAL_ON_CANCEL, enabled)
             .apply()
     }
 

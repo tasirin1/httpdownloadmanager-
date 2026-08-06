@@ -63,6 +63,7 @@
     <string name="settings_speed_limit">Batas kecepatan</string>
     <string name="settings_retry">Percobaan ulang saat gagal</string>
     <string name="settings_battery">Tanpa optimasi baterai (download tetap jalan di latar belakang)</string>
+    <string name="settings_delete_partial_on_cancel">Hapus file parsial saat dibatalkan</string>
     <string name="settings_small_first">Unduh file kecil lebih dulu (antrean pintar)</string>
     <string name="settings_section_download">Unduhan</string>
     <string name="settings_section_server">Server Remote</string>

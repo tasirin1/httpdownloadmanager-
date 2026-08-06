@@ -63,6 +63,7 @@
     <string name="settings_speed_limit">Speed limit</string>
     <string name="settings_retry">Retry attempts on failure</string>
     <string name="settings_battery">No battery optimization (keep downloads running in background)</string>
+    <string name="settings_delete_partial_on_cancel">Delete partial file when cancelled</string>
     <string name="settings_small_first">Download small files first (smart queue)</string>
     <string name="settings_section_download">Downloads</string>
     <string name="settings_section_server">Remote server</string>

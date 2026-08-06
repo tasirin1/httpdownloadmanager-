@@ -594,18 +594,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.action_clear_completed -> {
-                App.engine.clearCompleted()
-                true
-            }
-            R.id.action_storage -> {
-                showStorageDialog()
-                true
-            }
-            R.id.action_gallery -> {
-                startActivity(Intent(this, GalleryActivity::class.java))
-                true
-            }
             R.id.action_settings -> {
                 startActivity(Intent(this, SettingsActivity::class.java))
                 true

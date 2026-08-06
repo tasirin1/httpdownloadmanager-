@@ -17,7 +17,6 @@
     <string name="resume">Resume</string>
     <string name="open">Open</string>
     <string name="delete">Delete</string>
-    <string name="clear_completed">Clear completed</string>
     <string name="empty_hint">No downloads yet.\nTap + to add a URL.</string>
     <string name="no_app_to_open">No app found to open this file</string>
     <string name="speed_and_eta">%1$s · ETA %2$s</string>

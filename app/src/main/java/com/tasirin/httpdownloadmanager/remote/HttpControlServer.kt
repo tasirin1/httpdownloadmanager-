@@ -88,6 +88,17 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     private val finalizingUploads = ConcurrentHashMap<String, String>()
     private val failedUploads = ConcurrentHashMap<String, Pair<String, Long>>()
     @Volatile private var batteryCache: Pair<Long, Pair<Int, Boolean>>? = null
+    private var cachedHtml: String? = null
+    private val appVersion: String by lazy {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrDefault("?")
+    }
+    private val appBuild: Int by lazy {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionCode
+        }.getOrDefault(0)
+    }
     private val logLock = Any()
     private val logBuffer = ArrayDeque<String>()
 
@@ -431,9 +442,9 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     )
 
     private fun htmlPage(): Response {
-        val html = runCatching {
+        val html = cachedHtml ?: runCatching {
             context.assets.open("remote.html").bufferedReader().use { it.readText() }
-        }.getOrDefault("<h1>Halaman remote tidak tersedia</h1>")
+        }.getOrDefault("<h1>Halaman remote tidak tersedia</h1>").also { cachedHtml = it }
         return newFixedLengthResponse(
             Response.Status.OK,
             "text/html; charset=utf-8",
@@ -1775,12 +1786,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         obj.put("storageFree", App.engine.freeSpaceBytes())
         obj.put("port", listeningPort)
         obj.put("storageWriteOk", storageWriteOk())
-        obj.put("appVersion", runCatching {
-            context.packageManager.getPackageInfo(context.packageName, 0).versionName
-        }.getOrDefault("?"))
-        obj.put("appBuild", runCatching {
-            context.packageManager.getPackageInfo(context.packageName, 0).versionCode
-        }.getOrDefault(0))
+        obj.put("appVersion", appVersion)
+        obj.put("appBuild", appBuild)
         return obj
     }
 

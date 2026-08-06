@@ -24,6 +24,7 @@ class LogActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLogBinding
     private var logAutoScroll = false
+    private var lastLogText: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         runCatching { installSplashScreen() }
@@ -112,9 +113,12 @@ class LogActivity : AppCompatActivity() {
     }
 
     private fun refreshLog() {
-        val prevScroll = binding.logScroll.scrollY
-        binding.log.text = App.httpServer.snapshotLog()
+        val text = App.httpServer.snapshotLog()
             .ifEmpty { getString(R.string.remote_log_empty) }
+        if (text == lastLogText) return
+        lastLogText = text
+        val prevScroll = binding.logScroll.scrollY
+        binding.log.text = text
         binding.logScroll.post {
             if (logAutoScroll) {
                 binding.logScroll.fullScroll(View.FOCUS_DOWN)

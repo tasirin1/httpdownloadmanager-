@@ -1434,7 +1434,8 @@ private class DeleteOnCloseStream(
     override fun read(b: ByteArray, off: Int, len: Int): Int = delegate.read(b, off, len)
     override fun close() {
         runCatching { delegate.close() }
-        if (fileToDelete != null) runCatching { fileToDelete.delete() }
+        val toDelete = fileToDelete
+        if (toDelete != null) runCatching { toDelete.delete() }
     }
 }
 

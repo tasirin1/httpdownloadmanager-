@@ -244,6 +244,10 @@
     <string name="remote_storage_btn">Enable file access (storage permission)</string>
     <string name="remote_storage_warn">⚠ Storage permission not granted — transfers to /sdcard folders will fail. Open Android Settings → Apps → HttpDownloadManager → Permissions → enable Storage.</string>
     <string name="remote_pin_required">Set a PIN in Settings first before starting the server (for network security)</string>
+    <string name="settings_server_autostart">Start server automatically after device restart</string>
+    <string name="settings_server_background_hint">Turn on the server to access it from other devices</string>
+    <string name="settings_section_storage">Storage</string>
+    <string name="settings_saved">Settings saved</string>
     <string name="remote_log_label">Server log (realtime)</string>
     <string name="remote_log_copy">Copy</string>
     <string name="remote_log_clear">Clear</string>

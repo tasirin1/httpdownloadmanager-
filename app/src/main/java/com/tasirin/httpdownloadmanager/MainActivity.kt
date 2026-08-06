@@ -1,14 +1,10 @@
 package com.tasirin.httpdownloadmanager
 
 import android.Manifest
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -26,11 +22,9 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Button
-import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
@@ -46,9 +40,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.EncodeHintType
-import com.google.zxing.qrcode.QRCodeWriter
 import com.tasirin.httpdownloadmanager.data.DownloadItem
 import com.tasirin.httpdownloadmanager.download.DownloadService
 import com.tasirin.httpdownloadmanager.data.DownloadState
@@ -189,7 +180,9 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         }
 
         setupFilterViews()
-        findViewById<TextView>(R.id.server_status)?.setOnClickListener { showRemoteDialog() }
+        findViewById<TextView>(R.id.server_status)?.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
 
         requestPermissionsIfNeeded()
         runCatching {
@@ -606,24 +599,10 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         return true
     }
 
-    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
-        menu.findItem(R.id.action_autostart)?.isChecked =
-            StoragePrefs.isAutoStartEnabled(this)
-        return super.onPrepareOptionsMenu(menu)
-    }
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_clear_completed -> {
                 App.engine.clearCompleted()
-                true
-            }
-            R.id.action_storage -> {
-                showStorageDialog()
-                true
-            }
-            R.id.action_remote -> {
-                showRemoteDialog()
                 true
             }
             R.id.action_gallery -> {
@@ -631,7 +610,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 true
             }
             R.id.action_settings -> {
-                showSettingsDialog()
+                startActivity(Intent(this, SettingsActivity::class.java))
                 true
             }
             R.id.action_export_log -> {
@@ -640,16 +619,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             }
             R.id.action_about -> {
                 showAboutDialog()
-                true
-            }
-            R.id.action_autostart -> {
-                val enabled = !StoragePrefs.isAutoStartEnabled(this)
-                StoragePrefs.setAutoStartEnabled(this, enabled)
-                Snackbar.make(
-                    binding.root,
-                    if (enabled) R.string.autostart_on else R.string.autostart_off,
-                    Snackbar.LENGTH_SHORT
-                ).show()
                 true
             }
             else -> super.onOptionsItemSelected(item)
@@ -873,312 +842,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 Snackbar.LENGTH_LONG
             ).show()
         }
-    }
-
-    private fun showSettingsDialog() {
-        val view = layoutInflater.inflate(R.layout.dialog_settings, null)
-        val checkBackground = view.findViewById<CheckBox>(R.id.check_background)
-        val checkAutoStart = view.findViewById<CheckBox>(R.id.check_autostart)
-        val checkBattery = view.findViewById<CheckBox>(R.id.check_battery)
-        val checkAutoSort = view.findViewById<CheckBox>(R.id.check_auto_sort)
-        val checkSmallFirst = view.findViewById<CheckBox>(R.id.check_small_first)
-        val checkDeletePartial = view.findViewById<CheckBox>(R.id.check_delete_partial)
-        val checkPinEnforced = view.findViewById<CheckBox>(R.id.check_pin_enforced)
-        val checkFsFullAccess = view.findViewById<CheckBox>(R.id.check_fs_full_access)
-        val pinInput = view.findViewById<EditText>(R.id.input_pin)
-        wireStorageSection(view)
-        checkBackground.isChecked = StoragePrefs.isBackgroundEnabled(this)
-        checkAutoStart.isChecked = StoragePrefs.isAutoStartEnabled(this)
-        checkBattery.isChecked = StoragePrefs.isBatteryExemptEnabled(this)
-        checkAutoSort.isChecked = StoragePrefs.isAutoSortEnabled(this)
-        checkSmallFirst.isChecked = StoragePrefs.isSmallFirstEnabled(this)
-        checkDeletePartial.isChecked = StoragePrefs.isDeletePartialOnCancel(this)
-        checkPinEnforced.isChecked = StoragePrefs.isPinEnforced(this)
-        checkFsFullAccess.isChecked = StoragePrefs.isFsFullAccessEnabled(this)
-        pinInput.setText(StoragePrefs.getServerPin(this).orEmpty())
-
-        val concurrentOptions = resources.getStringArray(R.array.concurrent_options)
-        val spinnerConcurrent = view.findViewById<Spinner>(R.id.spinner_concurrent)
-        spinnerConcurrent.adapter = ArrayAdapter(
-            this, android.R.layout.simple_spinner_item, concurrentOptions
-        ).apply {
-            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        }
-        spinnerConcurrent.setSelection(
-            (StoragePrefs.maxConcurrent(this) - 1).coerceIn(0, concurrentOptions.size - 1)
-        )
-
-        val currentSpeed = StoragePrefs.speedLimitKbps(this)
-        val speedOptions = resources.getStringArray(R.array.speed_limit_options).toMutableList()
-        val speedKbps = SPEED_KBPS
-        if (currentSpeed !in speedKbps) {
-            speedOptions.add(getString(R.string.settings_speed_custom, currentSpeed))
-        }
-        val spinnerSpeed = view.findViewById<Spinner>(R.id.spinner_speed)
-        spinnerSpeed.adapter = ArrayAdapter(
-            this, android.R.layout.simple_spinner_item, speedOptions
-        ).apply {
-            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        }
-        val speedIdx = speedKbps.indexOf(currentSpeed)
-        spinnerSpeed.setSelection(if (speedIdx >= 0) speedIdx else speedOptions.size - 1)
-
-        val retryOptions = resources.getStringArray(R.array.retry_options)
-        val spinnerRetry = view.findViewById<Spinner>(R.id.spinner_retry)
-        spinnerRetry.adapter = ArrayAdapter(
-            this, android.R.layout.simple_spinner_item, retryOptions
-        ).apply {
-            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        }
-        spinnerRetry.setSelection(
-            StoragePrefs.maxRetries(this).coerceIn(0, retryOptions.size - 1)
-        )
-
-        val portInput = view.findViewById<EditText>(R.id.input_port)
-        portInput.setText(StoragePrefs.serverPort(this).toString())
-
-        val segmentOptions = resources.getStringArray(R.array.segment_options)
-        val segmentValues = intArrayOf(1, 2, 4, 6, 8)
-        val spinnerSegments = view.findViewById<Spinner>(R.id.spinner_segments)
-        spinnerSegments.adapter = ArrayAdapter(
-            this, android.R.layout.simple_spinner_item, segmentOptions
-        ).apply {
-            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        }
-        spinnerSegments.setSelection(
-            segmentValues.indexOf(StoragePrefs.segmentCount(this)).coerceAtLeast(0)
-        )
-
-        val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.action_settings)
-            .setView(view)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.save) { _, _ ->
-                applyStoragePath(view.findViewById(R.id.input_storage_path))
-                StoragePrefs.setBackgroundEnabled(this, checkBackground.isChecked)
-                StoragePrefs.setAutoStartEnabled(this, checkAutoStart.isChecked)
-                StoragePrefs.setBatteryExemptEnabled(this, checkBattery.isChecked)
-                StoragePrefs.setAutoSortEnabled(this, checkAutoSort.isChecked)
-                StoragePrefs.setSmallFirstEnabled(this, checkSmallFirst.isChecked)
-                StoragePrefs.setDeletePartialOnCancel(this, checkDeletePartial.isChecked)
-                StoragePrefs.setPinEnforced(this, checkPinEnforced.isChecked)
-                StoragePrefs.setFsFullAccessEnabled(this, checkFsFullAccess.isChecked)
-                StoragePrefs.setServerPin(
-                    this,
-                    pinInput.text?.toString()?.trim().orEmpty()
-                )
-                // PIN wajib tapi dikosongkan: hentikan server supaya tidak
-                // terbuka tanpa proteksi di jaringan.
-                if (StoragePrefs.isPinEnforced(this) &&
-                    StoragePrefs.getServerPin(this).isNullOrEmpty()
-                ) {
-                    StoragePrefs.setServerBackgroundEnabled(this, false)
-                    StoragePrefs.setServerAutoStartEnabled(this, false)
-                    runCatching { App.httpServer.stopServer() }
-                    stopServiceIfIdle()
-                }
-                if (checkBattery.isChecked) {
-                    requestBatteryExemption()
-                }
-                StoragePrefs.setMaxConcurrent(this, spinnerConcurrent.selectedItemPosition + 1)
-                val selSpeed = spinnerSpeed.selectedItemPosition
-                StoragePrefs.setSpeedLimitKbps(
-                    this,
-                    if (selSpeed < speedKbps.size) speedKbps[selSpeed] else currentSpeed
-                )
-                StoragePrefs.setMaxRetries(this, spinnerRetry.selectedItemPosition)
-                StoragePrefs.setSegmentCount(
-                    this,
-                    segmentValues[spinnerSegments.selectedItemPosition]
-                )
-                val newPort = portInput.text?.toString()?.trim()?.toIntOrNull()
-                if (newPort == null || newPort !in 1024..65535) {
-                    Toast.makeText(
-                        this, R.string.settings_port_invalid, Toast.LENGTH_LONG
-                    ).show()
-                } else {
-                    val oldPort = App.httpServer.listeningPort
-                    StoragePrefs.setServerPort(this, newPort)
-                    if (newPort != oldPort) {
-                        // NanoHTTPD mengunci port saat konstruksi, jadi server
-                        // dibuat ulang agar port baru benar-benar terpakai.
-                        App.restartHttpServer(this)
-                    }
-                }
-                updateServerStatus()
-            }
-            .show()
-        dialog.setOnDismissListener { clearActiveStorageUi() }
-    }
-
-    private fun showRemoteDialog() {
-        val server = App.httpServer
-        val view = layoutInflater.inflate(R.layout.dialog_remote, null)
-        val statusView = view.findViewById<TextView>(R.id.remote_status)
-        val urlsView = view.findViewById<TextView>(R.id.remote_urls)
-        val qrView = view.findViewById<ImageView>(R.id.remote_qr)
-        val switchView = view.findViewById<SwitchCompat>(R.id.remote_switch) ?: return
-
-        fun renderRemote() {
-            val storageBtn = view.findViewById<Button>(R.id.remote_storage_btn)
-            val needsStorage = when {
-                Build.VERSION.SDK_INT >= 30 -> !Environment.isExternalStorageManager()
-                Build.VERSION.SDK_INT >= 23 ->
-                    checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
-                        PackageManager.PERMISSION_GRANTED
-                else -> false
-            }
-            val storageWarn = if (needsStorage) {
-                "\n" + getString(R.string.remote_storage_warn)
-            } else {
-                ""
-            }
-            storageBtn.visibility = if (needsStorage) View.VISIBLE else View.GONE
-            storageBtn.setOnClickListener {
-                if (Build.VERSION.SDK_INT >= 30) {
-                    runCatching {
-                        startActivity(
-                            Intent(
-                                Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                                Uri.parse("package:$packageName")
-                            )
-                        )
-                    }.onFailure {
-                        runCatching {
-                            startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
-                        }
-                    }
-                } else {
-                    requestPermissionsIfNeeded()
-                }
-            }
-            if (App.httpServer.isAlive) {
-                statusView.setText(R.string.remote_running)
-                val urls = HttpControlServer.ipv4Addresses()
-                    .map { "http://$it:${App.httpServer.listeningPort}/" }
-                urlsView.text = urls.joinToString("\n").ifEmpty {
-                    getString(R.string.remote_no_url)
-                }
-                urls.firstOrNull()?.let { address ->
-                    generateQrCode(address, 640)?.let { qrView.setImageBitmap(it) }
-                }
-                qrView.visibility = View.VISIBLE
-                statusView.append(storageWarn)
-            } else {
-                statusView.setText(getString(R.string.remote_stopped) + storageWarn)
-                urlsView.text = getString(R.string.remote_no_url)
-                qrView.visibility = View.GONE
-            }
-        }
-
-        renderRemote()
-        switchView.isChecked = server.isAlive
-        var updating = false
-        switchView.setOnCheckedChangeListener { _, checked ->
-            if (updating) return@setOnCheckedChangeListener
-            if (checked) {
-                if (StoragePrefs.isPinEnforced(this) &&
-                    StoragePrefs.getServerPin(this).isNullOrEmpty()
-                ) {
-                    updating = true
-                    switchView.isChecked = false
-                    updating = false
-                    Snackbar.make(
-                        binding.root,
-                        R.string.remote_pin_required,
-                        Snackbar.LENGTH_LONG
-                    ).show()
-                    return@setOnCheckedChangeListener
-                }
-                // Nyalakan: simpan preferensi supaya tetap hidup setelah restart.
-                StoragePrefs.setServerBackgroundEnabled(this, true)
-                StoragePrefs.setServerAutoStartEnabled(this, true)
-                val result = runCatching { App.httpServer.startServer() }
-                if (result.isFailure) {
-                    StoragePrefs.setServerBackgroundEnabled(this, false)
-                    StoragePrefs.setServerAutoStartEnabled(this, false)
-                    updating = true
-                    switchView.isChecked = false
-                    updating = false
-                    Snackbar.make(
-                        binding.root,
-                        getString(
-                            R.string.remote_start_failed,
-                            App.httpServer.lastError ?: result.exceptionOrNull()?.message ?: "?"
-                        ),
-                        Snackbar.LENGTH_LONG
-                    ).show()
-                } else {
-                    Snackbar.make(
-                        binding.root,
-                        getString(R.string.remote_started, App.httpServer.listeningPort),
-                        Snackbar.LENGTH_SHORT
-                    ).show()
-                }
-            } else {
-                StoragePrefs.setServerBackgroundEnabled(this, false)
-                StoragePrefs.setServerAutoStartEnabled(this, false)
-                App.httpServer.stopServer()
-                stopServiceIfIdle()
-                Snackbar.make(binding.root, R.string.remote_stopped, Snackbar.LENGTH_SHORT).show()
-            }
-            updateServerStatus()
-            renderRemote()
-        }
-
-        val logView = view.findViewById<TextView>(R.id.remote_log)
-        val logScroll = view.findViewById<ScrollView>(R.id.remote_log_scroll)
-        val copyBtn = view.findViewById<Button>(R.id.remote_log_copy)
-        val clearBtn = view.findViewById<Button>(R.id.remote_log_clear)
-
-        fun refreshLog() {
-            val text = server.snapshotLog()
-            logView.text = text.ifEmpty { getString(R.string.remote_log_empty) }
-            logScroll.post { logScroll.fullScroll(View.FOCUS_DOWN) }
-        }
-        refreshLog()
-        copyBtn.setOnClickListener {
-            val text = server.snapshotLog().ifEmpty { getString(R.string.remote_log_empty) }
-            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            cm.setPrimaryClip(ClipData.newPlainText("server log", text))
-            Snackbar.make(binding.root, R.string.remote_log_copied, Snackbar.LENGTH_SHORT).show()
-        }
-        clearBtn.setOnClickListener {
-            server.clearLog()
-            refreshLog()
-        }
-
-        val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.action_remote)
-            .setView(view)
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-
-        // Polling log realtime selama dialog terbuka.
-        val pollLog = object : Runnable {
-            override fun run() {
-                if (!dialog.isShowing) return
-                refreshLog()
-                logView.postDelayed(this, 1000)
-            }
-        }
-        logView.postDelayed(pollLog, 1000)
-    }
-
-    private fun generateQrCode(content: String, size: Int): Bitmap? {
-        return runCatching {
-            val hints = mapOf(EncodeHintType.MARGIN to 1)
-            val matrix = QRCodeWriter().encode(
-                content, BarcodeFormat.QR_CODE, size, size, hints
-            )
-            val pixels = IntArray(size * size)
-            for (y in 0 until size) {
-                for (x in 0 until size) {
-                    pixels[y * size + x] = if (matrix[x, y]) Color.BLACK else Color.WHITE
-                }
-            }
-            Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888)
-        }.getOrNull()
     }
 
     private fun showLimitPriorityDialog(item: DownloadItem) {

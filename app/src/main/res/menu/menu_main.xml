@@ -6,25 +6,12 @@
         android:title="@string/clear_completed"
         app:showAsAction="never" />
     <item
-        android:id="@+id/action_storage"
-        android:title="@string/action_storage"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/action_remote"
-        android:title="@string/action_remote"
-        app:showAsAction="never" />
-    <item
         android:id="@+id/action_gallery"
         android:title="@string/gallery"
         app:showAsAction="never" />
     <item
         android:id="@+id/action_settings"
         android:title="@string/action_settings"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/action_autostart"
-        android:checkable="true"
-        android:title="@string/action_autostart"
         app:showAsAction="never" />
     <item
         android:id="@+id/action_export_log"

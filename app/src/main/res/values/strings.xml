@@ -244,6 +244,10 @@
     <string name="remote_storage_btn">Aktifkan akses file (izin penyimpanan)</string>
     <string name="remote_storage_warn">⚠ Izin Penyimpanan belum diberikan — transfer ke folder /sdcard akan gagal. Buka Pengaturan Android → Aplikasi → HttpDownloadManager → Izin → aktifkan Penyimpanan.</string>
     <string name="remote_pin_required">Setel PIN dulu di Pengaturan sebelum menyalakan server (untuk keamanan jaringan)</string>
+    <string name="settings_server_autostart">Server ikut aktif otomatis setelah perangkat restart</string>
+    <string name="settings_server_background_hint">Hidupkan server agar bisa diakses dari perangkat lain</string>
+    <string name="settings_section_storage">Penyimpanan</string>
+    <string name="settings_saved">Pengaturan disimpan</string>
     <string name="remote_log_label">Log server (realtime)</string>
     <string name="remote_log_copy">Salin</string>
     <string name="remote_log_clear">Bersihkan</string>

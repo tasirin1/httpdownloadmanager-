@@ -2170,6 +2170,7 @@ function updateToolbar(items) {
 
 let lastStructSig = '';
 let lastIdListSig = '';
+let lastRowSig = {};
 // Signature struktural: hanya berubah saat daftar/status item berubah.
 // Perubahan progres/kecepatan ditangani updateRows (tanpa render ulang penuh).
 function structSig(items) {
@@ -2215,7 +2216,8 @@ function rowSubHtml(it) {
     '</div>';
 }
 
-// Update ringan: hanya progres/kecepatan/ETA yang berubah -> tidak render ulang seluruh daftar.
+// Update ringan: hanya progres/kecepatan/ETA yang berubah -> tidak render ulang
+// seluruh daftar, dan baris yang tidak berubah di-skip (hemat DOM di HP lemah).
 function updateRows(items) {
   const list = document.getElementById('list');
   if (!list.querySelector('li[data-id]')) {
@@ -2227,6 +2229,9 @@ function updateRows(items) {
   items.forEach(function (it) {
     const li = rows[it.id];
     if (!li) return;
+    const sig = it.state + '|' + it.bytesDownloaded + '|' + it.speedBps + '|' + it.etaSeconds;
+    if (lastRowSig[it.id] === sig) return;
+    lastRowSig[it.id] = sig;
     const sub = li.querySelector('.item-sub');
     if (sub) sub.outerHTML = rowSubHtml(it);
   });
@@ -2235,6 +2240,7 @@ function updateRows(items) {
 }
 
 function rebuildList(items) {
+  lastRowSig = {};
   const list = document.getElementById('list');
   list.innerHTML = '';
   const idListSig = items.map(function (it) { return it.id + '|' + it.state; }).join(';');

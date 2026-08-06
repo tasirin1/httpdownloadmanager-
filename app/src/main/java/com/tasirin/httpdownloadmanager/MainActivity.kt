@@ -1,6 +1,7 @@
 package com.tasirin.httpdownloadmanager
 
 import android.Manifest
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -60,6 +61,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
@@ -619,6 +623,10 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             }
             R.id.action_settings -> {
                 showSettingsDialog()
+                true
+            }
+            R.id.action_export_log -> {
+                exportLog()
                 true
             }
             R.id.action_about -> {
@@ -1292,6 +1300,58 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val options = resources.getStringArray(R.array.sort_options)
         val label = options.getOrElse(sortMode) { options[0] }
         tv.text = getString(R.string.sort_by) + ": " + label
+    }
+
+    /** Ekspor log error (crash + error server) ke file .txt di folder Download. */
+    private fun exportLog() {
+        val logFile = File(filesDir, App.CRASH_LOG_FILE)
+        val content = if (logFile.isFile) logFile.readText() else ""
+        val header = buildString {
+            appendLine("=== HTTP Download Manager - Log Error ===")
+            appendLine("Waktu: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())}")
+            appendLine(
+                "Versi app: " + runCatching {
+                    packageManager.getPackageInfo(packageName, 0).versionName
+                }.getOrDefault("?")
+            )
+            appendLine("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+            appendLine("Perangkat: ${Build.MANUFACTURER} ${Build.MODEL}")
+            appendLine("Item di daftar: ${App.engine.items.value.size}")
+            appendLine()
+            append(if (content.isBlank()) "(Tidak ada log error tersimpan)\n" else content)
+        }
+        val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+        val ok = runCatching {
+            if (Build.VERSION.SDK_INT >= 29) {
+                val resolver = contentResolver
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, "httpdm-log-$stamp.txt")
+                    put(MediaStore.Downloads.MIME_TYPE, "text/plain")
+                    put(MediaStore.Downloads.RELATIVE_PATH, "Download/")
+                    put(MediaStore.Downloads.IS_PENDING, 1)
+                }
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    ?: return@runCatching false
+                runCatching {
+                    resolver.openOutputStream(uri)?.use { it.write(header.toByteArray()) }
+                }.onFailure { resolver.delete(uri, null, null) }
+                val done = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
+                resolver.update(uri, done, null, null) > 0
+            } else {
+                val dir = Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_DOWNLOADS
+                )
+                if (dir == null) return@runCatching false
+                if (!dir.isDirectory && !dir.mkdirs()) return@runCatching false
+                File(dir, "httpdm-log-$stamp.txt").writeText(header)
+                true
+            }
+        }.getOrDefault(false)
+        Toast.makeText(
+            this,
+            if (ok) R.string.log_exported else R.string.log_export_failed,
+            Toast.LENGTH_LONG
+        ).show()
     }
 
     private fun showAboutDialog() {

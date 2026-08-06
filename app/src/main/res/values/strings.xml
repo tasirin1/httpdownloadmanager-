@@ -74,6 +74,9 @@
     <string name="server_status_running">Server: aktif</string>
     <string name="server_status_stopped">Server: mati</string>
     <string name="action_about">Tentang</string>
+    <string name="action_export_log">Ekspor Log Error (.txt)</string>
+    <string name="log_exported">Log diekspor ke folder Download (httpdm-log-*.txt)</string>
+    <string name="log_export_failed">Gagal mengekspor log</string>
     <string name="about_title">Tentang Download Manager</string>
     <string name="about_version">Versi %1$s</string>
     <string name="about_author">Pembuat: Julius Rudi Tasirin</string>

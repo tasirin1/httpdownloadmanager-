@@ -74,6 +74,9 @@
     <string name="server_status_running">Server: active</string>
     <string name="server_status_stopped">Server: off</string>
     <string name="action_about">About</string>
+    <string name="action_export_log">Export Error Log (.txt)</string>
+    <string name="log_exported">Log exported to Download folder (httpdm-log-*.txt)</string>
+    <string name="log_export_failed">Failed to export log</string>
     <string name="about_title">About Download Manager</string>
     <string name="about_version">Version %1$s</string>
     <string name="about_author">Created by: Julius Rudi Tasirin</string>

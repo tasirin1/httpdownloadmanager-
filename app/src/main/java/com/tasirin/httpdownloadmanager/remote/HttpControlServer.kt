@@ -1633,7 +1633,13 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             launch {
                 runCatching {
                     App.engine.items.collect {
-                        if (sseClients.isNotEmpty()) pushFrame(buildPayload(true))
+                        // Throttle 1 dtk: cukup realtime tapi tidak membebani
+                        // perangkat lama (sebelumnya tiap 250ms + StatFs tiap push).
+                        if (sseClients.isNotEmpty() &&
+                            System.currentTimeMillis() - sseLastPushAt >= SSE_MIN_INTERVAL_MS
+                        ) {
+                            pushFrame(buildPayload(false))
+                        }
                     }
                 }
             }
@@ -1775,6 +1781,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         private const val MAX_LOGIN_ATTEMPTS = 5
         private const val LOGIN_LOCK_MS = 30_000L
         private const val FS_STATS_TTL_MS = 10_000L
+        private const val SSE_MIN_INTERVAL_MS = 1_000L
         private const val BATTERY_CACHE_MS = 3_000L
 
         fun ipv4Addresses(): List<String> = runCatching {

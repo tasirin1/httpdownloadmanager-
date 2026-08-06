@@ -27,6 +27,10 @@
         android:title="@string/action_autostart"
         app:showAsAction="never" />
     <item
+        android:id="@+id/action_export_log"
+        android:title="@string/action_export_log"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_about"
         android:title="@string/action_about"
         app:showAsAction="never" />

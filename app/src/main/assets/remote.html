@@ -1170,7 +1170,7 @@ function renderFs(items) {
         if (FS_MEDIA_EXTS.indexOf(extOf(it.name).toLowerCase()) >= 0) {
           actions += '<a class="fs-stream" href="' + media + '" target="_blank">&#9654; Stream</a>';
         }
-        actions += '<a class="fs-dl" href="' + media + '?dl=1" download>&#11015; Download</a>';
+        actions += '<a class="fs-dl" href="' + media + '?dl=1" download data-fsdl="1">&#11015; Download</a>';
       } else {
         actions += '<a class="fs-dl" href="' + API + '/api/fs_zip?path=' +
           encodeURIComponent(it.path) + '" download title="Download folder sebagai ZIP">&#128230; ZIP</a>';
@@ -1674,6 +1674,10 @@ function fsUploadJobsFrom(files) {
 
 function startFsUpload(jobs) {
   if (!jobs.length) return;
+  if (fsUploading) {
+    mmShowToast('Upload sedang berjalan, tunggu selesai.');
+    return;
+  }
   const btn = document.getElementById('fsUploadBtn');
   btn.disabled = true;
   uploadFiles(
@@ -1740,6 +1744,26 @@ fsUploadDir.addEventListener('change', function () {
   const jobs = fsUploadJobsFrom(fsUploadDir.files);
   if (!jobs.length) return;
   startFsUpload(jobs);
+});
+
+// Unduh file: cek dulu (Range 1 byte) supaya error server muncul sebagai pesan,
+// bukan terunduh sebagai file teks kecil yang membingungkan.
+fsList.addEventListener('click', function (e) {
+  const a = e.target.closest('a.fs-dl[data-fsdl]');
+  if (!a || a.dataset.checked === '1') return;
+  e.preventDefault();
+  fetch(a.href, { headers: { Range: 'bytes=0-0' } }).then(function (r) {
+    if (r.ok || r.status === 206) {
+      a.dataset.checked = '1';
+      a.click();
+    } else {
+      return r.text().then(function (t) {
+        throw new Error('HTTP ' + r.status + (t ? ' — ' + t.slice(0, 200) : ''));
+      });
+    }
+  }).catch(function (err) {
+    mmShowToast('Gagal unduh: ' + err.message);
+  });
 });
 
 fsList.addEventListener('dragover', function (e) {

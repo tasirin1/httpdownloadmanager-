@@ -553,6 +553,20 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         chunks: Int,
         length: Long
     ): Response {
+        val id = session.parms["id"]?.trim()?.take(64)
+            ?: sha256("$name|$folderPath").take(16)
+        // Upload sudah selesai / sedang difinalisasi: balas cepat. Body tetap
+        // dibaca & dibuang supaya koneksi keep-alive tidak rusak dan browser
+        // tidak menganggap permintaan gagal (menutup koneksi saat body masih
+        // dikirim = XHR error di client).
+        completedUploads[id]?.let { done ->
+            drainBody(session)
+            return jsonResponse(JSONObject().put("ok", true).put("name", done.first))
+        }
+        finalizingUploads[id]?.let { pendingName ->
+            drainBody(session)
+            return jsonResponse(JSONObject().put("ok", true).put("pending", true).put("name", pendingName))
+        }
         if (length > MAX_UPLOAD_BYTES) {
             return jsonResponse(
                 JSONObject().put("ok", false)
@@ -569,19 +583,6 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             ?: chunkIdx.toLong() * DEFAULT_CHUNK_BYTES
         if (offset < 0 || offset > MAX_UPLOAD_BYTES) {
             return jsonResponse(JSONObject().put("ok", false).put("error", "offset tidak valid"))
-        }
-        val id = session.parms["id"]?.trim()?.take(64)
-            ?: sha256("$name|$folderPath").take(16)
-        // Upload sudah selesai / sedang difinalisasi: balas cepat tanpa
-        // menyentuh file tmp. Body tidak dibaca, jadi koneksi ditutup supaya
-        // keep-alive tidak rusak.
-        completedUploads[id]?.let { done ->
-            return jsonResponse(JSONObject().put("ok", true).put("name", done.first))
-                .also { it.addHeader("Connection", "close") }
-        }
-        finalizingUploads[id]?.let { pendingName ->
-            return jsonResponse(JSONObject().put("ok", true).put("pending", true).put("name", pendingName))
-                .also { it.addHeader("Connection", "close") }
         }
         val tmp = File(context.cacheDir, "up_$id.tmp")
         var resultName = name
@@ -646,7 +647,23 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             }
             jsonResponse(JSONObject().put("ok", true).put("name", resultName))
         }.getOrElse {
+            // Simpan jejak biar bisa dicek lewat Ekspor Log Error.
+            (it as? Exception)?.let { e -> logError(e) }
             jsonResponse(JSONObject().put("ok", false).put("error", it.message ?: "gagal upload"))
+        }
+    }
+
+    private fun drainBody(session: IHTTPSession) {
+        val length = (session.headers["content-length"]?.toLongOrNull() ?: 0L)
+            .coerceAtMost(MAX_UPLOAD_BYTES)
+        if (length <= 0) return
+        val buffer = ByteArray(64 * 1024)
+        var remaining = length
+        while (remaining > 0) {
+            val chunk = minOf(buffer.size.toLong(), remaining).toInt()
+            val read = session.inputStream.read(buffer, 0, chunk)
+            if (read == -1) break
+            remaining -= read
         }
     }
 

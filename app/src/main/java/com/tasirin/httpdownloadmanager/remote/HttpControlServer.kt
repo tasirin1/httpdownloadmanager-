@@ -1250,9 +1250,15 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
 
     private fun galleryJson(session: IHTTPSession): Response {
         val q = session.parms["q"]?.trim()?.lowercase().orEmpty()
+        val type = session.parms["type"]?.trim().orEmpty()
         val page = (session.parms["page"]?.toIntOrNull() ?: 0).coerceAtLeast(0)
         val all = scannedGallery().filter {
-            q.isEmpty() || it.name.lowercase().contains(q)
+            (q.isEmpty() || it.name.lowercase().contains(q)) &&
+                when (type) {
+                    "video" -> it.isVideo
+                    "image" -> !it.isVideo
+                    else -> true
+                }
         }
         val start = (page * GALLERY_PAGE_SIZE).coerceAtMost(all.size)
         val end = minOf(start + GALLERY_PAGE_SIZE, all.size)

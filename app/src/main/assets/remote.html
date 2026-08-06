@@ -406,6 +406,11 @@
   <div id="galleryView" class="hidden">
     <div class="gal-toolbar"><h2>&#128247; Galeri Device</h2><span class="count" id="galleryCount"></span></div>
     <div class="gal-search"><input id="gallerySearch" type="search" placeholder="Cari foto/video…" autocomplete="off"></div>
+    <div class="seg" id="galleryFilters">
+      <button type="button" class="on" data-gal="all">Semua</button>
+      <button type="button" data-gal="image">Foto</button>
+      <button type="button" data-gal="video">Video</button>
+    </div>
     <div id="galleryStatus"></div>
     <div id="galleryGrid" class="gal-grid"></div>
   </div>
@@ -679,6 +684,19 @@ let galleryPage = 0;
 let galleryHasMore = false;
 let galleryLoading = false;
 const gallerySearch = document.getElementById('gallerySearch');
+let galleryFilter = 'all';
+const galleryFilters = document.getElementById('galleryFilters');
+if (galleryFilters) {
+  galleryFilters.addEventListener('click', function (e) {
+    const btn = e.target.closest('button[data-gal]');
+    if (!btn) return;
+    galleryFilter = btn.getAttribute('data-gal');
+    galleryFilters.querySelectorAll('button').forEach(function (b) {
+      b.classList.toggle('on', b === btn);
+    });
+    loadGallery(true);
+  });
+}
 const mediaModal = document.getElementById('mediaModal');
 const mmBody = document.getElementById('mmBody');
 const mmImage = document.getElementById('mmImage');
@@ -829,6 +847,7 @@ async function loadGallery(reset) {
     const params = new URLSearchParams();
     params.set('page', reset ? 0 : galleryPage);
     if (q) params.set('q', q);
+    if (galleryFilter && galleryFilter !== 'all') params.set('type', galleryFilter);
     const res = await fetch(API + '/api/gallery?' + params.toString());
     if (res.status === 401) {
       galleryStatus.textContent = 'PIN diperlukan. Muat ulang halaman untuk login.';
@@ -846,10 +865,11 @@ async function loadGallery(reset) {
       galleryGrid.innerHTML = '';
       galleryCount.textContent = (data.total || items.length) + ' file';
       if (!items.length) {
+        const filtered = galleryFilter !== 'all';
         galleryGrid.innerHTML = emptyHtml(
           '\u{1F50D}',
-          q ? 'Tidak ada hasil' : 'Belum ada foto/video',
-          q ? 'Coba kata kunci lain.' : 'File di folder download akan muncul di sini.'
+          q ? 'Tidak ada hasil' : (filtered ? 'Tidak ada ' + (galleryFilter === 'video' ? 'video' : 'foto') : 'Belum ada foto/video'),
+          q ? 'Coba kata kunci lain.' : (filtered ? 'Coba filter lain atau ubah kata kunci.' : 'File di folder download akan muncul di sini.')
         );
         galleryHasMore = false;
         galleryLoading = false;

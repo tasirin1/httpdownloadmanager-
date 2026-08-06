@@ -19,11 +19,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** Halaman khusus log server realtime: layar penuh, auto-scroll bisa dimatikan. */
+/** Halaman khusus log server realtime: layar penuh, auto-scroll default mati. */
 class LogActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLogBinding
-    private var logAutoScroll = true
+    private var logAutoScroll = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         runCatching { installSplashScreen() }

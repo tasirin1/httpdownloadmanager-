@@ -617,6 +617,24 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         }
     }
 
+    private fun showAboutDialog() {
+        val info = runCatching {
+            packageManager.getPackageInfo(packageName, 0)
+        }.getOrNull()
+        val version = info?.versionName ?: "1.0"
+        val build = info?.versionCode ?: 0
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.about_title)
+            .setMessage(
+                getString(R.string.about_version, version) + " (build $build)\n" +
+                    getString(R.string.about_author) + "\n" +
+                    getString(R.string.about_repo) + "\n\n" +
+                    getString(R.string.about_changelog)
+            )
+            .setPositiveButton(R.string.ok, null)
+            .show()
+    }
+
     override fun onAction(item: DownloadItem, action: DownloadAdapter.Action) {
         when (action) {
             DownloadAdapter.Action.PAUSE -> App.engine.pause(item.id)

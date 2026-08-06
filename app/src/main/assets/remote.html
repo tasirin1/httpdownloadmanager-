@@ -1474,7 +1474,7 @@ document.getElementById('fsMkdirBtn').addEventListener('click', async function (
   });
 });
 
-const UPLOAD_CHUNK = 2 * 1024 * 1024;
+const UPLOAD_CHUNK = 512 * 1024;
 
 let fsUploading = false;
 
@@ -1517,46 +1517,49 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
       const end = Math.min(start + UPLOAD_CHUNK, file.size);
       lastProgress = Math.max(lastProgress, sentBytes + start);
       lastTime = Date.now();
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', API + '/api/upload?name=' + encodeURIComponent(file.name) +
-        '&path=' + encodeURIComponent(target) +
-        '&id=' + encodeURIComponent(id) +
-        '&chunk=' + chunkIdx + '&chunks=' + chunks +
-        '&offset=' + start);
-      xhr.timeout = 90000;
-      xhr.upload.onprogress = function (e) {
-        if (!e.lengthComputable) return;
-        const now = Date.now();
-        const progress = Math.max(lastProgress, sentBytes + start + e.loaded);
-        const dt = (now - lastTime) / 1000;
-        if (dt >= 0.3 && progress > lastProgress) {
-          speed = (progress - lastProgress) / dt;
-          lastTime = now;
-          lastProgress = progress;
-        }
-        const pct = totalBytes > 0 ? Math.round(progress * 100 / totalBytes) : 0;
-        progressBar.style.width = pct + '%';
-        progressPct.textContent = pct + '% \u00b7 ' + fmtSpeed(speed);
-      };
-      xhr.onload = function () {
-        let ok = false;
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            ok = xhr.responseText && JSON.parse(xhr.responseText).ok;
-          } catch (e) {}
-        }
-        if (ok) {
-          chunkIdx++;
-          chunkFails = 0;
-          nextChunk();
-        } else {
-          retryChunk();
-        }
-      };
-      xhr.onerror = function () { retryChunk(); };
-      xhr.onabort = function () { retryChunk(); };
-      xhr.ontimeout = function () { retryChunk(); };
-      xhr.send(file.slice(start, end));
+      // Jeda kecil antar chunk supaya tidak membanjiri server/router.
+      setTimeout(function () {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', API + '/api/upload?name=' + encodeURIComponent(file.name) +
+          '&path=' + encodeURIComponent(target) +
+          '&id=' + encodeURIComponent(id) +
+          '&chunk=' + chunkIdx + '&chunks=' + chunks +
+          '&offset=' + start);
+        xhr.timeout = 90000;
+        xhr.upload.onprogress = function (e) {
+          if (!e.lengthComputable) return;
+          const now = Date.now();
+          const progress = Math.max(lastProgress, sentBytes + start + e.loaded);
+          const dt = (now - lastTime) / 1000;
+          if (dt >= 0.3 && progress > lastProgress) {
+            speed = (progress - lastProgress) / dt;
+            lastTime = now;
+            lastProgress = progress;
+          }
+          const pct = totalBytes > 0 ? Math.round(progress * 100 / totalBytes) : 0;
+          progressBar.style.width = pct + '%';
+          progressPct.textContent = pct + '% \u00b7 ' + fmtSpeed(speed);
+        };
+        xhr.onload = function () {
+          let ok = false;
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              ok = xhr.responseText && JSON.parse(xhr.responseText).ok;
+            } catch (e) {}
+          }
+          if (ok) {
+            chunkIdx++;
+            chunkFails = 0;
+            nextChunk();
+          } else {
+            retryChunk();
+          }
+        };
+        xhr.onerror = function () { retryChunk(); };
+        xhr.onabort = function () { retryChunk(); };
+        xhr.ontimeout = function () { retryChunk(); };
+        xhr.send(file.slice(start, end));
+      }, chunkIdx === 0 ? 0 : 250);
     }
 
     function retryChunk() {
@@ -1585,7 +1588,8 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
       if (done) done(failed.length === 0, failed);
       return;
     }
-    uploadOne(jobs[idx], 1);
+    // Napas sejenak antar file supaya server tidak dibanjiri beruntun.
+    setTimeout(function () { uploadOne(jobs[idx], 1); }, 1200);
   }
 
   uploadOne(jobs[0], 1);

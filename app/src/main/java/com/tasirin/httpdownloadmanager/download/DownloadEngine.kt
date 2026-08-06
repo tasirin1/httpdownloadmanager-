@@ -563,6 +563,31 @@ class DownloadEngine(private val context: Context) {
     private fun handleFailure(id: String, message: String?) {
         val item = _items.value.find { it.id == id } ?: return
         speedTracker.reset(id)
+        // Server tidak mendukung Range: turunkan ke mode 1 koneksi, bukan gagal.
+        if (item.segments.isNotEmpty() &&
+            message?.contains("tidak mendukung range", ignoreCase = true) == true
+        ) {
+            retryAttempts.remove(id)
+            updateItem(id) {
+                it.copy(
+                    segments = emptyList(),
+                    state = DownloadState.PENDING,
+                    error = null,
+                    autoResume = true,
+                    bytesDownloaded = 0,
+                    totalBytes = 0,
+                    speedBps = 0,
+                    etaSeconds = 0
+                )
+            }
+            scope.launch {
+                delay(1_500)
+                if (_items.value.find { it.id == id }?.state == DownloadState.PENDING) {
+                    attemptStart(id)
+                }
+            }
+            return
+        }
         val maxRetries = StoragePrefs.maxRetries(context)
         val attempts = (retryAttempts[id] ?: 0) + 1
         // Fitur mirror: gagal dari URL aktif -> pindah ke URL cadangan berikutnya.
@@ -584,6 +609,22 @@ class DownloadEngine(private val context: Context) {
                     attemptStart(id)
                 }
             }
+            return
+        }
+        // Error permanen (4xx selain 408/425/429, SSL/cert): langsung FAILED.
+        // Diletakkan setelah mirror supaya URL cadangan tetap diberi kesempatan.
+        if (isPermanentError(message)) {
+            retryAttempts.remove(id)
+            updateItem(id) {
+                it.copy(
+                    state = DownloadState.FAILED,
+                    error = message,
+                    autoResume = false,
+                    speedBps = 0,
+                    etaSeconds = 0
+                )
+            }
+            flushSave()
             return
         }
         if (maxRetries > 0 && attempts <= maxRetries && item.autoResume) {
@@ -630,6 +671,21 @@ class DownloadEngine(private val context: Context) {
         }
     }
 
+    private fun isPermanentError(message: String?): Boolean {
+        if (message.isNullOrBlank()) return false
+        val m = message.lowercase()
+        if (m.contains("ssl") || m.contains("certificate") || m.contains("handshake") ||
+            m.contains("pkix") || m.contains("file not found") || m.contains("tidak ditemukan")
+        ) {
+            return true
+        }
+        val code = Regex("http\\s+(\\d{3})").find(m)?.groupValues?.get(1)?.toIntOrNull()
+        if (code == null) return false
+        // 4xx permanen; 408/425/429 = sementara (boleh retry).
+        if (code in 400..499) return code != 408 && code != 425 && code != 429
+        return false
+    }
+
     private fun isNetworkError(message: String?): Boolean {
         if (message.isNullOrBlank()) return false
         val m = message.lowercase()
@@ -668,32 +724,36 @@ class DownloadEngine(private val context: Context) {
         var useSegments = false
         var segmentedTotal = 0L
         var probeHeaders: ServerHeaders? = null
-        val probe = URL(item.url).openConnection() as HttpURLConnection
-        try {
-            probe.requestMethod = "HEAD"
-            probe.connectTimeout = 15_000
-            probe.readTimeout = 30_000
-            probe.setRequestProperty("User-Agent", "HttpDownloadManager/1.0")
-            applyAuthHeaders(probe, item)
-            probe.connect()
-            val code = probe.responseCode
-            if (code in 200..299) {
-                probeHeaders = headersOf(probe)
-                val total = contentLength(probe)
-                val ranges = probe.getHeaderField("Accept-Ranges") == "bytes"
-                if (ranges && total >= SEGMENT_MIN_BYTES &&
-                    StoragePrefs.segmentCount(context) > 1
-                ) {
-                    useSegments = true
-                    segmentedTotal = total
+        // Resume: lewati probe HEAD (hemat 1 koneksi ekstra) — langsung GET
+        // dengan Range; runSingle menangani server yang tidak mendukung resume.
+        if (item.bytesDownloaded <= 0) {
+            val probe = URL(item.url).openConnection() as HttpURLConnection
+            try {
+                probe.requestMethod = "HEAD"
+                probe.connectTimeout = 15_000
+                probe.readTimeout = 30_000
+                probe.setRequestProperty("User-Agent", "HttpDownloadManager/1.0")
+                applyAuthHeaders(probe, item)
+                probe.connect()
+                val code = probe.responseCode
+                if (code in 200..299) {
+                    probeHeaders = headersOf(probe)
+                    val total = contentLength(probe)
+                    val ranges = probe.getHeaderField("Accept-Ranges") == "bytes"
+                    if (ranges && total >= SEGMENT_MIN_BYTES &&
+                        StoragePrefs.segmentCount(context) > 1
+                    ) {
+                        useSegments = true
+                        segmentedTotal = total
+                    }
                 }
+            } catch (_: Exception) {
+                // HEAD tidak didukung; lanjut dengan GET biasa
+            } finally {
+                probe.disconnect()
             }
-        } catch (_: Exception) {
-            // HEAD tidak didukung; lanjut dengan GET biasa
-        } finally {
-            probe.disconnect()
+            coroutineContext.ensureActive()
         }
-        coroutineContext.ensureActive()
 
         if (useSegments) {
             runSegmented(item, saver, throttle, segmentedTotal, probeHeaders)
@@ -1016,7 +1076,7 @@ class DownloadEngine(private val context: Context) {
                     msg.contains("tidak lengkap", ignoreCase = true)
                 if (!transient || attempt >= maxAttempts) throw e
                 attempt++
-                delay(attempt * 2_000L)
+                delay(attempt * 5_000L)
                 // Mulai ulang dari ukuran file yang benar-benar tersimpan.
                 downloaded = partial.length()
                 updateSegment(id, segment.index, downloaded)
@@ -1252,8 +1312,8 @@ class DownloadEngine(private val context: Context) {
 
     companion object {
         private const val BUFFER_SIZE = 64 * 1024
-        private const val SEGMENT_MIN_BYTES = 5L * 1024 * 1024
-        private const val RETRY_DELAY_1_MS = 5_000L
+        private const val SEGMENT_MIN_BYTES = 20L * 1024 * 1024
+        private const val RETRY_DELAY_1_MS = 15_000L
         private const val RETRY_DELAY_MAX_MS = 300_000L
         private const val MIN_FREE_BYTES = 2L * 1024 * 1024
         private const val SAVE_DEBOUNCE_MS = 400L

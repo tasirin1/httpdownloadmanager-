@@ -153,7 +153,7 @@ object MediaLibrary {
                     token = tokenForPath(f.absolutePath),
                     filePath = f.absolutePath,
                     isPartial = isPartial,
-                    progressPercent = if (isPartial) partialProgress[name] ?: -1 else -1
+                    progressPercent = -1
                 )
             )
         }

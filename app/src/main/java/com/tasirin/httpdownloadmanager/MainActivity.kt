@@ -1,6 +1,8 @@
 package com.tasirin.httpdownloadmanager
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -28,6 +30,7 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
@@ -1123,11 +1126,43 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             renderRemote()
         }
 
-        MaterialAlertDialogBuilder(this)
+        val logView = view.findViewById<TextView>(R.id.remote_log)
+        val logScroll = view.findViewById<ScrollView>(R.id.remote_log_scroll)
+        val copyBtn = view.findViewById<Button>(R.id.remote_log_copy)
+        val clearBtn = view.findViewById<Button>(R.id.remote_log_clear)
+
+        fun refreshLog() {
+            val text = server.snapshotLog()
+            logView.text = text.ifEmpty { getString(R.string.remote_log_empty) }
+            logScroll.post { logScroll.fullScroll(View.FOCUS_DOWN) }
+        }
+        refreshLog()
+        copyBtn.setOnClickListener {
+            val text = server.snapshotLog().ifEmpty { getString(R.string.remote_log_empty) }
+            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            cm.setPrimaryClip(ClipData.newPlainText("server log", text))
+            Snackbar.make(binding.root, R.string.remote_log_copied, Snackbar.LENGTH_SHORT).show()
+        }
+        clearBtn.setOnClickListener {
+            server.clearLog()
+            refreshLog()
+        }
+
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle(R.string.action_remote)
             .setView(view)
             .setNegativeButton(R.string.cancel, null)
             .show()
+
+        // Polling log realtime selama dialog terbuka.
+        val pollLog = object : Runnable {
+            override fun run() {
+                if (!dialog.isShowing) return
+                refreshLog()
+                logView.postDelayed(this, 1000)
+            }
+        }
+        logView.postDelayed(pollLog, 1000)
     }
 
     private fun generateQrCode(content: String, size: Int): Bitmap? {

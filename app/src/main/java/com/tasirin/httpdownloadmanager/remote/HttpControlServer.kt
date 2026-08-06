@@ -87,9 +87,12 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     private val finalizingUploads = ConcurrentHashMap<String, String>()
     private val failedUploads = ConcurrentHashMap<String, Pair<String, Long>>()
     @Volatile private var batteryCache: Pair<Long, Pair<Int, Boolean>>? = null
+    private val logLock = Any()
+    private val logBuffer = ArrayDeque<String>()
 
     override fun serve(session: IHTTPSession): Response {
-        return try {
+        val startedAt = System.currentTimeMillis()
+        val response = try {
             when {
                 session.method == Method.POST && session.uri == "/api/login" -> login(session)
                 session.method == Method.GET && session.uri == "/api/logout" -> logout()
@@ -129,12 +132,24 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             }
         } catch (e: Exception) {
             logError(e)
+            appendLog("ERROR ${e.message}")
             newFixedLengthResponse(
                 Response.Status.INTERNAL_ERROR,
                 "text/plain; charset=utf-8",
                 "Error: ${e.message}"
             )
         }
+        appendRequestLog(session, response, System.currentTimeMillis() - startedAt)
+        return response
+    }
+
+    private fun appendRequestLog(session: IHTTPSession, response: Response, elapsedMs: Long) {
+        val query = session.queryString?.take(160)?.let { "?$it" }.orEmpty()
+        val remote = session.remoteIpAddress.orEmpty()
+        appendLog(
+            "${session.method.name} ${session.uri}$query -> ${response.status.requestURI} " +
+                "(${elapsedMs}ms) $remote"
+        )
     }
 
     fun startServer() {
@@ -561,19 +576,23 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         // dikirim = XHR error di client).
         completedUploads[id]?.let { done ->
             drainBody(session)
+            appendLog("UPLOAD #$id chunk ${chunkIdx + 1}/$chunks sudah selesai -> ok")
             return jsonResponse(JSONObject().put("ok", true).put("name", done.first))
         }
         finalizingUploads[id]?.let { pendingName ->
             drainBody(session)
+            appendLog("UPLOAD #$id chunk ${chunkIdx + 1}/$chunks sedang finalisasi -> pending")
             return jsonResponse(JSONObject().put("ok", true).put("pending", true).put("name", pendingName))
         }
         if (length > MAX_UPLOAD_BYTES) {
+            appendLog("UPLOAD #$id chunk ${chunkIdx + 1}/$chunks TOLAK: potongan terlalu besar")
             return jsonResponse(
                 JSONObject().put("ok", false)
                     .put("error", "Potongan terlalu besar (maks ${MAX_UPLOAD_MB} MB)")
             )
         }
         if (App.engine.freeSpaceBytes() < length) {
+            appendLog("UPLOAD #$id chunk ${chunkIdx + 1}/$chunks TOLAK: penyimpanan tidak cukup")
             return jsonResponse(
                 JSONObject().put("ok", false)
                     .put("error", "Penyimpanan tidak cukup untuk upload")
@@ -582,8 +601,10 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         val offset = session.parms["offset"]?.toLongOrNull()
             ?: chunkIdx.toLong() * DEFAULT_CHUNK_BYTES
         if (offset < 0 || offset > MAX_UPLOAD_BYTES) {
+            appendLog("UPLOAD #$id chunk ${chunkIdx + 1}/$chunks TOLAK: offset tidak valid")
             return jsonResponse(JSONObject().put("ok", false).put("error", "offset tidak valid"))
         }
+        appendLog("UPLOAD #$id chunk ${chunkIdx + 1}/$chunks terima: $name (${length}B offset=$offset)")
         val tmp = File(context.cacheDir, "up_$id.tmp")
         var resultName = name
         return runCatching {
@@ -596,9 +617,12 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                         copyUploadBody(session, length, RandomAccessOutputStream(raf))
                     }
                 }
-                !tmp.isFile -> return jsonResponse(
-                    JSONObject().put("ok", false).put("error", "Upload harus dimulai dari potongan pertama")
-                )
+                !tmp.isFile -> {
+                    appendLog("UPLOAD #$id chunk ${chunkIdx + 1}/$chunks GAGAL: harus mulai dari potongan pertama")
+                    return jsonResponse(
+                        JSONObject().put("ok", false).put("error", "Upload harus dimulai dari potongan pertama")
+                    )
+                }
                 else -> {
                     // Tulis di offset persis: retry potongan sama tidak menggandakan data.
                     RandomAccessFile(tmp, "rw").use { raf ->
@@ -627,14 +651,17 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                 // tujuan di background supaya client tidak menunggu lama dan
                 // tidak memicu retry (sebelumnya: potongan terakhir lambat ->
                 // timeout -> kirim ulang -> proses ganda -> "coba lagi" terus).
+                appendLog("UPLOAD #$id chunk terakhir diterima -> memfinalisasi sebagai $finalName")
                 serverScope.launch {
                     try {
                         App.engine.importStream(finalName, storage, folderPath, tmp.length()) { out ->
                             tmp.inputStream().use { it.copyTo(out) }
                         }
                         completedUploads[id] = finalName to System.currentTimeMillis()
+                        appendLog("UPLOAD #$id SELESAI -> $finalName")
                     } catch (e: Exception) {
                         failedUploads[id] = (e.message ?: "finalisasi gagal") to System.currentTimeMillis()
+                        appendLog("UPLOAD #$id finalisasi GAGAL: ${e.message}")
                         logError(e)
                     } finally {
                         tmp.delete()
@@ -645,9 +672,11 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     JSONObject().put("ok", true).put("pending", true).put("name", finalName)
                 )
             }
+            appendLog("UPLOAD #$id chunk ${chunkIdx + 1}/$chunks OK ($resultName)")
             jsonResponse(JSONObject().put("ok", true).put("name", resultName))
         }.getOrElse {
             // Simpan jejak biar bisa dicek lewat Ekspor Log Error.
+            appendLog("UPLOAD #$id chunk ${chunkIdx + 1}/$chunks GAGAL: ${it.message}")
             (it as? Exception)?.let { e -> logError(e) }
             jsonResponse(JSONObject().put("ok", false).put("error", it.message ?: "gagal upload"))
         }
@@ -1835,6 +1864,18 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         out.toByteArray()
     }.getOrNull()
 
+    private fun appendLog(message: String) {
+        synchronized(logLock) {
+            val stamp = SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date())
+            logBuffer.addLast("$stamp $message")
+            while (logBuffer.size > MAX_REALTIME_LOG_LINES) logBuffer.removeFirst()
+        }
+    }
+
+    fun snapshotLog(): String = synchronized(logLock) { logBuffer.joinToString("\n") }
+
+    fun clearLog() = synchronized(logLock) { logBuffer.clear() }
+
     private fun logError(e: Exception) {
         runCatching {
             val file = File(context.filesDir, App.CRASH_LOG_FILE)
@@ -1859,6 +1900,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
 
     companion object {
         private const val SERVER_SOCKET_TIMEOUT_MS = 60_000
+        private const val MAX_REALTIME_LOG_LINES = 300
         private const val FS_PREFIX = "f:"
         private const val MS_PREFIX = "m:"
         private const val MAX_BODY_SIZE = 4L * 1024 * 1024

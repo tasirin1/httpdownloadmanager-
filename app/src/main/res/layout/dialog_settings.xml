@@ -166,7 +166,6 @@
             android:layout_height="wrap_content" />
 
         <include
-            android:id="@+id/storage_section"
-            layout="@layout/view_storage_section" />
+                layout="@layout/view_storage_section" />
     </LinearLayout>
 </ScrollView>

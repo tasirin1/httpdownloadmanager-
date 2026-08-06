@@ -241,5 +241,7 @@
 
     <string name="settings_pin_enforced">Require PIN when server runs</string>
     <string name="settings_fs_full_access">Full access to main storage (file manager)</string>
+    <string name="remote_storage_btn">Enable file access (storage permission)</string>
+    <string name="remote_storage_warn">⚠ Storage permission not granted — transfers to /sdcard folders will fail. Open Android Settings → Apps → HttpDownloadManager → Permissions → enable Storage.</string>
     <string name="remote_pin_required">Set a PIN in Settings first before starting the server (for network security)</string>
 </resources>

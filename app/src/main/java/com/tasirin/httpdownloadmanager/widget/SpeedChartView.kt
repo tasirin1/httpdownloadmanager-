@@ -7,7 +7,6 @@ import android.graphics.Path
 import android.util.AttributeSet
 import android.view.View
 import com.tasirin.httpdownloadmanager.util.Formats
-import kotlin.math.max
 
 /** Grafik kecepatan unduhan realtime (60 detik terakhir). */
 class SpeedChartView(context: Context, attrs: AttributeSet? = null) : View(context, attrs) {

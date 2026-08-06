@@ -133,26 +133,26 @@
   .fs-row .fs-main { flex: 1 1 140px; min-width: 0; }
   .fs-row .fs-name { font-weight: 700; font-size: 13px; word-break: break-all; }
   .fs-row .fs-meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
-  .fs-row .fs-actions { flex: 1 1 100%; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
-  .fs-row .fs-actions a, .fs-row .fs-actions button { padding: 4px 10px; font-size: 11.5px; font-weight: 600; text-decoration: none; border-radius: 999px; border: 1px solid transparent; cursor: pointer; transition: all .15s ease; }
+  .fs-row .fs-actions { flex: 1 1 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 6px; margin-top: 2px; }
+  .fs-row .fs-actions a, .fs-row .fs-actions button { padding: 5px 10px; font-size: 11.5px; font-weight: 600; text-decoration: none; border-radius: 999px; border: 1px solid transparent; cursor: pointer; transition: all .15s ease; text-align: center; white-space: nowrap; }
   .fs-actions a, .fs-actions button { background: var(--bg-soft); color: var(--ink); }
   .fs-actions a.fs-stream { background: var(--green-bg); color: var(--green); }
   .fs-actions a.fs-stream:hover { border-color: var(--green); }
   .fs-actions a.fs-dl { background: var(--amber-bg); color: var(--amber); }
   .fs-actions a.fs-dl:hover { border-color: var(--amber); }
   .fs-actions button:hover { border-color: var(--muted); }
-  .fs-actions button.danger { color: var(--red); margin-left: auto; }
+  .fs-actions button.danger { color: var(--red); }
   .fs-actions button.danger:hover { background: var(--red-bg); border-color: var(--red); }
   .fs-root { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; margin-bottom: 8px; box-shadow: var(--shadow-sm); transition: border-color .15s ease; }
   .fs-root:hover { border-color: var(--primary); }
   .fs-root .fs-rcap small { display: block; color: var(--muted); font-size: 12px; word-break: break-all; margin-top: 2px; }
   .btn-ghost:disabled { opacity: .45; cursor: default; }
-  .fs-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .fs-tools button { flex: 1 1 0; min-width: 0; padding: 8px 12px; font-size: 12.5px; font-weight: 600; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; transition: all .15s ease; }
+  .fs-tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 8px; }
+  .fs-tools button { width: 100%; min-width: 0; padding: 8px 12px; font-size: 12.5px; font-weight: 600; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; transition: all .15s ease; }
   .fs-tools button:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
-  .fs-loc-wrap { flex: 0 0 auto; display: flex; }
-  .fs-loc-wrap select { width: 150px; max-width: 34vw; padding: 7px 8px; font-size: 12px; font-weight: 600; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; outline: none; }
-  .fs-up-wrap { position: relative; flex: 1 1 0; min-width: 0; display: flex; }
+  .fs-loc-wrap { min-width: 0; display: flex; }
+  .fs-loc-wrap select { width: 100%; min-width: 0; padding: 7px 8px; font-size: 12px; font-weight: 600; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; outline: none; }
+  .fs-up-wrap { position: relative; min-width: 0; display: flex; }
   .fs-up-wrap > button { width: 100%; }
   #fsUpMenu { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px; box-shadow: var(--shadow); }
   #fsUpMenu button { display: block; width: 100%; padding: 9px 10px; font-size: 12.5px; font-weight: 600; border: 0; border-radius: 8px; background: transparent; color: var(--ink); cursor: pointer; text-align: left; }
@@ -316,8 +316,9 @@
     .fs-row .fs-actions { gap: 7px; }
     .fs-row .fs-actions a, .fs-row .fs-actions button { flex: 0 0 auto; min-width: 0; padding: 5px 9px; text-align: center; }
     .fs-path { font-size: 12px; }
-    .fs-tools { flex-wrap: nowrap; }
-    .fs-tools button { flex: 1 1 0; min-width: 0; }
+    .fs-tools { grid-template-columns: repeat(2, 1fr); }
+    .fs-tools button { min-width: 0; }
+    .fs-loc-wrap select { font-size: 12px; padding: 7px 8px; }
     .fs-batch { flex-wrap: wrap; }
     .fs-batch button { flex: 1 1 auto; }
     .item { padding: 14px; }

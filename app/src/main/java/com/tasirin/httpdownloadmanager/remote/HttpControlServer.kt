@@ -496,8 +496,9 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                 copyUploadBody(session, length, out)
             }
             jsonResponse(JSONObject().put("ok", true).put("name", published.fileName ?: finalName))
-        }.getOrElse {
-            jsonResponse(JSONObject().put("ok", false).put("error", it.message ?: "gagal upload"))
+        }.getOrElse { e ->
+            logError(e)
+            jsonResponse(JSONObject().put("ok", false).put("error", e.message ?: "gagal upload"))
         }
     }
 
@@ -584,8 +585,9 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                 resultName = finalName
             }
             jsonResponse(JSONObject().put("ok", true).put("name", resultName))
-        }.getOrElse {
-            jsonResponse(JSONObject().put("ok", false).put("error", it.message ?: "gagal upload"))
+        }.getOrElse { e ->
+            logError(e)
+            jsonResponse(JSONObject().put("ok", false).put("error", e.message ?: "gagal upload"))
         }
     }
 

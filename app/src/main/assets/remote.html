@@ -1480,12 +1480,19 @@ document.getElementById('fsMkdirBtn').addEventListener('click', async function (
 
 const UPLOAD_CHUNK = 512 * 1024;
 
+// Error dari server yang tidak akan hilang walau di-retry — tampilkan saja.
+function isPermanentUploadErr(msg) {
+  return /tidak diizinkan|tidak valid|tidak cukup|terlalu besar|izin|permission|denied|not allowed|not found/i.test(msg || '');
+}
+
 let fsUploading = false;
 
 function uploadFiles(files, path, statusEl, progressBox, progressText, progressPct, progressBar, done) {
   fsUploading = true;
   const jobs = Array.from(files).map(function (f) {
-    return (f && f.file) ? f : { file: f, path: path };
+    const j = (f && f.file) ? f : { file: f, path: path };
+    j.lastErr = '';
+    return j;
   });
   const total = jobs.length;
   if (!total) return;
@@ -1555,8 +1562,22 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
             chunkIdx++;
             chunkFails = 0;
             nextChunk();
+          } else if (xhr.status === 401) {
+            failed.push(file.name);
+            statusEl.textContent = 'Gagal: ' + file.name + ' \u2014 sesi PIN kedaluwarsa, muat ulang halaman.';
+            finishOne();
           } else {
-            const emsg = (xhr.responseText || '');
+            let emsg = '';
+            try { emsg = (JSON.parse(xhr.responseText || '{}').error || ''); } catch (e) {}
+            if (emsg) job.lastErr = emsg;
+            if (isPermanentUploadErr(emsg)) {
+              // Error permanen (izin folder, disk penuh, path salah): jangan retry
+              // 6x3 percuma — berhenti dan tampilkan alasannya.
+              failed.push(file.name);
+              statusEl.textContent = 'Gagal: ' + file.name + ' \u2014 ' + emsg;
+              finishOne();
+              return;
+            }
             if (emsg.indexOf('potongan pertama') >= 0 && attempt < 3) {
               // Potongan di server hilang (server restart) — mulai file lagi dari awal.
               setTimeout(function () { uploadOne(job, attempt + 1); }, 600);
@@ -1583,7 +1604,7 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
         return;
       }
       failed.push(file.name);
-      statusEl.textContent = 'Gagal: ' + file.name;
+      statusEl.textContent = 'Gagal: ' + file.name + (job.lastErr ? ' \u2014 ' + job.lastErr : '');
       finishOne();
     }
 

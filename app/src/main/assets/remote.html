@@ -47,7 +47,6 @@
   .status-card .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-right: 6px; box-shadow: 0 0 0 3px var(--green-bg); }
   .status-card b { color: var(--ink); font-weight: 700; }
   .status-card .st-item { display: inline-flex; align-items: center; gap: 5px; line-height: 1.35; white-space: nowrap; }
-  .status-card .st-foot { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }
   .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
   .toolbar button { padding: 8px 14px; font-size: 13px; font-weight: 600; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; transition: all .15s ease; }
   .toolbar button:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
@@ -263,9 +262,6 @@
   .fab:active { transform: scale(.92); }
   #filtersSticky { position: sticky; z-index: 30; background: var(--bg); padding: 8px 0 12px; margin: -8px 0 4px; }
   #filtersSticky .seg { margin-bottom: 0; }
-  .status-card .refresh-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--muted); font-size: 15px; cursor: pointer; line-height: 1; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; transition: all .15s ease; }
-  .status-card .refresh-btn:hover { color: var(--primary); border-color: var(--primary); }
-  #lastUpd { font-size: 11px; opacity: .85; }
   .status-card.offline .dot { background: var(--red); box-shadow: 0 0 0 3px var(--red-bg); animation: dotBlink 1.1s ease-in-out infinite; }
   @keyframes dotBlink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
   .empty { padding: 46px 16px; text-align: center; color: var(--muted); }
@@ -335,7 +331,6 @@
     .grid2 { grid-template-columns: 1fr; }
     .status-card { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; align-items: center; font-size: 12px; padding: 12px 14px; }
     .status-card .st-item { white-space: normal; }
-    .status-card .st-foot { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px; }
   }
 </style>
 </head>
@@ -600,11 +595,9 @@ document.getElementById('cancelAdd').addEventListener('click', function () {
   toggleAddForm(false);
 });
 
-let lastOkTime = 0;
 function renderStatus(st) {
   const el = document.getElementById('deviceStatus');
   if (!el) return;
-  lastOkTime = Date.now();
   let text = '<span class="st-item"><span class="dot"></span><b>Device terhubung</b></span>';
   if (st.batteryPercent >= 0) {
     text += '<span class="st-item">&#128267; Baterai <b>' + st.batteryPercent + '%</b>' + (st.batteryCharging ? ' (mengisi)' : '') + '</span>';
@@ -615,11 +608,8 @@ function renderStatus(st) {
     text += '<span class="st-item">&#128190; Sisa <b>' + fmt(st.storageFree) + '</b></span>';
   }
   text += '<span class="st-item">&#128424; Port <b>' + st.port + '</b></span>';
-  text += '<span class="st-foot"><span id="lastUpd">diperbarui 0 dtk lalu</span><button type="button" class="refresh-btn" title="Segarkan">&#8635;</button></span>';
   el.innerHTML = text;
   el.classList.remove('offline');
-  const rb = el.querySelector('.refresh-btn');
-  if (rb) rb.addEventListener('click', function () { refreshStatus(); refresh(); });
 }
 async function refreshStatus() {
   const el = document.getElementById('deviceStatus');
@@ -1945,7 +1935,6 @@ async function refresh() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     failCount = 0;
-    lastOkTime = Date.now();
     hasLoadedItems = true;
     document.getElementById('status').textContent = '';
     document.getElementById('deviceStatus').classList.remove('offline');
@@ -2355,7 +2344,6 @@ function connectEvents() {
   sse.onopen = function () { sseFailCount = 0; };
   sse.onmessage = function (ev) {
     sseFailCount = 0;
-    lastOkTime = Date.now();
     hasLoadedItems = true;
     document.getElementById('deviceStatus').classList.remove('offline');
     try {
@@ -2389,13 +2377,6 @@ if (typeof EventSource !== 'undefined') {
     refreshStatus();
   }, 1500);
 }
-setInterval(function () {
-  const el = document.getElementById('lastUpd');
-  if (!el) return;
-  if (!lastOkTime) { el.textContent = 'menunggu data…'; return; }
-  const secs = Math.max(0, Math.round((Date.now() - lastOkTime) / 1000));
-  el.textContent = 'diperbarui ' + secs + ' dtk lalu';
-}, 1000);
 </script>
 </body>
 </html>

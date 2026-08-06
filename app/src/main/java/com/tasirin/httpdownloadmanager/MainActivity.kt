@@ -1393,14 +1393,17 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         ).show()
     }
 
+    @Suppress("DEPRECATION")
     private fun showAboutDialog() {
-        val version = runCatching {
-            packageManager.getPackageInfo(packageName, 0).versionName
-        }.getOrDefault("1.0")
+        val info = runCatching {
+            packageManager.getPackageInfo(packageName, 0)
+        }.getOrNull()
+        val version = info?.versionName ?: "1.0"
+        val build = info?.versionCode ?: 0
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.about_title)
             .setMessage(
-                getString(R.string.about_version, version) + "\n" +
+                getString(R.string.about_version, version) + " (build $build)\n" +
                     getString(R.string.about_author) + "\n" +
                     getString(R.string.about_repo) + "\n\n" +
                     getString(R.string.about_changelog)

@@ -31,6 +31,12 @@ jobs:
       - name: Set up Gradle (cache + verifikasi wrapper)
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Bump versionCode otomatis per build
+        run: |
+          CODE=$((100000 + ${{ github.run_number }}))
+          sed -i "s/versionCode = [0-9]*/versionCode = ${CODE}/" app/build.gradle.kts
+          echo "versionCode baru: ${CODE}"
+
       - name: Build debug APK
         run: ./gradlew assembleDebug
 
@@ -72,6 +78,6 @@ jobs:
           cp app/build/outputs/apk/debug/app-debug.apk "$OUT"
           gh release delete "v${VER}" --yes --cleanup-tag || true
           gh release create "v${VER}" "$OUT" \
-            --title "HTTP Download Manager v${VER}" \
-            --notes "APK rilis terbaru. Unduh lalu pasang di HP. Beri izin Penyimpanan saat diminta. Aktifkan 'Instal dari sumber tidak dikenal' bila perlu." \
+            --title "HTTP Download Manager v${VER} (build ${CODE})" \
+            --notes "APK rilis terbaru (build ${CODE}). Unduh lalu pasang di HP. Beri izin Penyimpanan saat diminta. Aktifkan 'Instal dari sumber tidak dikenal' bila perlu." \
             --latest

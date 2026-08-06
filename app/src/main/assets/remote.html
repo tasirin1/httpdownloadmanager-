@@ -147,9 +147,11 @@
   .fs-root:hover { border-color: var(--primary); }
   .fs-root .fs-rcap small { display: block; color: var(--muted); font-size: 12px; word-break: break-all; margin-top: 2px; }
   .btn-ghost:disabled { opacity: .45; cursor: default; }
-  .fs-tools { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .fs-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
   .fs-tools button { flex: 1 1 0; min-width: 0; padding: 8px 12px; font-size: 12.5px; font-weight: 600; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; transition: all .15s ease; }
   .fs-tools button:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+  .fs-loc-wrap { flex: 0 0 auto; display: flex; }
+  .fs-loc-wrap select { width: 150px; max-width: 34vw; padding: 7px 8px; font-size: 12px; font-weight: 600; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; outline: none; }
   .fs-up-wrap { position: relative; flex: 1 1 0; min-width: 0; display: flex; }
   .fs-up-wrap > button { width: 100%; }
   #fsUpMenu { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px; box-shadow: var(--shadow); }
@@ -416,6 +418,11 @@
   </div>
   <div id="fsPath" class="fs-path"></div>
   <div class="fs-tools" id="fsToolsRow">
+    <span class="fs-loc-wrap">
+      <select id="fsLocation" title="Pindah ke lokasi">
+        <option value="">&#128193; Lokasi&hellip;</option>
+      </select>
+    </span>
     <button id="fsMkdirBtn" type="button">&#128193; Folder</button>
     <span class="fs-up-wrap">
       <button id="fsUploadBtn" type="button">&#11014; Upload</button>
@@ -958,8 +965,10 @@ const fsUpBtn = document.getElementById('fsUpBtn');
 const fsSelectBtn = document.getElementById('fsSelectBtn');
 const fsBatch = document.getElementById('fsBatch');
 const fsToolsRow = document.getElementById('fsToolsRow');
+const fsLocation = document.getElementById('fsLocation');
 const fsUploadFile = document.getElementById('fsUploadFile');
 const fsUploadDir = document.getElementById('fsUploadDir');
+let fsLocations = [];
 const FS_MEDIA_EXTS = ['jpg','jpeg','png','gif','webp','bmp','mp4','mkv','webm','avi','mov','3gp','m4v','mpg','mpeg','mp3','m4a','aac','wav','ogg','flac'];
 let fsLpTimer = null;
 let fsLpFired = false;
@@ -999,6 +1008,7 @@ function applyRoute() {
     fsSelected.length = 0;
     fsSelectBtn.textContent = '\u9989 Pilih';
     fsBatch.classList.add('hidden');
+    loadFsLocations();
     loadFs();
   } else {
     restartAnim(document.getElementById('list'));
@@ -1042,7 +1052,7 @@ function parentFsPath(p) {
   if (p.startsWith('m:')) {
     const rel = p.slice(2);
     const idx = rel.lastIndexOf('/');
-    if (idx <= 0) return 'm:Download';
+    if (idx < 0) return '';
     return 'm:' + rel.slice(0, idx);
   }
   const idx = p.lastIndexOf('/');
@@ -1063,7 +1073,7 @@ function fsCrumbParts(p) {
   const parts = [{label: '\u{1F4C1} Penyimpanan', path: ''}];
   let cur = prefix;
   segs.forEach(function (seg) {
-    cur += '/' + seg;
+    cur += (cur === 'm:' ? '' : '/') + seg;
     parts.push({label: seg, path: cur});
   });
   return parts;
@@ -1089,6 +1099,39 @@ function renderFsCrumbs(p) {
   });
 }
 
+async function loadFsLocations() {
+  try {
+    const res = await fetch(API + '/api/fs?path=');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    fsLocations = data.items || [];
+    const cur = fsPath || '';
+    fsLocation.innerHTML = '';
+    const ph = document.createElement('option');
+    ph.value = '';
+    ph.textContent = '\u{1F4C1} Lokasi\u2026';
+    fsLocation.appendChild(ph);
+    fsLocations.forEach(function (r) {
+      const o = document.createElement('option');
+      o.value = r.path;
+      o.textContent = r.name;
+      fsLocation.appendChild(o);
+    });
+    const matched = fsLocations.some(function (r) { return r.path === cur; });
+    if (cur && matched) fsLocation.value = cur;
+  } catch (e) {
+    fsLocation.innerHTML = '<option value="">\u{1F4C1} Lokasi\u2026</option>';
+  }
+}
+
+fsLocation.addEventListener('change', function () {
+  const v = fsLocation.value;
+  if (!v) return;
+  fsPath = v;
+  fsLocation.value = '';
+  loadFs();
+});
+
 async function loadFs() {
   showFsSkeleton();
   try {
@@ -1102,6 +1145,7 @@ async function loadFs() {
     fsSelectBtn.classList.toggle('hidden', !fsPath);
     fsItems = data.items || [];
     fsCount.textContent = fsItems.length ? fsItems.length + ' item' : '';
+    if (!fsPath) loadFsLocations();
     renderFs(fsItems);
   } catch (e) {
     fsMsg('Gagal memuat: ' + e, true);

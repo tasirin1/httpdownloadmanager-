@@ -601,6 +601,10 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 App.engine.clearCompleted()
                 true
             }
+            R.id.action_storage -> {
+                showStorageDialog()
+                true
+            }
             R.id.action_gallery -> {
                 startActivity(Intent(this, GalleryActivity::class.java))
                 true

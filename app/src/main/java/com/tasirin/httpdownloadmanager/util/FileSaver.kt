@@ -175,16 +175,18 @@ class FileSaver(context: Context) {
         writer: (OutputStream) -> Unit
     ): PublishResult {
         val resolver = appContext.contentResolver
-        val unique = uniqueMediaStoreName(fileName, relativePath)
+        val mime = MimeTypes.forFile(fileName)
+        val collection = MediaLibrary.mediaCollectionFor(relativePath, mime)
+        val unique = uniqueMediaStoreName(fileName, relativePath, collection)
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, unique)
-            put(MediaStore.Downloads.MIME_TYPE, MimeTypes.forFile(unique))
+            put(MediaStore.Downloads.MIME_TYPE, mime)
             relativePath?.let { rel ->
                 put(MediaStore.Downloads.RELATIVE_PATH, rel.trim('/').trimEnd('/') + "/")
             }
             put(MediaStore.Downloads.IS_PENDING, 1)
         }
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+        val uri = resolver.insert(collection, values)
             ?: throw IOException("Gagal membuat file di MediaStore")
         try {
             resolver.openOutputStream(uri)?.use { out -> writer(out) }
@@ -431,7 +433,11 @@ class FileSaver(context: Context) {
         }
     }.getOrNull()
 
-    fun uniqueMediaStoreName(fileName: String, relativePath: String?): String {
+    fun uniqueMediaStoreName(
+        fileName: String,
+        relativePath: String?,
+        collection: Uri = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+    ): String {
         if (Build.VERSION.SDK_INT < 29) return fileName
         return runCatching {
             val resolver = appContext.contentResolver
@@ -439,7 +445,7 @@ class FileSaver(context: Context) {
             val selection = relativePath?.let { "${MediaStore.Downloads.RELATIVE_PATH}=?" }
             val args = relativePath?.let { arrayOf(it.trim('/') + "/") }
             resolver.query(
-                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                collection,
                 arrayOf(MediaStore.Downloads.DISPLAY_NAME),
                 selection,
                 args,

@@ -2,6 +2,7 @@ package com.tasirin.httpdownloadmanager.util
 
 import android.content.ContentUris
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -10,6 +11,30 @@ import androidx.documentfile.provider.DocumentFile
 import java.io.File
 
 object MediaLibrary {
+
+    /** Koleksi MediaStore untuk root folder media (dipakai saat browsing). */
+    fun mediaCollectionForRoot(root: String): Uri {
+        return when (root.trim('/').substringBefore('/').lowercase()) {
+            "pictures", "dcim" -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            "movies" -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            else -> MediaStore.Downloads.EXTERNAL_CONTENT_URI
+        }
+    }
+
+    /** Koleksi MediaStore untuk menyimpan file; fallback ke Downloads bila
+     *  MIME tidak cocok dengan koleksi media (mis. APK ke Pictures). */
+    fun mediaCollectionFor(relativePath: String?, mime: String): Uri {
+        val root = relativePath?.trim('/')?.substringBefore('/').orEmpty().lowercase()
+        return when {
+            root == "pictures" || root == "dcim" ->
+                if (mime.startsWith("image/")) MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                else MediaStore.Downloads.EXTERNAL_CONTENT_URI
+            root == "movies" ->
+                if (mime.startsWith("video/")) MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                else MediaStore.Downloads.EXTERNAL_CONTENT_URI
+            else -> MediaStore.Downloads.EXTERNAL_CONTENT_URI
+        }
+    }
 
     data class MediaEntry(
         val name: String,
@@ -110,43 +135,57 @@ object MediaLibrary {
             }
         }
 
-        // 4) Folder Download publik (lama) / MediaStore (baru)
-        if (Build.VERSION.SDK_INT >= 29) {
-            runCatching {
-                val resolver = context.contentResolver
-                val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
-                val projection = arrayOf(
-                    MediaStore.MediaColumns._ID,
-                    MediaStore.MediaColumns.DISPLAY_NAME,
-                    MediaStore.MediaColumns.SIZE,
-                    MediaStore.MediaColumns.DATE_MODIFIED
-                )
-                resolver.query(
-                    collection, projection, null, null,
-                    "${MediaStore.MediaColumns.DATE_MODIFIED} DESC"
-                )?.use { c ->
-                    val iId = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
-                    val iName = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
-                    val iSize = c.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
-                    val iMod = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
-                    while (c.moveToNext()) {
-                        val name = c.getString(iName) ?: continue
-                        val kind = mediaKind(name) ?: continue
-                        val uri = ContentUris.withAppendedId(collection, c.getLong(iId)).toString()
-                        list.add(
-                            MediaEntry(
-                                name = name,
-                                size = c.getLong(iSize),
-                                modified = c.getLong(iMod) * 1000L,
-                                isVideo = kind == "video",
-                                token = tokenForUri(uri),
-                                contentUri = uri
+        // 4) SEMUA foto & video dari device lewat MediaStore (seluruh penyimpanan
+        //    bersama: Download, DCIM, Pictures, dll), di semua versi Android.
+        //    Urutan koleksi: gambar dulu lalu video.
+        runCatching {
+            val resolver = context.contentResolver
+            val collections = listOf(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI to false,
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI to true
+            )
+            val projection = arrayOf(
+                MediaStore.MediaColumns._ID,
+                MediaStore.MediaColumns.DISPLAY_NAME,
+                MediaStore.MediaColumns.SIZE,
+                MediaStore.MediaColumns.DATE_MODIFIED,
+                MediaStore.MediaColumns.DATA
+            )
+            for ((collection, isVideo) in collections) {
+                runCatching {
+                    resolver.query(
+                        collection, projection, null, null,
+                        "${MediaStore.MediaColumns.DATE_MODIFIED} DESC"
+                    )?.use { c ->
+                        val iId = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                        val iName = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                        val iSize = c.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+                        val iMod = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
+                        val iData = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
+                        while (c.moveToNext()) {
+                            val name = c.getString(iName) ?: continue
+                            val uri = ContentUris.withAppendedId(collection, c.getLong(iId)).toString()
+                            val dataPath = c.getString(iData)?.takeIf { it.isNotBlank() }
+                            list.add(
+                                MediaEntry(
+                                    name = name,
+                                    size = c.getLong(iSize),
+                                    modified = c.getLong(iMod) * 1000L,
+                                    isVideo = isVideo,
+                                    token = tokenForUri(uri),
+                                    filePath = dataPath,
+                                    contentUri = uri
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }
-        } else {
+        }
+
+        // 5) Folder Download publik (lama, untuk Android < 10 bila MediaStore
+        //    tidak mengembalikan apa pun karena izin belum diberikan).
+        if (Build.VERSION.SDK_INT < 29) {
             runCatching {
                 val dir = Environment.getExternalStoragePublicDirectory(
                     Environment.DIRECTORY_DOWNLOADS
@@ -155,8 +194,10 @@ object MediaLibrary {
             }
         }
 
+        // Hapus duplikat: file yang sama bisa muncul sebagai path (f:) dan
+        // sebagai MediaStore (u:) — dedupe berdasar path file bila ada.
         return list
-            .distinctBy { it.token }
+            .distinctBy { it.filePath ?: it.contentUri ?: it.token }
             .sortedByDescending { it.modified }
     }
 }

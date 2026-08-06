@@ -801,7 +801,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         val base = relative.trim('/')
         val folder = base + "/"
         val resolver = context.contentResolver
-        val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+        val collection = MediaLibrary.mediaCollectionForRoot(base)
         val projection = arrayOf(
             MediaStore.MediaColumns._ID,
             MediaStore.MediaColumns.DISPLAY_NAME,
@@ -1351,6 +1351,20 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         StoragePrefs.getTextFolder(context)?.let { tf ->
             if (File(tf).isDirectory) add("Folder teks", FS_PREFIX + tf)
         }
+        // Folder standar device via path langsung: API < 29 punya izin penuh,
+        // API 29+ wajib "Akses semua file" diaktifkan (Penyimpanan utama).
+        if (Build.VERSION.SDK_INT < 29 || StoragePrefs.isFsFullAccessEnabled(context)) {
+            listOf(
+                "Download" to Environment.DIRECTORY_DOWNLOADS,
+                "Pictures" to Environment.DIRECTORY_PICTURES,
+                "Movies" to Environment.DIRECTORY_MOVIES,
+                "DCIM" to Environment.DIRECTORY_DCIM
+            ).forEach { (label, dirType) ->
+                Environment.getExternalStoragePublicDirectory(dirType)?.let { d ->
+                    if (d.isDirectory) add("Folder $label", FS_PREFIX + d.absolutePath)
+                }
+            }
+        }
         // Akses penuh ke penyimpanan utama adalah opsi keamanan (default mati).
         if (StoragePrefs.isFsFullAccessEnabled(context)) {
             val primary = File("/storage/emulated/0")
@@ -1360,11 +1374,9 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         }
         if (Build.VERSION.SDK_INT >= 29) {
             add("MediaStore Download", MS_PREFIX + "Download")
-        } else {
-            val pub = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            if (pub.isDirectory && pub.listFiles() != null) {
-                add("Folder Download", FS_PREFIX + pub.absolutePath)
-            }
+            add("MediaStore Pictures", MS_PREFIX + "Pictures")
+            add("MediaStore Movies", MS_PREFIX + "Movies")
+            add("MediaStore DCIM (Kamera)", MS_PREFIX + "DCIM")
         }
         return jsonResponse(JSONObject().put("items", items))
     }
@@ -1401,7 +1413,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             val base = relative.trim('/')
             val folder = if (base.isEmpty()) "" else base + "/"
             val resolver = context.contentResolver
-            val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+            val collection = MediaLibrary.mediaCollectionForRoot(base)
             val projection = arrayOf(
                 MediaStore.MediaColumns._ID,
                 MediaStore.MediaColumns.DISPLAY_NAME,
@@ -1538,7 +1550,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     if (name.isBlank() || name.contains('/') || name.contains('\\')) return false
                     val rel = mediaStoreRelativePath(uri)?.trim('/')
                     val finalName = if (rel != null) {
-                        FileSaver(context).uniqueMediaStoreName(name, rel)
+                        val collection = MediaLibrary.mediaCollectionFor(rel, MimeTypes.forFile(name))
+                        FileSaver(context).uniqueMediaStoreName(name, rel, collection)
                     } else {
                         name
                     }
@@ -1568,13 +1581,15 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         if (!isFsPathAllowed(file.absolutePath)) return false
         val rel = relative.trim('/')
         val resolver = context.contentResolver
-        val name = FileSaver(context).uniqueMediaStoreName(file.name, rel)
+        val mime = MimeTypes.forFile(file.name)
+        val collection = MediaLibrary.mediaCollectionFor(rel, mime)
+        val name = FileSaver(context).uniqueMediaStoreName(file.name, rel, collection)
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, name)
-            put(MediaStore.Downloads.MIME_TYPE, MimeTypes.forFile(name))
+            put(MediaStore.Downloads.MIME_TYPE, mime)
             put(MediaStore.Downloads.RELATIVE_PATH, "$rel/")
         }
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return false
+        val uri = resolver.insert(collection, values) ?: return false
         val written = runCatching {
             val out = resolver.openOutputStream(uri) ?: return false
             out.use { dst -> file.inputStream().use { src -> src.copyTo(dst) } }
@@ -1654,7 +1669,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                 MediaStore.AUTHORITY -> {
                     if (Build.VERSION.SDK_INT >= 29) {
                         val rel = mediaStoreRelativePath(uri) ?: return@runCatching true
-                        rel.trim('/').startsWith("Download")
+                        val top = rel.trim('/').substringBefore('/')
+                        top == "Download" || top == "Pictures" || top == "Movies" || top == "DCIM"
                     } else {
                         // Di bawah API 29 MediaStore.Downloads belum ada; file sah
                         // aplikasi disimpan lewat path/SAF. Token u: MediaStore

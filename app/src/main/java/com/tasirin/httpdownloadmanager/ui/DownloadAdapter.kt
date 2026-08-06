@@ -29,6 +29,7 @@ class DownloadAdapter(private val listener: Listener) :
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val binding = ItemDownloadBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        binding.progressBar.max = 100
         return ViewHolder(binding)
     }
 
@@ -38,7 +39,6 @@ class DownloadAdapter(private val listener: Listener) :
 
         b.textName.text = item.fileName
         b.textStatus.text = statusText(item, b.root.context)
-        b.progressBar.max = 100
         b.progressBar.progress = item.progressPercent
 
         val quick = b.buttonQuick

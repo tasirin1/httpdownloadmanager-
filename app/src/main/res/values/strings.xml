@@ -100,7 +100,7 @@
 &#8226; Verifikasi checksum MD5/SHA1/SHA256
 &#8226; Tema ikuti sistem (otomatis/terang/gelap)
 &#8226; Kunci otomatis halaman remote setelah 10 menit idle (PIN diminta lagi)
-&#8226; Bahasa Indonesia/Inggris, widget homescreen, share URL langsung</string>
+&#8226; Bahasa Indonesia/Inggris, share URL langsung</string>
     <string name="checksum_hint_optional">Checksum opsional (md5:/sha1:/sha256:) — contoh md5:abcdef&#8230;</string>
     <string name="shortcut_add_download">Tambah Download</string>
     <string name="filter_all">Semua</string>
@@ -209,9 +209,6 @@
     <string name="notification_title">Download Manager</string>
     <string name="notification_active_files">Mendownload %d file&#8230;</string>
     <string name="notification_done">%d download selesai</string>
-
-    <string name="widget_active">%1$d download aktif</string>
-    <string name="widget_idle">Tidak ada download aktif</string>
 
     <string-array name="sort_options">
         <item>Tanggal (terbaru)</item>

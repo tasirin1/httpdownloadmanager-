@@ -76,6 +76,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     @Volatile private var loginFailures = 0
     @Volatile private var loginLockUntil = 0L
     private val fsStatsCache = ConcurrentHashMap<String, Pair<Long, Pair<Int, Long>>>()
+    @Volatile private var batteryCache: Pair<Long, Pair<Int, Boolean>>? = null
 
     override fun serve(session: IHTTPSession): Response {
         return try {
@@ -1566,6 +1567,11 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     }
 
     private fun batteryStatus(): Pair<Int, Boolean> = runCatching {
+        // Status baterai jarang berubah: cache 3 dtk supaya push SSE tiap 3 dtk
+        // tidak mendaftarkan receiver berulang kali.
+        val now = System.currentTimeMillis()
+        val cached = batteryCache
+        if (cached != null && now - cached.first < BATTERY_CACHE_MS) return cached.second
         val intent = context.registerReceiver(
             null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)
         )
@@ -1575,7 +1581,9 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         val pct = if (level >= 0 && scale > 0) (level * 100 / scale) else -1
         val charging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
             status == BatteryManager.BATTERY_STATUS_FULL
-        pct to charging
+        val result = pct to charging
+        batteryCache = now to result
+        result
     }.getOrDefault(-1 to false)
 
     // ---------- SSE: update real-time ----------
@@ -1754,6 +1762,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         private const val MAX_LOGIN_ATTEMPTS = 5
         private const val LOGIN_LOCK_MS = 30_000L
         private const val FS_STATS_TTL_MS = 10_000L
+        private const val BATTERY_CACHE_MS = 3_000L
 
         fun ipv4Addresses(): List<String> = runCatching {
             NetworkInterface.getNetworkInterfaces().toList().flatMap { ni ->

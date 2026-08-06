@@ -15,7 +15,7 @@ Aplikasi download manager + remote control untuk **Android 5.0 (API 21) ke atas*
 - Daftar download tersimpan otomatis (bertahan setelah app ditutup), filter & urutkan daftar
 - Foreground service: tetap berjalan saat app ditutup; retry otomatis (jeda bertahap); **auto-start saat boot**
 - **Lanjut otomatis saat koneksi pulih**: download yang terputus karena jaringan hilang dijeda otomatis, lalu dilanjutkan sendiri begitu internet kembali (Android 5–6 via broadcast, Android 7+ via NetworkCallback)
-- Notifikasi foreground progress + **widget homescreen**
+- Notifikasi foreground progress
 - **Share URL** langsung dari aplikasi lain (Share → Download Manager)
 - Auth HTTP Basic + custom header (Referer, Cookie, dll.), tempel banyak URL sekaligus, riwayat URL
 - Buka file selesai dengan aplikasi lain, buka folder, ubah nama / pindahkan file (long-press)
@@ -84,9 +84,8 @@ Menu **⋮ → Pengaturan**:
 
 Catatan: beberapa vendor (MIUI, dll.) punya pembatasan baterai ketat — aktifkan *auto-start* di pengaturan sistem agar service tidak dimatikan. Download yang Anda jeda manual tidak dilanjutkan otomatis.
 
-## Widget & Pintasan
+## Pintasan
 
-- **Widget homescreen**: tambahkan widget "Download Manager" untuk melihat download aktif + progress; ketuk untuk membuka aplikasi
 - **Share dari aplikasi lain**: pilih "Share" pada link lalu pilih **Download Manager** — URL langsung terbuka di dialog tambah
 
 ## Unduh APK
@@ -164,7 +163,6 @@ app/src/main/java/com/tasirin/httpdownloadmanager/
 ├── receiver/BootReceiver.kt # Mulai otomatis saat boot (download & server)
 ├── remote/HttpControlServer.kt # HTTP server remote (download, file manager, galeri, durasi video)
 ├── ui/DownloadAdapter.kt    # RecyclerView adapter
-├── widget/DownloadWidgetProvider.kt # Widget homescreen
 └── util/
     ├── FileSaver.kt         # Simpan file (MediaStore / folder Downloads)
     ├── MediaLibrary.kt      # Scan media device + thumbnail

@@ -108,7 +108,7 @@ class DownloadEngine(private val context: Context) {
             mirrors = mirrors,
             monitor = monitor
         )
-        update(_items.value + item)
+        update(listOf(item) + _items.value)
         flushSave()
         StoragePrefs.addRecentUrl(context, cleanUrl)
         attemptStart(item.id)
@@ -201,7 +201,7 @@ class DownloadEngine(private val context: Context) {
             nameIsCustom = true,
             autoResume = false
         )
-        update(_items.value + item)
+        update(listOf(item) + _items.value)
         flushSave()
         return published
     }
@@ -1182,7 +1182,9 @@ class DownloadEngine(private val context: Context) {
 
     @Synchronized
     private fun update(items: List<DownloadItem>) {
-        _items.value = items.sortedByDescending { it.addedAt }
+        // Urutan daftar sudah dijaga (item baru di-prepend), jadi tidak perlu
+        // sort ulang O(n log n) setiap kali progress diperbarui (4x/detik).
+        _items.value = items
         scheduleSave()
     }
 

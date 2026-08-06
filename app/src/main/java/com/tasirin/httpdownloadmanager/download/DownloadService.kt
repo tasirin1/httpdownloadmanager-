@@ -10,7 +10,6 @@ import com.tasirin.httpdownloadmanager.App
 import com.tasirin.httpdownloadmanager.data.DownloadState
 import com.tasirin.httpdownloadmanager.util.NotificationHelper
 import com.tasirin.httpdownloadmanager.util.StoragePrefs
-import com.tasirin.httpdownloadmanager.widget.DownloadWidgetProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -46,7 +45,6 @@ class DownloadService : Service() {
                         App.httpServer.isAlive
                     if (!active && !serverActive) {
                         NotificationHelper.updateNotification(this@DownloadService, items, serverActive)
-                        DownloadWidgetProvider.update(this@DownloadService, items)
                         ServiceCompat.stopForeground(
                             this@DownloadService,
                             ServiceCompat.STOP_FOREGROUND_REMOVE
@@ -59,7 +57,6 @@ class DownloadService : Service() {
                         if (now - lastUiUpdate < 1000) return@runCatching
                         lastUiUpdate = now
                         NotificationHelper.updateNotification(this@DownloadService, items, serverActive)
-                        DownloadWidgetProvider.update(this@DownloadService, items)
                     }
                 }
             }

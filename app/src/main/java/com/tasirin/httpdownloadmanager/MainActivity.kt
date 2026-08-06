@@ -168,10 +168,15 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
         lifecycleScope.launch {
             while (true) {
-                val points = App.engine.speedHistorySnapshot()
-                binding.speedChart.setData(points)
-                val now = points.lastOrNull() ?: 0L
-                binding.speedNow.text = if (now > 0) Formats.speed(now) else getString(R.string.speed_zero)
+                // Hanya perbarui grafik saat layar terlihat: hemat CPU/baterai
+                // bila aplikasi di latar belakang.
+                if (uiActive) {
+                    val points = App.engine.speedHistorySnapshot()
+                    binding.speedChart.setData(points)
+                    val now = points.lastOrNull() ?: 0L
+                    binding.speedNow.text =
+                        if (now > 0) Formats.speed(now) else getString(R.string.speed_zero)
+                }
                 delay(1_000)
             }
         }
@@ -236,8 +241,14 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
     override fun onResume() {
         super.onResume()
+        uiActive = true
         updateServerStatus()
         updateStorageInfo()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        uiActive = false
     }
 
     private fun updateStorageInfo() {
@@ -407,7 +418,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             probeJob?.cancel()
             val allUrls = urlInput.text?.toString().orEmpty()
             val probeTarget = allUrls
-                .split(Regex("[\\s,]+"))
+                .split(URL_SPLIT)
                 .firstOrNull { it.startsWith("http://") || it.startsWith("https://") }
                 ?.trim().orEmpty()
             if (probeTarget.isEmpty()) {
@@ -466,7 +477,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         probeFileInfo()
 
         val mirrors = mirrorInput.text?.toString()?.trim().orEmpty()
-            .split(Regex("[\\s,]+"))
+            .split(URL_SPLIT)
             .filter { it.startsWith("http://") || it.startsWith("https://") }
 
         fun addAll(
@@ -500,7 +511,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton(R.string.download) { _, _ ->
                 val urls = urlInput.text?.toString()?.trim().orEmpty()
-                    .split(Regex("[\\s,]+"))
+                    .split(URL_SPLIT)
                     .filter { it.startsWith("http://") || it.startsWith("https://") }
                 if (urls.isEmpty()) {
                     Snackbar.make(binding.root, R.string.invalid_url, Snackbar.LENGTH_SHORT).show()
@@ -1134,6 +1145,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
     private enum class DownloadFilter { ALL, ACTIVE, COMPLETED, FAILED }
 
+    private var uiActive = false
     private var currentFilter = DownloadFilter.ALL
     private var searchQuery = ""
     private var sortMode = 0
@@ -1247,8 +1259,9 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             DownloadState.CANCELLED to 5
         )
         return when (sortMode) {
-            0 -> searched.sortedByDescending { it.addedAt }
-            1 -> searched.sortedBy { it.addedAt }
+            // Daftar engine sudah terurut addedAt desc, jadi tanpa sort ulang.
+            0 -> searched
+            1 -> searched.asReversed()
             2 -> searched.sortedBy { it.fileName.lowercase() }
             3 -> searched.sortedByDescending { it.fileName.lowercase() }
             4 -> searched.sortedByDescending { it.totalBytes }
@@ -1383,6 +1396,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     }
 
     companion object {
+        private val URL_SPLIT = Regex("[\\s,]+")
         private const val EXTRA_ADD_DOWNLOAD = "com.tasirin.httpdownloadmanager.ADD_DOWNLOAD"
         private val SPEED_KBPS = intArrayOf(0, 128, 256, 512, 1024, 2048, 5120)
         private val PRIORITY_VALUES = intArrayOf(-1, 0, 1)

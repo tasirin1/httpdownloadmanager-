@@ -1490,7 +1490,7 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
   let sentBytes = 0;
   let totalBytes = 0;
   for (const j of jobs) totalBytes += j.file.size;
-  let lastBytes = 0;
+  let lastProgress = 0;
   let lastTime = Date.now();
   let speed = 0;
   progressBox.classList.remove('hidden');
@@ -1509,28 +1509,32 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
     function nextChunk() {
       if (chunkIdx >= chunks) {
         sentBytes += file.size;
+        lastProgress = sentBytes;
         finishOne();
         return;
       }
       const start = chunkIdx * UPLOAD_CHUNK;
       const end = Math.min(start + UPLOAD_CHUNK, file.size);
+      lastProgress = Math.max(lastProgress, sentBytes + start);
+      lastTime = Date.now();
       const xhr = new XMLHttpRequest();
       xhr.open('POST', API + '/api/upload?name=' + encodeURIComponent(file.name) +
         '&path=' + encodeURIComponent(target) +
         '&id=' + encodeURIComponent(id) +
         '&chunk=' + chunkIdx + '&chunks=' + chunks +
         '&offset=' + start);
+      xhr.timeout = 30000;
       xhr.upload.onprogress = function (e) {
         if (!e.lengthComputable) return;
         const now = Date.now();
+        const progress = Math.max(lastProgress, sentBytes + start + e.loaded);
         const dt = (now - lastTime) / 1000;
-        if (dt > 0.3) {
-          speed = (e.loaded - lastBytes) / dt;
-          lastBytes = e.loaded;
+        if (dt >= 0.3 && progress > lastProgress) {
+          speed = (progress - lastProgress) / dt;
           lastTime = now;
+          lastProgress = progress;
         }
-        const doneNow = sentBytes + start + e.loaded;
-        const pct = totalBytes > 0 ? Math.round(doneNow * 100 / totalBytes) : 0;
+        const pct = totalBytes > 0 ? Math.round(progress * 100 / totalBytes) : 0;
         progressBar.style.width = pct + '%';
         progressPct.textContent = pct + '% \u00b7 ' + fmtSpeed(speed);
       };
@@ -1551,12 +1555,13 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
       };
       xhr.onerror = function () { retryChunk(); };
       xhr.onabort = function () { retryChunk(); };
+      xhr.ontimeout = function () { retryChunk(); };
       xhr.send(file.slice(start, end));
     }
 
     function retryChunk() {
       chunkFails++;
-      if (chunkFails < 3) {
+      if (chunkFails < 4) {
         setTimeout(nextChunk, 600);
         return;
       }

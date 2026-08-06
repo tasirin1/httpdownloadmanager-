@@ -110,6 +110,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     session.method == Method.GET && session.uri == "/api/media" -> serveMedia(session)
                     session.method == Method.POST && session.uri == "/api/add" -> addDownload(session)
                     session.method == Method.POST && session.uri == "/api/upload" -> handleUpload(session)
+                    session.method == Method.GET && session.uri == "/api/upload_verify" -> uploadVerify(session)
                     session.method == Method.POST && session.uri == "/api/action" -> runAction(session)
                     session.method == Method.POST && session.uri == "/api/delete_media" -> deleteMedia(session)
                     session.method == Method.POST && session.uri == "/api/fs_action" -> fsAction(session)
@@ -503,6 +504,16 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             jsonResponse(JSONObject().put("ok", true).put("name", published.fileName ?: finalName))
         }.getOrElse {
             jsonResponse(JSONObject().put("ok", false).put("error", it.message ?: "gagal upload"))
+        }
+    }
+
+    private fun uploadVerify(session: IHTTPSession): Response {
+        val id = session.parms["id"]?.trim().orEmpty()
+        val done = completedUploads[id]
+        return if (done != null) {
+            jsonResponse(JSONObject().put("ok", true).put("name", done.first))
+        } else {
+            jsonResponse(JSONObject().put("ok", false))
         }
     }
 

@@ -1571,9 +1571,33 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
         setTimeout(function () { uploadOne(job, attempt + 1); }, 800);
         return;
       }
-      failed.push(file.name);
-      statusEl.textContent = 'Gagal: ' + file.name + (lastErr ? ' \u2014 ' + lastErr : '');
-      finishOne();
+      // Respons sukses bisa hilang di jaringan walau server sudah menyimpan.
+      // Tanyakan dulu ke server sebelum menyatakan gagal.
+      const verify = new XMLHttpRequest();
+      verify.open('GET', API + '/api/upload_verify?id=' + encodeURIComponent(id));
+      verify.timeout = 5000;
+      verify.onload = function () {
+        let name = '';
+        try {
+          const d = JSON.parse(verify.responseText);
+          if (d && d.ok) name = d.name || '';
+        } catch (e) {}
+        if (name) {
+          sentBytes += file.size;
+          statusEl.textContent = 'Selesai: ' + name;
+          finishOne();
+        } else {
+          failed.push(file.name);
+          statusEl.textContent = 'Gagal: ' + file.name + (lastErr ? ' \u2014 ' + lastErr : '');
+          finishOne();
+        }
+      };
+      verify.onerror = verify.ontimeout = function () {
+        failed.push(file.name);
+        statusEl.textContent = 'Gagal: ' + file.name + (lastErr ? ' \u2014 ' + lastErr : '');
+        finishOne();
+      };
+      verify.send();
     }
 
     nextChunk();

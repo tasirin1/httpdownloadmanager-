@@ -144,10 +144,10 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     }
 
     private fun appendRequestLog(session: IHTTPSession, response: Response, elapsedMs: Long) {
-        val query = session.queryString?.take(160)?.let { "?$it" }.orEmpty()
+        val query = session.queryParameterString?.take(160)?.let { "?$it" }.orEmpty()
         val remote = session.remoteIpAddress.orEmpty()
         appendLog(
-            "${session.method.name} ${session.uri}$query -> ${response.status.requestURI} " +
+            "${session.method.name} ${session.uri}$query -> HTTP ${response.status.requestStatus} " +
                 "(${elapsedMs}ms) $remote"
         )
     }

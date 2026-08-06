@@ -26,6 +26,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import fi.iki.elonen.NanoHTTPD
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -66,7 +67,11 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         private set
 
     private var cacheCleanupDone = false
-    private val serverScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val serverScope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, e ->
+            runCatching { Log.w("HttpControlServer", "coroutine error", e) }
+        }
+    )
     private val sseClients = CopyOnWriteArrayList<SseStream>()
     private var sseJob: Job? = null
     @Volatile private var sseLastPayload = ""
@@ -1613,14 +1618,16 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                 payload.toString()
             }
             val pushFrame = { payloadText: String ->
-                val now = System.currentTimeMillis()
-                if (payloadText != sseLastPayload || now - sseLastPushAt > 10_000) {
-                    sseLastPayload = payloadText
-                    sseLastPushAt = now
-                    val frame = "data: $payloadText\n\n"
-                    val closed = sseClients.filter { it.isClosed }
-                    if (closed.isNotEmpty()) sseClients.removeAll(closed)
-                    sseClients.forEach { it.push(frame) }
+                runCatching {
+                    val now = System.currentTimeMillis()
+                    if (payloadText != sseLastPayload || now - sseLastPushAt > 10_000) {
+                        sseLastPayload = payloadText
+                        sseLastPushAt = now
+                        val frame = "data: $payloadText\n\n"
+                        val closed = sseClients.filter { it.isClosed }
+                        if (closed.isNotEmpty()) sseClients.removeAll(closed)
+                        sseClients.forEach { it.push(frame) }
+                    }
                 }
             }
             launch {
@@ -1634,7 +1641,9 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             // supaya baterai/penyimpanan/port selalu segar.
             while (true) {
                 delay(3_000)
-                if (sseClients.isNotEmpty()) pushFrame(buildPayload(true))
+                runCatching {
+                    if (sseClients.isNotEmpty()) pushFrame(buildPayload(true))
+                }
             }
         }
     }

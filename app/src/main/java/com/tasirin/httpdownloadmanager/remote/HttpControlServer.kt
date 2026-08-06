@@ -697,21 +697,24 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     }
 
     private fun copyUploadBody(session: IHTTPSession, length: Long, out: java.io.OutputStream) {
-        session.inputStream.use { input ->
-            val buffer = ByteArray(64 * 1024)
-            var remaining = length
-            while (remaining > 0) {
-                val chunk = minOf(buffer.size.toLong(), remaining).toInt()
-                val read = input.read(buffer, 0, chunk)
-                if (read == -1) break
-                out.write(buffer, 0, read)
-                remaining -= read
-            }
-            if (remaining > 0) {
-                throw IOException(
-                    "Koneksi terputus: hanya ${length - remaining} dari $length byte diterima"
-                )
-            }
+        // PENTING: jangan tutup session.inputStream (tanpa .use). Stream itu
+        // socket.getInputStream(); menutupnya menutup koneksi TCP sebelum
+        // respons terkirim -> browser menganggap upload gagal (retry terus).
+        // NanoHTTPD menutup stream sendiri setelah serve() selesai.
+        val input = session.inputStream
+        val buffer = ByteArray(64 * 1024)
+        var remaining = length
+        while (remaining > 0) {
+            val chunk = minOf(buffer.size.toLong(), remaining).toInt()
+            val read = input.read(buffer, 0, chunk)
+            if (read == -1) break
+            out.write(buffer, 0, read)
+            remaining -= read
+        }
+        if (remaining > 0) {
+            throw IOException(
+                "Koneksi terputus: hanya ${length - remaining} dari $length byte diterima"
+            )
         }
     }
 

@@ -150,13 +150,25 @@
   .fs-root:hover { border-color: var(--primary); }
   .fs-root .fs-rcap small { display: block; color: var(--muted); font-size: 12px; word-break: break-all; margin-top: 2px; }
   .btn-ghost:disabled { opacity: .45; cursor: default; }
-  .fs-tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 8px; }
+  .fs-tools { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 8px; }
   .fs-tools button { width: 100%; min-width: 0; padding: 8px 12px; font-size: 12.5px; font-weight: 600; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; transition: all .15s ease; }
   .fs-tools button:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
   .fs-loc-wrap { min-width: 0; display: flex; }
   .fs-loc-wrap select { width: 100%; min-width: 0; padding: 7px 8px; font-size: 12px; font-weight: 600; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; outline: none; }
   .fs-up-wrap { position: relative; min-width: 0; display: flex; }
   .fs-up-wrap > button { width: 100%; }
+  .fs-dupes { display: flex; flex-direction: column; gap: 10px; max-height: 62vh; overflow-y: auto; }
+  .fs-dupe-group { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+  .fs-dupe-ghead { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: var(--muted); margin-bottom: 2px; }
+  .fs-dupe-ghead .gname { flex: 1; min-width: 0; word-break: break-all; }
+  .fs-dupe-ghead .gcnt { flex: 0 0 auto; white-space: nowrap; }
+  .fs-dupe-row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; font-size: 12.5px; border-radius: 8px; cursor: pointer; }
+  .fs-dupe-row:hover { background: var(--bg-soft); }
+  .fs-dupe-row input { flex: 0 0 auto; width: 18px; height: 18px; }
+  .fs-dupe-row .p { flex: 1; min-width: 0; word-break: break-all; color: var(--muted); font-size: 11.5px; }
+  .fs-dupe-row.keep .p { color: var(--primary); font-weight: 600; }
+  .fs-dupe-row .mod { flex: 0 0 auto; font-size: 11px; color: var(--muted); }
+  .fs-dupe-note { font-size: 12px; color: var(--amber); }
   #fsUpMenu { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px; box-shadow: var(--shadow); }
   #fsUpMenu button { display: block; width: 100%; padding: 9px 10px; font-size: 12.5px; font-weight: 600; border: 0; border-radius: 8px; background: transparent; color: var(--ink); cursor: pointer; text-align: left; }
   #fsUpMenu button:hover { background: var(--bg-soft); color: var(--primary); }
@@ -320,6 +332,7 @@
     .fs-row .fs-actions a, .fs-row .fs-actions button { flex: 0 0 auto; min-width: 0; padding: 5px 9px; text-align: center; }
     .fs-path { font-size: 12px; }
     .fs-tools { grid-template-columns: repeat(2, 1fr); }
+    .fs-tools > *:last-child { grid-column: span 2; }
     .fs-tools button { min-width: 0; }
     .fs-loc-wrap select { font-size: 12px; padding: 7px 8px; }
     .fs-batch { flex-wrap: wrap; }
@@ -441,6 +454,7 @@
       </div>
     </span>
     <button id="fsSelectBtn" type="button">&#9989; Pilih</button>
+    <button id="fsDupesBtn" type="button">&#128269; Duplikat</button>
   </div>
   <input id="fsUploadFile" type="file" class="hidden" multiple>
   <input id="fsUploadDir" type="file" class="hidden" webkitdirectory multiple>
@@ -504,6 +518,17 @@
     <div class="sheet-title" id="fsSheetTitle"></div>
     <div class="sheet-list" id="fsSheetList"></div>
     <button id="fsSheetCancel" type="button" class="sheet-cancel">Batal</button>
+  </div>
+</div>
+
+<div id="fsDupesModal" class="sheet hidden">
+  <div class="sheet-box">
+    <div class="sheet-title" id="fsDupesTitle">Cari file duplikat</div>
+    <div id="fsDupesBody" class="fs-dupes"></div>
+    <div class="cm-row" style="margin-top:10px">
+      <button id="fsDupesCancel" type="button" class="btn-ghost">Tutup</button>
+      <button id="fsDupesDelete" type="button" class="danger" disabled>Hapus terpilih (0)</button>
+    </div>
   </div>
 </div>
 
@@ -1890,6 +1915,110 @@ document.addEventListener('keydown', function (e) {
     e.preventDefault();
     t.click();
   }
+});
+
+// Cari & hapus file duplikat (nama + ukuran sama) di folder saat ini.
+const fsDupesModal = document.getElementById('fsDupesModal');
+const fsDupesBody = document.getElementById('fsDupesBody');
+const fsDupesDeleteBtn = document.getElementById('fsDupesDelete');
+let fsDupesChecked = [];
+
+document.getElementById('fsDupesBtn').addEventListener('click', async function () {
+  if (!fsPath) {
+    fsMsg('Buka folder dulu untuk mencari duplikat', true);
+    return;
+  }
+  fsDupesBody.innerHTML = '<div class="fs-dupe-note">Memindai…</div>';
+  fsDupesDeleteBtn.disabled = true;
+  fsDupesDeleteBtn.textContent = 'Hapus terpilih (0)';
+  fsDupesModal.classList.remove('hidden');
+  try {
+    const res = await fetch(API + '/api/fs_dupes?path=' + encodeURIComponent(fsPath));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'gagal');
+    renderFsDupes(data.groups || [], !!data.truncated);
+  } catch (e) {
+    fsDupesBody.innerHTML = emptyHtml('\u26A0\uFE0F', 'Gagal mencari duplikat', String(e));
+  }
+});
+
+function renderFsDupes(groups, truncated) {
+  fsDupesChecked = [];
+  if (!groups.length) {
+    fsDupesBody.innerHTML = emptyHtml('\u2714\uFE0F', 'Tidak ada duplikat', 'Semua file unik di folder ini.');
+    fsDupesDeleteBtn.disabled = true;
+    fsDupesDeleteBtn.textContent = 'Hapus terpilih (0)';
+    return;
+  }
+  let html = truncated
+    ? '<div class="fs-dupe-note">Folder sangat besar \u2014 hasil dibatasi 5.000 file.</div>'
+    : '';
+  groups.forEach(function (g) {
+    html += '<div class="fs-dupe-group"><div class="fs-dupe-ghead">' +
+      '<span class="gname">' + escapeHtml(g.name) + '</span>' +
+      '<span class="gcnt">' + fmt(g.size) + ' \u00d7 ' + g.files.length + '</span></div>';
+    g.files.forEach(function (f, fi) {
+      const keep = fi === 0;
+      html += '<label class="fs-dupe-row' + (keep ? ' keep' : '') + '">' +
+        '<input type="checkbox" data-path="' + escapeHtml(f.path) + '" ' +
+        (keep ? '' : 'checked') + '>' +
+        '<span class="p">' + (keep ? '\u{1F4C1} ' : '') + escapeHtml(f.path) + '</span>' +
+        '<span class="mod">' + fmtDate(f.modified) + '</span></label>';
+    });
+    html += '</div>';
+  });
+  fsDupesBody.innerHTML = html;
+  fsDupesBody.querySelectorAll('.fs-dupe-row input').forEach(function (cb) {
+    cb.addEventListener('change', updateFsDupesDelete);
+  });
+  updateFsDupesDelete();
+}
+
+function updateFsDupesDelete() {
+  fsDupesChecked = Array.from(
+    fsDupesBody.querySelectorAll('.fs-dupe-row input:checked')
+  );
+  fsDupesDeleteBtn.disabled = fsDupesChecked.length === 0;
+  fsDupesDeleteBtn.textContent = 'Hapus terpilih (' + fsDupesChecked.length + ')';
+}
+
+document.getElementById('fsDupesDelete').addEventListener('click', function () {
+  if (!fsDupesChecked.length) return;
+  showConfirm(
+    'Hapus ' + fsDupesChecked.length + ' file duplikat?',
+    'File pertama di tiap grup tetap disimpan.',
+    'Hapus',
+    function () {
+      (async function () {
+        const paths = fsDupesChecked.map(function (cb) {
+          return cb.getAttribute('data-path');
+        });
+        let ok = 0;
+        let fail = 0;
+        for (const p of paths) {
+          try {
+            const body = new URLSearchParams({action: 'delete', path: p});
+            const res = await fetch(API + '/api/fs_action', {method: 'POST', body});
+            const data = await res.json();
+            if (data && data.ok) ok++; else fail++;
+          } catch (e) {
+            fail++;
+          }
+        }
+        fsDupesModal.classList.add('hidden');
+        loadFs();
+        fsMsg(ok + ' dihapus' + (fail ? ', ' + fail + ' gagal' : ''), fail > 0);
+      })();
+    }
+  );
+});
+
+document.getElementById('fsDupesCancel').addEventListener('click', function () {
+  fsDupesModal.classList.add('hidden');
+});
+fsDupesModal.addEventListener('click', function (e) {
+  if (e.target === fsDupesModal) fsDupesModal.classList.add('hidden');
 });
 
 fsUploadFile.addEventListener('change', function () {

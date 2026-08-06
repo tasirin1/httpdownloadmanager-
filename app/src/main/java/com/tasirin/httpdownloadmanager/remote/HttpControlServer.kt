@@ -112,6 +112,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     session.method == Method.GET && session.uri == "/api/qr" -> qrPngResponse(session)
                     session.method == Method.GET && session.uri == "/api/gallery" -> galleryJson(session)
                     session.method == Method.GET && session.uri == "/api/fs" -> fsList(session)
+                    session.method == Method.GET && session.uri == "/api/fs_dupes" -> fsDupes(session)
                     session.method == Method.GET && session.uri == "/api/thumb" -> serveThumb(session)
                     session.method == Method.GET && session.uri == "/api/media" -> serveMedia(session)
                     session.method == Method.POST && session.uri == "/api/add" -> addDownload(session)
@@ -1475,6 +1476,63 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             files.forEach { items.put(it) }
         }
         return jsonResponse(JSONObject().put("path", relative).put("items", items))
+    }
+
+    /** Cari file duplikat (nama + ukuran sama) di dalam folder secara rekursif. */
+    private fun fsDupes(session: IHTTPSession): Response {
+        val raw = session.parms["path"].orEmpty()
+        if (raw.isEmpty() || !raw.startsWith(FS_PREFIX)) {
+            return jsonResponse(JSONObject().put("ok", false).put("error", "path tidak valid"))
+        }
+        val root = File(raw.removePrefix(FS_PREFIX))
+        if (!root.isDirectory || !isFsPathAllowed(root.absolutePath)) {
+            return jsonResponse(JSONObject().put("ok", false).put("error", "folder tidak diizinkan"))
+        }
+        val byKey = LinkedHashMap<String, MutableList<JSONObject>>()
+        var visited = 0
+        val cap = 5_000
+        val maxDepth = 10
+        fun walk(dir: File, depth: Int) {
+            if (visited >= cap || depth > maxDepth) return
+            val children = runCatching { dir.listFiles() }.getOrNull() ?: return
+            children.sortedBy { it.name.lowercase() }.forEach { f ->
+                if (visited >= cap) return@forEach
+                if (f.isFile) {
+                    visited++
+                    val key = "${f.name}\u0000${f.length()}"
+                    val o = JSONObject()
+                        .put("path", FS_PREFIX + f.absolutePath)
+                        .put("name", f.name)
+                        .put("size", f.length())
+                        .put("modified", f.lastModified())
+                    byKey.getOrPut(key) { mutableListOf() }.add(o)
+                } else if (f.isDirectory) {
+                    walk(f, depth + 1)
+                }
+            }
+        }
+        walk(root, 0)
+        val groups = JSONArray()
+        byKey.values.forEach { files ->
+            if (files.size > 1) {
+                groups.put(
+                    JSONObject()
+                        .put("name", files[0].getString("name"))
+                        .put("size", files[0].getLong("size"))
+                        .put("files", JSONArray(files))
+                )
+            }
+        }
+        appendLog(
+            "FS CARI DUPIKAT: ${root.absolutePath} — ${groups.length()} grup " +
+                "(${if (visited >= cap) "dibatasi" else visited} file dipindai)"
+        )
+        return jsonResponse(
+            JSONObject()
+                .put("ok", true)
+                .put("groups", groups)
+                .put("truncated", visited >= cap)
+        )
     }
 
     private fun fsStats(path: String): Pair<Int, Long> {

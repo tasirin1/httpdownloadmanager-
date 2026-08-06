@@ -184,7 +184,9 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 App.engine.resumeInterrupted()
             }
         }
-        if (StoragePrefs.isServerBackgroundEnabled(this) && !App.httpServer.isAlive) {
+        if (StoragePrefs.isServerBackgroundEnabled(this) &&
+            StoragePrefs.isServerStartAllowed(this) && !App.httpServer.isAlive
+        ) {
             runCatching { App.httpServer.startServer() }
         }
         runCatching { App.engine.cleanupOrphans() }
@@ -852,6 +854,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         val checkAutoSort = view.findViewById<CheckBox>(R.id.check_auto_sort)
         val checkSmallFirst = view.findViewById<CheckBox>(R.id.check_small_first)
         val checkDeletePartial = view.findViewById<CheckBox>(R.id.check_delete_partial)
+        val checkPinEnforced = view.findViewById<CheckBox>(R.id.check_pin_enforced)
+        val checkFsFullAccess = view.findViewById<CheckBox>(R.id.check_fs_full_access)
         val pinInput = view.findViewById<EditText>(R.id.input_pin)
         wireStorageSection(view)
         checkBackground.isChecked = StoragePrefs.isBackgroundEnabled(this)
@@ -860,6 +864,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         checkAutoSort.isChecked = StoragePrefs.isAutoSortEnabled(this)
         checkSmallFirst.isChecked = StoragePrefs.isSmallFirstEnabled(this)
         checkDeletePartial.isChecked = StoragePrefs.isDeletePartialOnCancel(this)
+        checkPinEnforced.isChecked = StoragePrefs.isPinEnforced(this)
+        checkFsFullAccess.isChecked = StoragePrefs.isFsFullAccessEnabled(this)
         pinInput.setText(StoragePrefs.getServerPin(this).orEmpty())
 
         val concurrentOptions = resources.getStringArray(R.array.concurrent_options)
@@ -926,6 +932,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 StoragePrefs.setAutoSortEnabled(this, checkAutoSort.isChecked)
                 StoragePrefs.setSmallFirstEnabled(this, checkSmallFirst.isChecked)
                 StoragePrefs.setDeletePartialOnCancel(this, checkDeletePartial.isChecked)
+                StoragePrefs.setPinEnforced(this, checkPinEnforced.isChecked)
+                StoragePrefs.setFsFullAccessEnabled(this, checkFsFullAccess.isChecked)
                 StoragePrefs.setServerPin(
                     this,
                     pinInput.text?.toString()?.trim().orEmpty()
@@ -997,6 +1005,19 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         switchView.setOnCheckedChangeListener { _, checked ->
             if (updating) return@setOnCheckedChangeListener
             if (checked) {
+                if (StoragePrefs.isPinEnforced(this) &&
+                    StoragePrefs.getServerPin(this).isNullOrEmpty()
+                ) {
+                    updating = true
+                    switchView.isChecked = false
+                    updating = false
+                    Snackbar.make(
+                        binding.root,
+                        R.string.remote_pin_required,
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                    return@setOnCheckedChangeListener
+                }
                 // Nyalakan: simpan preferensi supaya tetap hidup setelah restart.
                 StoragePrefs.setServerBackgroundEnabled(this, true)
                 StoragePrefs.setServerAutoStartEnabled(this, true)

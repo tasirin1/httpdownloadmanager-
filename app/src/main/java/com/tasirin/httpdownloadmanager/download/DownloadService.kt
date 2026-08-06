@@ -31,7 +31,9 @@ class DownloadService : Service() {
         if (StoragePrefs.isBackgroundEnabled(this)) {
             App.engine.resumeInterrupted()
         }
-        if (StoragePrefs.isServerBackgroundEnabled(this) && !App.httpServer.isAlive) {
+        if (StoragePrefs.isServerBackgroundEnabled(this) &&
+            StoragePrefs.isServerStartAllowed(this) && !App.httpServer.isAlive
+        ) {
             runCatching { App.httpServer.startServer() }
         }
         scope.launch {

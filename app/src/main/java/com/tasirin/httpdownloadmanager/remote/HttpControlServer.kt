@@ -16,6 +16,7 @@ import android.provider.MediaStore
 import android.util.Log
 import com.tasirin.httpdownloadmanager.App
 import com.tasirin.httpdownloadmanager.data.DownloadState
+import com.tasirin.httpdownloadmanager.util.FileSaver
 import com.tasirin.httpdownloadmanager.util.MediaLibrary
 import com.tasirin.httpdownloadmanager.util.FileNames
 import com.tasirin.httpdownloadmanager.util.MimeTypes
@@ -152,7 +153,11 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             }
             val tmpMaxAge = 24L * 60 * 60 * 1000
             context.cacheDir.listFiles()?.forEach { f ->
-                if (f.name.startsWith("up_") && f.isFile && now - f.lastModified() > tmpMaxAge) f.delete()
+                if (f.isFile && now - f.lastModified() > tmpMaxAge &&
+                    (f.name.startsWith("up_") || f.name.startsWith("fszip"))
+                ) {
+                    f.delete()
+                }
             }
         }
     }
@@ -397,7 +402,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         if (offset < 0 || offset > MAX_UPLOAD_BYTES) {
             return jsonResponse(JSONObject().put("ok", false).put("error", "offset tidak valid"))
         }
-        val id = session.parms["id"]?.trim()?.take(64) ?: "x"
+        val id = session.parms["id"]?.trim()?.take(64)
+            ?: sha256("$name|$folderPath").take(16)
         val tmp = File(context.cacheDir, "up_$id.tmp")
         var resultName = name
         return runCatching {
@@ -471,17 +477,25 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             raw.startsWith(MS_PREFIX) -> raw.removePrefix(MS_PREFIX).trim('/').substringAfterLast('/')
             else -> File(raw.removePrefix(FS_PREFIX)).name
         }.ifEmpty { "folder" }
-        val tmp = runCatching {
-            File.createTempFile("fszip", ".zip", context.cacheDir).apply {
-                ZipOutputStream(BufferedOutputStream(FileOutputStream(this))).use { zos ->
-                    if (raw.startsWith(MS_PREFIX)) {
-                        zipMedia(zos, raw.removePrefix(MS_PREFIX))
-                    } else {
-                        zipFile(zos, File(raw.removePrefix(FS_PREFIX)), "")
+        val tmp = try {
+            File.createTempFile("fszip", ".zip", context.cacheDir).also { tmpFile ->
+                try {
+                    ZipOutputStream(BufferedOutputStream(FileOutputStream(tmpFile))).use { zos ->
+                        if (raw.startsWith(MS_PREFIX)) {
+                            zipMedia(zos, raw.removePrefix(MS_PREFIX))
+                        } else {
+                            zipFile(zos, File(raw.removePrefix(FS_PREFIX)), "")
+                        }
                     }
+                } catch (e: Exception) {
+                    runCatching { tmpFile.delete() }
+                    throw e
                 }
             }
-        }.getOrNull() ?: return notFound()
+        } catch (e: Exception) {
+            logError(e)
+            return notFound()
+        }
         if (tmp.length() == 0L) {
             tmp.delete()
             return notFound()
@@ -694,9 +708,12 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         val bmp = generateThumb(raw) ?: return null
         return runCatching {
             val out = FileOutputStream(cached)
-            bmp.compress(Bitmap.CompressFormat.JPEG, 72, out)
-            out.close()
-            bmp.recycle()
+            try {
+                bmp.compress(Bitmap.CompressFormat.JPEG, 72, out)
+            } finally {
+                runCatching { out.close() }
+                runCatching { bmp.recycle() }
+            }
             cached
         }.getOrNull()
     }
@@ -954,7 +971,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             o.put("modified", e.modified)
             o.put("isVideo", e.isVideo)
             o.put("token", e.token)
-            if (e.isVideo) {
+            if (e.isVideo && !e.isPartial) {
                 var d = cache.optLong(e.token, 0L)
                 if (d <= 0 && extracted < 20) {
                     d = videoDurationMs(e.token)
@@ -1037,9 +1054,12 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         StoragePrefs.getTextFolder(context)?.let { tf ->
             if (File(tf).isDirectory) add("Folder teks", FS_PREFIX + tf)
         }
-        val primary = File("/storage/emulated/0")
-        if (primary.isDirectory && primary.listFiles() != null) {
-            add("Penyimpanan utama", FS_PREFIX + primary.absolutePath)
+        // Akses penuh ke penyimpanan utama adalah opsi keamanan (default mati).
+        if (StoragePrefs.isFsFullAccessEnabled(context)) {
+            val primary = File("/storage/emulated/0")
+            if (primary.isDirectory && primary.listFiles() != null) {
+                add("Penyimpanan utama", FS_PREFIX + primary.absolutePath)
+            }
         }
         if (Build.VERSION.SDK_INT >= 29) {
             add("MediaStore Download", MS_PREFIX + "Download")
@@ -1150,6 +1170,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         }
         val result = itemCount to totalSize
         fsStatsCache[path] = now to result
+        if (fsStatsCache.size > 300) fsStatsCache.clear()
         return result
     }
 
@@ -1181,6 +1202,11 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             }
             "move" -> {
                 if (dest.isBlank()) return false
+                if (dest.startsWith(MS_PREFIX)) {
+                    return runCatching {
+                        moveFileToMediaStore(file, dest.removePrefix(MS_PREFIX))
+                    }.getOrDefault(false)
+                }
                 val destDir = File(dest.removePrefix(FS_PREFIX))
                 if (!destDir.isDirectory) return false
                 if (file.parentFile?.absolutePath == destDir.absolutePath) return true
@@ -1210,13 +1236,22 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                 "delete" -> resolver.delete(uri, null, null) > 0
                 "rename" -> {
                     if (name.isBlank() || name.contains('/') || name.contains('\\')) return false
+                    val rel = mediaStoreRelativePath(uri)?.trim('/')
+                    val finalName = if (rel != null) {
+                        FileSaver(context).uniqueMediaStoreName(name, rel)
+                    } else {
+                        name
+                    }
                     val values = ContentValues().apply {
-                        put(MediaStore.Downloads.DISPLAY_NAME, name)
+                        put(MediaStore.Downloads.DISPLAY_NAME, finalName)
                     }
                     resolver.update(uri, values, null, null) > 0
                 }
                 "move" -> {
                     if (dest.isBlank()) return false
+                    if (dest.startsWith(FS_PREFIX)) {
+                        return moveMediaToFile(uri, dest.removePrefix(FS_PREFIX))
+                    }
                     val rel = dest.removePrefix(MS_PREFIX).trim('/') + "/"
                     val values = ContentValues().apply {
                         put(MediaStore.MediaColumns.RELATIVE_PATH, rel)
@@ -1227,6 +1262,61 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             }
         }.getOrDefault(false)
     }
+
+    private fun moveFileToMediaStore(file: File, relative: String): Boolean {
+        if (Build.VERSION.SDK_INT < 29) return false
+        val rel = relative.trim('/')
+        val resolver = context.contentResolver
+        val name = FileSaver(context).uniqueMediaStoreName(file.name, rel)
+        val values = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, name)
+            put(MediaStore.Downloads.MIME_TYPE, MimeTypes.forFile(name))
+            put(MediaStore.Downloads.RELATIVE_PATH, "$rel/")
+        }
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return false
+        val written = runCatching {
+            val out = resolver.openOutputStream(uri) ?: return false
+            out.use { dst -> file.inputStream().use { src -> src.copyTo(dst) } }
+            true
+        }.getOrDefault(false)
+        if (!written) {
+            resolver.delete(uri, null, null)
+            return false
+        }
+        return runCatching { file.delete() }.getOrDefault(false)
+    }
+
+    private fun moveMediaToFile(uri: Uri, dest: String): Boolean {
+        val dir = File(dest)
+        if (!dir.isDirectory && !dir.mkdirs()) return false
+        val sourceName = mediaStoreName(uri) ?: return false
+        val target = FileNames.unique(File(dir, sourceName).name) { File(dir, it).exists() }
+            .let { File(dir, it) }
+        val resolver = context.contentResolver
+        val written = runCatching {
+            val input = resolver.openInputStream(uri) ?: return false
+            input.use { src -> target.outputStream().use { dst -> src.copyTo(dst) } }
+            true
+        }.getOrDefault(false)
+        if (!written) return false
+        return resolver.delete(uri, null, null) > 0
+    }
+
+    private fun mediaStoreName(uri: Uri): String? = runCatching {
+        context.contentResolver.query(
+            uri, arrayOf(MediaStore.Downloads.DISPLAY_NAME), null, null, null
+        )?.use { c ->
+            if (c.moveToFirst()) c.getString(c.getColumnIndexOrThrow(MediaStore.Downloads.DISPLAY_NAME)) else null
+        }
+    }.getOrNull()
+
+    private fun mediaStoreRelativePath(uri: Uri): String? = runCatching {
+        context.contentResolver.query(
+            uri, arrayOf(MediaStore.Downloads.RELATIVE_PATH), null, null, null
+        )?.use { c ->
+            if (c.moveToFirst()) c.getString(c.getColumnIndexOrThrow(MediaStore.Downloads.RELATIVE_PATH)) else null
+        }
+    }.getOrNull()
 
     private fun statusJson(): Response {
         return jsonResponse(statusObject())
@@ -1420,7 +1510,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     companion object {
         private const val FS_PREFIX = "f:"
         private const val MS_PREFIX = "m:"
-        private const val MAX_BODY_SIZE = 1_048_576L
+        private const val MAX_BODY_SIZE = 4L * 1024 * 1024
         private const val MAX_UPLOAD_BYTES = 2L * 1024 * 1024 * 1024
         private const val MAX_UPLOAD_MB = 2048
         private const val SHARE_TTL_HOURS = 24

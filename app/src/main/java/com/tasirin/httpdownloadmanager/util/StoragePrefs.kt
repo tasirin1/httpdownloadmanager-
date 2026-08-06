@@ -27,6 +27,8 @@ object StoragePrefs {
     private const val KEY_AUTO_SORT = "auto_sort"
     private const val KEY_SMALL_FIRST = "small_first"
     private const val KEY_DELETE_PARTIAL_ON_CANCEL = "delete_partial_on_cancel"
+    private const val KEY_PIN_ENFORCED = "pin_enforced"
+    private const val KEY_FS_FULL_ACCESS = "fs_full_access"
 
     fun getFolderUri(context: Context): Uri? {
         val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -105,9 +107,33 @@ object StoragePrefs {
             .apply()
     }
 
+    fun isPinEnforced(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_PIN_ENFORCED, true)
+
+    fun setPinEnforced(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_PIN_ENFORCED, enabled)
+            .apply()
+    }
+
+    fun isFsFullAccessEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_FS_FULL_ACCESS, false)
+
+    fun setFsFullAccessEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_FS_FULL_ACCESS, enabled)
+            .apply()
+    }
+
     fun isServerAutoStartEnabled(context: Context): Boolean =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getBoolean(KEY_SERVER_AUTOSTART, true)
+
+    /** Server hanya boleh start otomatis bila PIN wajib sudah disetel. */
+    fun isServerStartAllowed(context: Context): Boolean =
+        !isPinEnforced(context) || !getServerPin(context).isNullOrEmpty()
 
     fun setServerAutoStartEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()

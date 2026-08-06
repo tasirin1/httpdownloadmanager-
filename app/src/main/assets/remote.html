@@ -2168,12 +2168,13 @@ function updateToolbar(items) {
   );
 }
 
-let lastItemsSig = '';
+let lastStructSig = '';
 let lastIdListSig = '';
-function itemsSig(items) {
+// Signature struktural: hanya berubah saat daftar/status item berubah.
+// Perubahan progres/kecepatan ditangani updateRows (tanpa render ulang penuh).
+function structSig(items) {
   return items.map(function (it) {
-    return it.id + '|' + it.state + '|' + it.bytesDownloaded + '|' + it.totalBytes + '|' +
-      (it.speedBps || 0) + '|' + (it.etaSeconds || 0) + (it.error ? '|e' : '');
+    return it.id + '|' + it.state + '|' + (it.error ? '|e' : '') + '|' + it.fileName + '|' + it.addedAt;
   }).join(';');
 }
 
@@ -2188,9 +2189,53 @@ function emptyHtml(icon, title, sub, cta) {
 function render(items) {
   const list = document.getElementById('list');
   currentItems = items.slice();
-  const sig = (webFilter || '') + '::' + itemsSig(items);
-  if (sig === lastItemsSig) return;
-  lastItemsSig = sig;
+  const struct = (webFilter || '') + '::' + structSig(items);
+  if (struct !== lastStructSig) {
+    lastStructSig = struct;
+    rebuildList(items);
+    return;
+  }
+  updateRows(items);
+}
+
+function rowSubHtml(it) {
+  const prog = it.totalBytes > 0 ? Math.round(it.bytesDownloaded * 100 / it.totalBytes) : 0;
+  let meta = it.totalBytes > 0
+    ? prog + '% \u00b7 ' + fmt(it.bytesDownloaded) + ' / ' + fmt(it.totalBytes)
+    : fmt(it.bytesDownloaded);
+  if (it.state === 'DOWNLOADING' && it.speedBps > 0) {
+    meta += ' \u00b7 ' + fmtSpeed(it.speedBps);
+    if (it.etaSeconds > 0) meta += ' \u00b7 ETA ' + fmtEta(it.etaSeconds);
+  }
+  const spark = it.state === 'DOWNLOADING' ? sparkSvg(speedHistory[it.id]) : '';
+  return '<div class="item-sub">' +
+    '<div class="meta">' + stateBadge(it.state) + '<span>' + meta + '</span></div>' +
+    '<div class="bar"><div class="fill" style="width:' + prog + '%"></div></div>' +
+    spark +
+    '</div>';
+}
+
+// Update ringan: hanya progres/kecepatan/ETA yang berubah -> tidak render ulang seluruh daftar.
+function updateRows(items) {
+  const list = document.getElementById('list');
+  if (!list.querySelector('li[data-id]')) {
+    rebuildList(items);
+    return;
+  }
+  const rows = {};
+  list.querySelectorAll('li[data-id]').forEach(function (li) { rows[li.dataset.id] = li; });
+  items.forEach(function (it) {
+    const li = rows[it.id];
+    if (!li) return;
+    const sub = li.querySelector('.item-sub');
+    if (sub) sub.outerHTML = rowSubHtml(it);
+  });
+  renderSpeedTotal(items);
+  updateToolbar(items);
+}
+
+function rebuildList(items) {
+  const list = document.getElementById('list');
   list.innerHTML = '';
   const idListSig = items.map(function (it) { return it.id + '|' + it.state; }).join(';');
   const idsChanged = idListSig !== lastIdListSig;
@@ -2230,32 +2275,20 @@ function render(items) {
   for (const it of filtered) {
     const li = document.createElement('li');
     li.className = 'item';
+    li.setAttribute('data-id', it.id);
     if (firstRender || idsChanged) {
       li.classList.add('anim');
       li.style.animationDelay = Math.min(idx * 40, 400) + 'ms';
     }
     idx++;
-    const prog = it.totalBytes > 0 ? Math.round(it.bytesDownloaded * 100 / it.totalBytes) : 0;
-    let meta = it.totalBytes > 0
-      ? prog + '% \u00b7 ' + fmt(it.bytesDownloaded) + ' / ' + fmt(it.totalBytes)
-      : fmt(it.bytesDownloaded);
-    if (it.state === 'DOWNLOADING' && it.speedBps > 0) {
-      meta += ' \u00b7 ' + fmtSpeed(it.speedBps);
-      if (it.etaSeconds > 0) meta += ' \u00b7 ETA ' + fmtEta(it.etaSeconds);
-    }
     const err = it.error ? '<div class="err">' + escapeHtml(it.error) + '</div>' : '';
-    const spark = it.state === 'DOWNLOADING' ? sparkSvg(speedHistory[it.id]) : '';
     li.innerHTML =
       '<div class="item-top"><div class="icon">' + fileIcon(it.fileName) + '</div><div class="item-body">' +
       '<div class="name">' + escapeHtml(it.fileName) + '</div>' + err +
       '</div>' +
       '<button class="item-menu-btn" type="button" title="Aksi">\u22EF</button>' +
       '</div>' +
-      '<div class="item-sub">' +
-      '<div class="meta">' + stateBadge(it.state) + '<span>' + meta + '</span></div>' +
-      '<div class="bar"><div class="fill" style="width:' + prog + '%"></div></div>' +
-      spark +
-      '</div>';
+      rowSubHtml(it);
     const actions = document.createElement('div');
     actions.className = 'actions';
     actions.innerHTML = actionButtons(it);

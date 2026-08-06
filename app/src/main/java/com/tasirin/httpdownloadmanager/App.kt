@@ -27,7 +27,9 @@ class App : Application() {
         runCatching { engine.cleanupOrphans() }
         // Server dinyalakan langsung dari Application supaya tetap jalan
         // walau halaman utama gagal terbuka (mis. crash di Activity).
-        if (StoragePrefs.isServerBackgroundEnabled(this)) {
+        if (StoragePrefs.isServerBackgroundEnabled(this) &&
+            StoragePrefs.isServerStartAllowed(this)
+        ) {
             runCatching { httpServer.startServer() }
         }
         registerNetworkCallback()

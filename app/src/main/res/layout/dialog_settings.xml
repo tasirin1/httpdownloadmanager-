@@ -80,6 +80,19 @@
             android:inputType="numberPassword"
             android:maxLength="10" />
 
+        <CheckBox
+            android:id="@+id/check_pin_enforced"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/settings_pin_enforced" />
+
+        <CheckBox
+            android:id="@+id/check_fs_full_access"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_fs_full_access" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

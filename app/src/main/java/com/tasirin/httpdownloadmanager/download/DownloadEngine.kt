@@ -426,6 +426,19 @@ class DownloadEngine(private val context: Context) {
 
     // --- Grafik kecepatan realtime ---
     private val speedHistory = ArrayDeque<Long>()
+    @Volatile private var sharedLimiter: GlobalRateLimiter? = null
+
+    private fun globalRateLimiter(): GlobalRateLimiter? {
+        val limit = StoragePrefs.speedLimitKbps(context)
+        if (limit <= 0) return null
+        synchronized(this) {
+            val current = sharedLimiter
+            if (current != null) return current
+            val created = GlobalRateLimiter(limit)
+            sharedLimiter = created
+            return created
+        }
+    }
 
     private suspend fun speedSamplerLoop() {
         while (true) {
@@ -450,7 +463,11 @@ class DownloadEngine(private val context: Context) {
         val result = FileSaver(context).move(item, destTreeUri)
         if (result != null) {
             updateItem(id) {
-                it.copy(contentUri = result.contentUri, filePath = result.filePath)
+                it.copy(
+                    contentUri = result.contentUri,
+                    filePath = result.filePath,
+                    fileName = result.fileName ?: item.fileName
+                )
             }
         }
     }
@@ -627,7 +644,13 @@ class DownloadEngine(private val context: Context) {
         }
         val globalLimit = StoragePrefs.speedLimitKbps(context)
         val limit = if (item.speedLimitKbps > 0) item.speedLimitKbps else globalLimit
-        val throttle = SpeedThrottle(limit)
+        // Limit global dipakai bersama antar item (total throughput global),
+        // limit per-item tetap dihitung per item.
+        val throttle = if (item.speedLimitKbps > 0) {
+            SpeedThrottle(limit, null)
+        } else {
+            SpeedThrottle(limit, globalRateLimiter())
+        }
 
         if (item.segments.isNotEmpty()) {
             runSegmented(item, saver, throttle, item.totalBytes, null)
@@ -1191,27 +1214,55 @@ data class UrlProbe(
     val etag: String? = null
 )
 
-private class SpeedThrottle(private val limitKbps: Int) {
+private class SpeedThrottle(
+    private val limitKbps: Int,
+    private val shared: GlobalRateLimiter?
+) {
     private val lock = Any()
     private var startTime = System.currentTimeMillis()
     private var startBytes = 0L
+    private var lastSeen = 0L
 
     fun reset(start: Long) {
         synchronized(lock) {
             startTime = System.currentTimeMillis()
             startBytes = start
+            lastSeen = start
         }
     }
 
     suspend fun sleepIfNeeded(totalDownloaded: Long) {
         if (limitKbps <= 0) return
         val delayMs = synchronized(lock) {
-            val limit = limitKbps * 1024L
-            val elapsed = System.currentTimeMillis() - startTime
-            val expected = startBytes + (elapsed * limit) / 1000L
-            if (totalDownloaded > expected) ((totalDownloaded - expected) * 1000L) / limit else 0L
+            val delta = (totalDownloaded - lastSeen).coerceAtLeast(0L)
+            lastSeen = totalDownloaded
+            val g = shared
+            if (g != null) {
+                if (delta <= 0) 0L else g.waitFor(delta)
+            } else {
+                val limit = limitKbps * 1024L
+                val elapsed = System.currentTimeMillis() - startTime
+                val expected = startBytes + (elapsed * limit) / 1000L
+                if (totalDownloaded > expected) ((totalDownloaded - expected) * 1000L) / limit else 0L
+            }
         }
         if (delayMs > 0) delay(delayMs)
+    }
+}
+
+/** Pembatas kecepatan bersama antar item: akumulasi byte lalu jaga rata-rata. */
+private class GlobalRateLimiter(private val limitKbps: Int) {
+    private val lock = Any()
+    private var totalBytes = 0L
+    private val startedAt = System.currentTimeMillis()
+
+    fun waitFor(bytes: Long): Long {
+        synchronized(lock) {
+            totalBytes += bytes
+            val elapsed = System.currentTimeMillis() - startedAt
+            val target = (totalBytes * 1000L) / (limitKbps * 1024L)
+            return (target - elapsed).coerceAtLeast(0L)
+        }
     }
 }
 

@@ -238,4 +238,8 @@
     <string name="gallery_partial_badge">belum selesai · streaming</string>
     <string name="speed_zero">0 B/s</string>
     <string name="speed_chart_desc">Grafik kecepatan unduhan 60 detik terakhir</string>
+
+    <string name="settings_pin_enforced">Paksa PIN saat server menyala</string>
+    <string name="settings_fs_full_access">Akses penuh penyimpanan utama (file manager)</string>
+    <string name="remote_pin_required">Setel PIN dulu di Pengaturan sebelum menyalakan server (untuk keamanan jaringan)</string>
 </resources>

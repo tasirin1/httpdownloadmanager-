@@ -13,7 +13,8 @@ class BootReceiver : BroadcastReceiver() {
         val action = intent?.action ?: return
         if (action != Intent.ACTION_BOOT_COMPLETED && action != Intent.ACTION_MY_PACKAGE_REPLACED) return
         val downloadAutostart = StoragePrefs.isAutoStartEnabled(context)
-        val serverAutostart = StoragePrefs.isServerAutoStartEnabled(context)
+        val serverAutostart = StoragePrefs.isServerAutoStartEnabled(context) &&
+            StoragePrefs.isServerStartAllowed(context)
         if (!downloadAutostart && !serverAutostart) return
         runCatching {
             val serviceIntent = Intent(context, DownloadService::class.java)

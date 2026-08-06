@@ -343,8 +343,14 @@ class FileSaver(context: Context) {
                 !item.contentUri.isNullOrEmpty() -> {
                     val uri = Uri.parse(item.contentUri)
                     if (Build.VERSION.SDK_INT >= 29 && uri.authority == MediaStore.AUTHORITY) {
+                        val rel = mediaRelativePath(uri)?.trim('/')
+                        val finalName = if (rel != null) {
+                            uniqueMediaStoreName(newName, rel)
+                        } else {
+                            newName
+                        }
                         val values = ContentValues().apply {
-                            put(MediaStore.Downloads.DISPLAY_NAME, newName)
+                            put(MediaStore.Downloads.DISPLAY_NAME, finalName)
                         }
                         appContext.contentResolver.update(uri, values, null, null) > 0
                     } else {
@@ -364,8 +370,8 @@ class FileSaver(context: Context) {
     fun move(item: DownloadItem, destTreeUri: Uri): PublishResult? {
         return runCatching {
             val tree = DocumentFile.fromTreeUri(appContext, destTreeUri) ?: return null
-            val target = tree.findFile(item.fileName)
-                ?: tree.createFile(MimeTypes.forFile(item.fileName), item.fileName)
+            val unique = uniqueDocumentName(tree, item.fileName)
+            val target = tree.createFile(MimeTypes.forFile(unique), unique)
                 ?: return null
             val input = when {
                 !item.contentUri.isNullOrEmpty() ->
@@ -379,7 +385,7 @@ class FileSaver(context: Context) {
                 out.use { dst -> src.copyTo(dst) }
             }
             deleteFiles(item)
-            PublishResult(contentUri = target.uri.toString())
+            PublishResult(contentUri = target.uri.toString(), fileName = target.name)
         }.getOrNull()
     }
 
@@ -394,7 +400,17 @@ class FileSaver(context: Context) {
         return FileNames.unique(fileName) { tree.findFile(it) != null }
     }
 
-    private fun uniqueMediaStoreName(fileName: String, relativePath: String?): String {
+    private fun mediaRelativePath(uri: Uri): String? = runCatching {
+        appContext.contentResolver.query(
+            uri,
+            arrayOf(MediaStore.Downloads.RELATIVE_PATH),
+            null, null, null
+        )?.use { c ->
+            if (c.moveToFirst()) c.getString(c.getColumnIndexOrThrow(MediaStore.Downloads.RELATIVE_PATH)) else null
+        }
+    }.getOrNull()
+
+    fun uniqueMediaStoreName(fileName: String, relativePath: String?): String {
         if (Build.VERSION.SDK_INT < 29) return fileName
         return runCatching {
             val resolver = appContext.contentResolver
@@ -426,7 +442,7 @@ class FileSaver(context: Context) {
                     val uri = Uri.parse(result.contentUri)
                     if (Build.VERSION.SDK_INT >= 29 && uri.authority == MediaStore.AUTHORITY) {
                         val values = ContentValues().apply {
-                            put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/$sub")
+                            put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/$sub/")
                         }
                         appContext.contentResolver.update(uri, values, null, null)
                         result

@@ -1174,7 +1174,8 @@ function renderFs(items) {
         if (FS_MEDIA_EXTS.indexOf(extOf(it.name).toLowerCase()) >= 0) {
           actions += '<a class="fs-stream" href="' + media + '" target="_blank">&#9654; Stream</a>';
         }
-        actions += '<a class="fs-dl" href="' + media + '?dl=1" download data-fsdl="1">&#11015; Download</a>';
+        actions += '<a class="fs-dl" href="' + media + '?dl=1" download data-fsdl="1" data-name="' +
+          escapeHtml(it.name) + '" data-size="' + it.size + '">&#11015; Download</a>';
       } else {
         actions += '<a class="fs-dl" href="' + API + '/api/fs_zip?path=' +
           encodeURIComponent(it.path) + '" download title="Download folder sebagai ZIP">&#128230; ZIP</a>';
@@ -1756,15 +1757,29 @@ fsList.addEventListener('click', function (e) {
   const a = e.target.closest('a.fs-dl[data-fsdl]');
   if (!a || a.dataset.checked === '1') return;
   e.preventDefault();
-  fetch(a.href, { headers: { Range: 'bytes=0-0' } }).then(function (r) {
-    if (r.ok || r.status === 206) {
-      a.dataset.checked = '1';
-      a.click();
-    } else {
+  // File besar (>150MB): unduh langsung lewat navigasi (tanpa buffer memori).
+  if (Number(a.dataset.size || 0) > 150 * 1024 * 1024) {
+    a.dataset.checked = '1';
+    location.href = a.href;
+    return;
+  }
+  // Unduh via fetch+blob: andal dan error server muncul sebagai pesan,
+  // bukan file teks kecil yang membingungkan.
+  fetch(a.href).then(function (r) {
+    if (!r.ok) {
       return r.text().then(function (t) {
         throw new Error('HTTP ' + r.status + (t ? ' — ' + t.slice(0, 200) : ''));
       });
     }
+    return r.blob();
+  }).then(function (blob) {
+    const url = URL.createObjectURL(blob);
+    const b = document.createElement('a');
+    b.href = url;
+    b.download = a.dataset.name || 'file';
+    document.body.appendChild(b);
+    b.click();
+    setTimeout(function () { URL.revokeObjectURL(url); b.remove(); }, 4000);
   }).catch(function (err) {
     mmShowToast('Gagal unduh: ' + err.message);
   });

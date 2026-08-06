@@ -27,6 +27,7 @@ class DownloadService : Service() {
         super.onCreate()
         NotificationHelper.createChannel(this)
         runCatching { startForegroundCompat() }
+        App.logEvent("SERVICE MULAI (proses download di latar belakang)")
         if (StoragePrefs.isBackgroundEnabled(this)) {
             App.engine.resumeInterrupted()
         }

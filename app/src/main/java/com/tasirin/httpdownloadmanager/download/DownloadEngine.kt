@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.util.Base64
+import com.tasirin.httpdownloadmanager.App
 import com.tasirin.httpdownloadmanager.data.DownloadItem
 import com.tasirin.httpdownloadmanager.data.DownloadRepository
 import com.tasirin.httpdownloadmanager.data.DownloadSegment
@@ -111,10 +112,13 @@ class DownloadEngine(private val context: Context) {
         update(listOf(item) + _items.value)
         flushSave()
         StoragePrefs.addRecentUrl(context, cleanUrl)
+        val host = runCatching { URL(cleanUrl).host }.getOrDefault("")
+        App.logEvent("DOWNLOAD DITAMBAH: $name (${host.ifEmpty { "URL lokal/kustom" }})")
         attemptStart(item.id)
     }
 
     fun pause(id: String) {
+        _items.value.find { it.id == id }?.let { App.logEvent("DOWNLOAD DIPAUSE: ${it.fileName}") }
         retryAttempts.remove(id)
         speedTracker.reset(id)
         jobs.remove(id)?.cancel()
@@ -128,6 +132,7 @@ class DownloadEngine(private val context: Context) {
     fun resume(id: String) {
         val item = _items.value.find { it.id == id } ?: return
         if (item.state != DownloadState.PAUSED && item.state != DownloadState.FAILED) return
+        App.logEvent("DOWNLOAD DILANJUTKAN: ${item.fileName}")
         retryAttempts.remove(id)
         updateItem(id) { it.copy(state = DownloadState.PENDING, autoResume = true) }
         attemptStart(id)
@@ -145,6 +150,7 @@ class DownloadEngine(private val context: Context) {
     }
 
     fun cancel(id: String) {
+        _items.value.find { it.id == id }?.let { App.logEvent("DOWNLOAD DIBATALKAN: ${it.fileName}") }
         retryAttempts.remove(id)
         speedTracker.reset(id)
         jobs.remove(id)?.cancel()
@@ -161,6 +167,7 @@ class DownloadEngine(private val context: Context) {
     }
 
     fun remove(id: String) {
+        _items.value.find { it.id == id }?.let { App.logEvent("DOWNLOAD DIHAPUS: ${it.fileName}") }
         retryAttempts.remove(id)
         speedTracker.reset(id)
         jobs.remove(id)?.cancel()
@@ -414,6 +421,10 @@ class DownloadEngine(private val context: Context) {
                 val etagChanged = item.etag.isNotBlank() && !probe.etag.isNullOrBlank() &&
                     probe.etag != item.etag
                 if (sizeChanged || etagChanged) {
+                    App.logEvent(
+                        "MONITOR: versi baru terdeteksi untuk ${item.fileName} " +
+                            "(${Formats.bytes(probe.sizeBytes)})"
+                    )
                     addDownload(
                         item.url,
                         item.fileName,
@@ -519,6 +530,7 @@ class DownloadEngine(private val context: Context) {
         val job = scope.launch {
             try {
                 updateItem(item.id) { it.copy(state = DownloadState.DOWNLOADING) }
+                App.logEvent("DOWNLOAD MULAI: ${item.fileName}")
                 runDownload(item)
             } catch (e: CancellationException) {
                 throw e
@@ -568,6 +580,7 @@ class DownloadEngine(private val context: Context) {
         // Fitur mirror: gagal dari URL aktif -> pindah ke URL cadangan berikutnya.
         if (item.mirrors.isNotEmpty()) {
             val next = item.mirrors.first()
+            App.logEvent("DOWNLOAD GAGAL: ${item.fileName} — ${message ?: "?"} (pindah ke mirror: $next)")
             updateItem(id) {
                 it.copy(
                     url = next,
@@ -593,6 +606,7 @@ class DownloadEngine(private val context: Context) {
             // Jitter 0-25% agar beberapa item tidak retry serentak (thundering herd).
             val backoff = baseBackoff + Random.nextLong(0, (baseBackoff / 4) + 1)
             val retryInfo = "Gagal (percobaan $attempts/$maxRetries) — coba lagi dalam ${Formats.eta(backoff / 1000)}"
+            App.logEvent("DOWNLOAD GAGAL: ${item.fileName} — ${message ?: "?"} ($retryInfo)")
             updateItem(id) { it.copy(state = DownloadState.PENDING, error = retryInfo) }
             scope.launch {
                 delay(backoff)
@@ -605,6 +619,7 @@ class DownloadEngine(private val context: Context) {
             // Gagal karena jaringan (mati/sinyal hilang): jangan tandai FAILED,
             // biarkan PAUSED agar otomatis lanjut saat koneksi pulih.
             retryAttempts.remove(id)
+            App.logEvent("DOWNLOAD TERPAUSE (jaringan): ${item.fileName} — ${message ?: "?"}")
             updateItem(id) {
                 it.copy(
                     state = DownloadState.PAUSED,
@@ -617,6 +632,7 @@ class DownloadEngine(private val context: Context) {
             flushSave()
         } else {
             retryAttempts.remove(id)
+            App.logEvent("DOWNLOAD GAGAL: ${item.fileName} — ${message ?: "?"}")
             updateItem(id) {
                 it.copy(
                     state = DownloadState.FAILED,
@@ -836,6 +852,7 @@ class DownloadEngine(private val context: Context) {
             )
         }
         flushSave()
+        App.logEvent("DOWNLOAD SELESAI: $finalName (${Formats.bytes(downloaded)})")
         } catch (e: IOException) {
             if (!coroutineContext.isActive) throw CancellationException()
             throw e
@@ -912,6 +929,7 @@ class DownloadEngine(private val context: Context) {
             )
         }
         flushSave()
+        App.logEvent("DOWNLOAD SELESAI: $finalName (${Formats.bytes(current.bytesDownloaded)})")
     }
 
     private suspend fun downloadSegment(

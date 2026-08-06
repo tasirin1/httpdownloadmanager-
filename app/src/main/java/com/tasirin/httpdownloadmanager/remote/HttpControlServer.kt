@@ -21,6 +21,7 @@ import com.tasirin.httpdownloadmanager.data.DownloadState
 import com.tasirin.httpdownloadmanager.util.FileSaver
 import com.tasirin.httpdownloadmanager.util.MediaLibrary
 import com.tasirin.httpdownloadmanager.util.FileNames
+import com.tasirin.httpdownloadmanager.util.Formats
 import com.tasirin.httpdownloadmanager.util.MimeTypes
 import com.tasirin.httpdownloadmanager.util.StoragePrefs
 import androidx.documentfile.provider.DocumentFile
@@ -132,7 +133,6 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             }
         } catch (e: Exception) {
             logError(e)
-            appendLog("ERROR ${e.message}")
             newFixedLengthResponse(
                 Response.Status.INTERNAL_ERROR,
                 "text/plain; charset=utf-8",
@@ -160,8 +160,14 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             super.start(SERVER_SOCKET_TIMEOUT_MS)
             lastError = null
             cleanupCache()
+            appendLog(
+                "SERVER MULAI di port $listeningPort (Android ${Build.VERSION.RELEASE} " +
+                    "API ${Build.VERSION.SDK_INT}, ${Build.MANUFACTURER} ${Build.MODEL}, " +
+                    "sisa penyimpanan ${Formats.bytes(App.engine.freeSpaceBytes())})"
+            )
         } catch (e: IOException) {
             lastError = e.message
+            appendLog("SERVER GAGAL MULAI: ${e.message}")
             throw e
         }
     }
@@ -193,6 +199,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     }
 
     fun stopServer() {
+        appendLog("SERVER BERHENTI (port $listeningPort)")
         sseJob?.cancel()
         sseJob = null
         val frame = "data: {\"shutdown\":true}\n\n"
@@ -232,6 +239,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         val stored = StoragePrefs.getServerPin(context).orEmpty()
         return if (stored.isNotEmpty() && pin == stored) {
             loginFailures = 0
+            appendLog("LOGIN BERHASIL (${session.remoteIpAddress})")
             val r = newFixedLengthResponse(
                 Response.Status.REDIRECT,
                 "text/html",
@@ -245,12 +253,16 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             if (loginFailures >= MAX_LOGIN_ATTEMPTS) {
                 loginLockUntil = now + LOGIN_LOCK_MS
                 loginFailures = 0
+                appendLog("LOGIN TERKUNCI $LOGIN_LOCK_MS ms (terlalu banyak percobaan, dari ${session.remoteIpAddress})")
+            } else {
+                appendLog("LOGIN GAGAL: PIN salah (percobaan $loginFailures, dari ${session.remoteIpAddress})")
             }
             loginPage("PIN salah, coba lagi.")
         }
     }
 
     private fun logout(): Response {
+        appendLog("LOGOUT")
         val r = newFixedLengthResponse(
             Response.Status.REDIRECT,
             "text/html",
@@ -754,6 +766,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             tmp.delete()
             return notFound()
         }
+        appendLog("ZIP DIBUAT: $folderName.zip (${Formats.bytes(tmp.length())})")
         return streamMedia(
             name = "$folderName.zip",
             mime = "application/zip",
@@ -1469,6 +1482,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             path.startsWith(MS_PREFIX) -> fsActionMedia(action, path.removePrefix(MS_PREFIX), name, dest)
             else -> fsActionFiles(action, path.removePrefix(FS_PREFIX), name, dest)
         }
+        appendLog("FS ${action.uppercase()}: $path -> ${if (ok) "OK" else "GAGAL"}")
         return jsonResponse(JSONObject().put("ok", ok))
     }
 
@@ -1787,6 +1801,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         pruneShares()
         val token = UUID.randomUUID().toString().replace("-", "").take(16)
         shareTokens[token] = ShareEntry(item.id, System.currentTimeMillis() + SHARE_TTL_MS)
+        appendLog("SHARE DIBUAT: ${item.fileName} (berlaku $SHARE_TTL_HOURS jam)")
         return jsonResponse(
             JSONObject().put("ok", true)
                 .put("token", token)
@@ -1867,7 +1882,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         out.toByteArray()
     }.getOrNull()
 
-    private fun appendLog(message: String) {
+    fun appendLog(message: String) {
         synchronized(logLock) {
             val stamp = SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date())
             logBuffer.addLast("$stamp $message")
@@ -1880,6 +1895,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     fun clearLog() = synchronized(logLock) { logBuffer.clear() }
 
     private fun logError(e: Exception) {
+        appendLog("ERROR ${e.message}")
         runCatching {
             val file = File(context.filesDir, App.CRASH_LOG_FILE)
             val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
@@ -1903,7 +1919,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
 
     companion object {
         private const val SERVER_SOCKET_TIMEOUT_MS = 60_000
-        private const val MAX_REALTIME_LOG_LINES = 300
+        private const val MAX_REALTIME_LOG_LINES = 600
         private const val FS_PREFIX = "f:"
         private const val MS_PREFIX = "m:"
         private const val MAX_BODY_SIZE = 4L * 1024 * 1024

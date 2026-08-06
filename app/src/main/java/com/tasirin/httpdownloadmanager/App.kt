@@ -31,6 +31,13 @@ class App : Application() {
             runCatching { httpServer.startServer() }
         }
         registerNetworkCallback()
+        logEvent(
+            "APLIKASI MULAI v" + runCatching {
+                packageManager.getPackageInfo(packageName, 0).versionName
+            }.getOrDefault("?") + " (Android " + Build.VERSION.RELEASE +
+                " API " + Build.VERSION.SDK_INT + ", " + Build.MANUFACTURER +
+                " " + Build.MODEL + ")"
+        )
     }
 
     // Android 7+ tidak menerima broadcast CONNECTIVITY_CHANGE untuk receiver
@@ -71,6 +78,11 @@ class App : Application() {
         /** Buat ulang server remote dengan port terbaru dari prefs.
          *  NanoHTTPD mengunci port saat konstruksi, jadi ganti port = instance baru.
          *  Server tetap hidup bila sebelumnya hidup. */
+        /** Catat kejadian ke log realtime server (aman dipanggil dari mana saja). */
+        fun logEvent(message: String) {
+            runCatching { if (::httpServer.isInitialized) httpServer.appendLog(message) }
+        }
+
         fun restartHttpServer(context: Context) {
             val wasAlive = httpServer.isAlive
             runCatching { httpServer.stopServer() }

@@ -357,10 +357,12 @@ class SettingsActivity : AppCompatActivity() {
     private fun wireSave() {
         binding.btnSave.setOnClickListener {
             applyStoragePath(findViewById<EditText>(R.id.input_storage_path))
-            StoragePrefs.setServerPin(
-                this,
-                binding.inputPin.text?.toString()?.trim().orEmpty()
-            )
+            val newPin = binding.inputPin.text?.toString()?.trim().orEmpty()
+            val oldPin = StoragePrefs.getServerPin(this).orEmpty()
+            if (newPin != oldPin) {
+                App.logEvent(if (newPin.isEmpty()) "PIN DIHAPUS" else "PIN DIATUR")
+            }
+            StoragePrefs.setServerPin(this, newPin)
             if (StoragePrefs.isPinEnforced(this) &&
                 StoragePrefs.getServerPin(this).isNullOrEmpty()
             ) {
@@ -377,6 +379,7 @@ class SettingsActivity : AppCompatActivity() {
                 val oldPort = App.httpServer.listeningPort
                 StoragePrefs.setServerPort(this, newPort)
                 if (newPort != oldPort) {
+                    App.logEvent("PORT DIGANTI: $oldPort -> $newPort")
                     App.restartHttpServer(this)
                 }
             }

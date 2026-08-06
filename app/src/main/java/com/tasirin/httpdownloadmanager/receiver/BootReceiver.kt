@@ -16,6 +16,9 @@ class BootReceiver : BroadcastReceiver() {
         val serverAutostart = StoragePrefs.isServerAutoStartEnabled(context) &&
             StoragePrefs.isServerStartAllowed(context)
         if (!downloadAutostart && !serverAutostart) return
+        com.tasirin.httpdownloadmanager.App.logEvent(
+            "BOOT/UPDATE: autostart download=$downloadAutostart, server=$serverAutostart"
+        )
         runCatching {
             val serviceIntent = Intent(context, DownloadService::class.java)
             if (Build.VERSION.SDK_INT >= 26) {

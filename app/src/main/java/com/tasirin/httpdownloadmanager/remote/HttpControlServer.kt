@@ -1745,7 +1745,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         out.toByteArray()
     }.getOrNull()
 
-    private fun logError(e: Exception) {
+    private fun logError(e: Throwable) {
         runCatching {
             val file = File(context.filesDir, App.CRASH_LOG_FILE)
             val stamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())

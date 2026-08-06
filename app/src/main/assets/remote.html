@@ -1553,12 +1553,18 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
       };
       xhr.onload = function () {
         let ok = false;
+        let pending = false;
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
-            ok = xhr.responseText && JSON.parse(xhr.responseText).ok;
+            const d = JSON.parse(xhr.responseText);
+            ok = !!d.ok;
+            pending = !!d.pending;
           } catch (e) {}
         }
-        if (ok) {
+        if (pending) {
+          // Data sudah diterima server, file sedang difinalisasi di latar.
+          pollFinalize();
+        } else if (ok) {
           chunkIdx++;
           chunkFails = 0;
           chunkBest = 0;
@@ -1579,6 +1585,54 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
       xhr.send(file.slice(start, end));
     }
 
+    function pollFinalize() {
+      statusEl.textContent = 'Menyelesaikan ' + file.name + ' \u2026';
+      let tries = 0;
+      (function tick() {
+        const v = new XMLHttpRequest();
+        v.open('GET', API + '/api/upload_verify?id=' + encodeURIComponent(id));
+        v.timeout = 6000;
+        v.onload = function () {
+          let done = false;
+          let err = '';
+          let name = '';
+          try {
+            const d = JSON.parse(v.responseText);
+            done = !!d.ok;
+            err = d.error || '';
+            name = d.name || '';
+          } catch (e) {}
+          tries++;
+          if (done) {
+            sentBytes += file.size;
+            statusEl.textContent = 'Selesai: ' + (name || file.name);
+            finishOne();
+          } else if (err) {
+            failed.push(file.name);
+            statusEl.textContent = 'Gagal: ' + file.name + ' \u2014 ' + err;
+            finishOne();
+          } else if (tries < 200) {
+            setTimeout(tick, 1500);
+          } else {
+            failed.push(file.name);
+            statusEl.textContent = 'Gagal: ' + file.name + ' \u2014 penyelesaian terlalu lama';
+            finishOne();
+          }
+        };
+        v.onerror = v.ontimeout = function () {
+          tries++;
+          if (tries < 200) {
+            setTimeout(tick, 1500);
+          } else {
+            failed.push(file.name);
+            statusEl.textContent = 'Gagal: ' + file.name + ' \u2014 penyelesaian terlalu lama';
+            finishOne();
+          }
+        };
+        v.send();
+      })();
+    }
+
     function retryChunk() {
       chunkFails++;
       if (chunkFails < 3) {
@@ -1595,14 +1649,26 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
       verify.open('GET', API + '/api/upload_verify?id=' + encodeURIComponent(id));
       verify.timeout = 5000;
       verify.onload = function () {
+        let done = false;
+        let pending = false;
+        let err = '';
         let name = '';
         try {
           const d = JSON.parse(verify.responseText);
-          if (d && d.ok) name = d.name || '';
+          done = !!d.ok;
+          pending = !!d.pending;
+          err = d.error || '';
+          name = d.name || '';
         } catch (e) {}
-        if (name) {
+        if (done) {
           sentBytes += file.size;
-          statusEl.textContent = 'Selesai: ' + name;
+          statusEl.textContent = 'Selesai: ' + (name || file.name);
+          finishOne();
+        } else if (pending) {
+          pollFinalize();
+        } else if (err) {
+          failed.push(file.name);
+          statusEl.textContent = 'Gagal: ' + file.name + ' \u2014 ' + err;
           finishOne();
         } else {
           failed.push(file.name);

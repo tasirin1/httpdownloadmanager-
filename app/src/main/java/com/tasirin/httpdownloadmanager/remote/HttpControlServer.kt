@@ -84,6 +84,8 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     @Volatile private var loginLockUntil = 0L
     private val fsStatsCache = ConcurrentHashMap<String, Pair<Long, Pair<Int, Long>>>()
     private val completedUploads = ConcurrentHashMap<String, Pair<String, Long>>()
+    private val finalizingUploads = ConcurrentHashMap<String, String>()
+    private val failedUploads = ConcurrentHashMap<String, Pair<String, Long>>()
     @Volatile private var batteryCache: Pair<Long, Pair<Int, Boolean>>? = null
 
     override fun serve(session: IHTTPSession): Response {
@@ -509,19 +511,26 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
 
     private fun uploadVerify(session: IHTTPSession): Response {
         val id = session.parms["id"]?.trim().orEmpty()
-        val done = completedUploads[id]
-        return if (done != null) {
-            jsonResponse(JSONObject().put("ok", true).put("name", done.first))
-        } else {
-            jsonResponse(JSONObject().put("ok", false))
+        completedUploads[id]?.let {
+            return jsonResponse(JSONObject().put("ok", true).put("name", it.first))
         }
+        failedUploads[id]?.let {
+            return jsonResponse(JSONObject().put("ok", false).put("error", it.first))
+        }
+        finalizingUploads[id]?.let {
+            return jsonResponse(JSONObject().put("ok", false).put("pending", true).put("name", it))
+        }
+        return jsonResponse(JSONObject().put("ok", false))
     }
 
     private fun pruneCompletedUploads() {
         val cutoff = System.currentTimeMillis() - 30 * 60 * 1000L
         completedUploads.entries.filter { it.value.second < cutoff }
             .forEach { completedUploads.remove(it.key) }
+        failedUploads.entries.filter { it.value.second < cutoff }
+            .forEach { failedUploads.remove(it.key) }
         if (completedUploads.size > 400) completedUploads.clear()
+        if (failedUploads.size > 400) failedUploads.clear()
     }
 
     private fun uploadUniqueName(name: String, folderPath: String): String {
@@ -560,6 +569,17 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         }
         val id = session.parms["id"]?.trim()?.take(64)
             ?: sha256("$name|$folderPath").take(16)
+        // Upload sudah selesai / sedang difinalisasi: balas cepat tanpa
+        // menyentuh file tmp. Body tidak dibaca, jadi koneksi ditutup supaya
+        // keep-alive tidak rusak.
+        completedUploads[id]?.let { done ->
+            return jsonResponse(JSONObject().put("ok", true).put("name", done.first))
+                .also { it.addHeader("Connection", "close") }
+        }
+        finalizingUploads[id]?.let { pendingName ->
+            return jsonResponse(JSONObject().put("ok", true).put("pending", true).put("name", pendingName))
+                .also { it.addHeader("Connection", "close") }
+        }
         val tmp = File(context.cacheDir, "up_$id.tmp")
         var resultName = name
         return runCatching {
@@ -584,12 +604,6 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                 }
             }
             if (chunkIdx == chunks - 1) {
-                // Retry potongan terakhir setelah upload selesai (respons hilang):
-                // jangan buat salinan kedua, cukup laporkan nama yang sudah ada.
-                completedUploads[id]?.let { done ->
-                    tmp.delete()
-                    return jsonResponse(JSONObject().put("ok", true).put("name", done.first))
-                }
                 if (tmp.length() > MAX_UPLOAD_BYTES) {
                     tmp.delete()
                     return jsonResponse(
@@ -603,16 +617,29 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     )
                 }
                 val finalName = uploadUniqueName(name, folderPath)
-                try {
-                    App.engine.importStream(finalName, storage, folderPath, tmp.length()) { out ->
-                        tmp.inputStream().use { it.copyTo(out) }
-                    }
-                } finally {
-                    tmp.delete()
-                }
-                completedUploads[id] = finalName to System.currentTimeMillis()
                 pruneCompletedUploads()
-                resultName = finalName
+                finalizingUploads[id] = finalName
+                // Data sudah diterima semua. Balas instan, lalu salin file ke
+                // tujuan di background supaya client tidak menunggu lama dan
+                // tidak memicu retry (sebelumnya: potongan terakhir lambat ->
+                // timeout -> kirim ulang -> proses ganda -> "coba lagi" terus).
+                serverScope.launch {
+                    try {
+                        App.engine.importStream(finalName, storage, folderPath, tmp.length()) { out ->
+                            tmp.inputStream().use { it.copyTo(out) }
+                        }
+                        completedUploads[id] = finalName to System.currentTimeMillis()
+                    } catch (e: Exception) {
+                        failedUploads[id] = (e.message ?: "finalisasi gagal") to System.currentTimeMillis()
+                        logError(e)
+                    } finally {
+                        tmp.delete()
+                        finalizingUploads.remove(id)
+                    }
+                }
+                return jsonResponse(
+                    JSONObject().put("ok", true).put("pending", true).put("name", finalName)
+                )
             }
             jsonResponse(JSONObject().put("ok", true).put("name", resultName))
         }.getOrElse {

@@ -1618,7 +1618,10 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     sseLastPayload = payloadText
                     sseLastPushAt = now
                     val frame = "data: $payloadText\n\n"
-                    sseClients.removeIf { it.isClosed }
+                    val iter = sseClients.iterator()
+                    while (iter.hasNext()) {
+                        if (iter.next().isClosed) iter.remove()
+                    }
                     sseClients.forEach { it.push(frame) }
                 }
             }
@@ -1658,7 +1661,10 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
 
     private fun pruneShares() {
         val now = System.currentTimeMillis()
-        shareTokens.entries.removeIf { it.value.expiresAt < now }
+        val iter = shareTokens.entries.iterator()
+        while (iter.hasNext()) {
+            if (iter.next().value.expiresAt < now) iter.remove()
+        }
     }
 
     private fun serveShare(session: IHTTPSession): Response {

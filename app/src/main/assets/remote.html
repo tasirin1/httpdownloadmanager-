@@ -670,7 +670,6 @@ function renderStatus(st) {
   if (typeof st.storageFree === 'number') {
     parts.push('<span class="st-item">Sisa <b>' + fmt(st.storageFree) + '</b></span>');
   }
-  parts.push('<span class="st-item">Port <b>' + st.port + '</b></span>');
   let text = parts.join('<span class="st-sep">\u00b7</span>');
   if (st.storageWriteOk === false) {
     text += '<span class="st-item st-warn">&#9888;&#65039; Izin akses file belum aktif — buka aplikasi &gt; Remote (HTTP) &gt; Aktifkan akses file.</span>';

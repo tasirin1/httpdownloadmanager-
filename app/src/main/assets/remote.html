@@ -2825,12 +2825,14 @@ applyRoute();
 refreshStatus();
 let sse = null;
 let sseFailCount = 0;
+let lastSseAt = 0;
 function connectEvents() {
   if (sse) { try { sse.close(); } catch (e) {} }
   sse = new EventSource(API + '/api/events');
   sse.onopen = function () { sseFailCount = 0; hideConnBanner(); };
   sse.onmessage = function (ev) {
     sseFailCount = 0;
+    lastSseAt = Date.now();
     hasLoadedItems = true;
     document.getElementById('deviceStatus').classList.remove('offline');
     try {
@@ -2857,12 +2859,16 @@ if (typeof EventSource !== 'undefined') {
   connectEvents();
   // Fallback polling: aktif hanya saat SSE tidak terhubung (mis. jaringan
   // memblokir streaming), EventSource akan coba menyambung ulang sendiri.
+  // Polling pengaman: jalan juga saat EventSource "terlihat" terbuka tapi
+  // diam (beberapa WebView lama / HTTP/1.0 tidak menerima stream bertahap).
   setInterval(function () {
-    if (!sse || sse.readyState !== EventSource.OPEN) {
+    const stale = !sse || sse.readyState !== EventSource.OPEN ||
+      Date.now() - lastSseAt > 4000;
+    if (stale) {
       if (currentRoute() === 'downloads') refresh();
       refreshStatus();
     }
-  }, 6000);
+  }, 2000);
 } else {
   setInterval(function () {
     if (currentRoute() === 'downloads') refresh();

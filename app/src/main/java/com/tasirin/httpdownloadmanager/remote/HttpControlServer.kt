@@ -1858,7 +1858,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             val pushFrame = { payloadText: String ->
                 runCatching {
                     val now = System.currentTimeMillis()
-                    if (payloadText != sseLastPayload || now - sseLastPushAt > 10_000) {
+                    if (payloadText != sseLastPayload || now - sseLastPushAt > SSE_HEARTBEAT_MS) {
                         sseLastPayload = payloadText
                         sseLastPushAt = now
                         val frame = "data: $payloadText\n\n"
@@ -2036,6 +2036,9 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         private const val LOGIN_LOCK_MS = 30_000L
         private const val FS_STATS_TTL_MS = 10_000L
         private const val SSE_MIN_INTERVAL_MS = 1_000L
+        // Heartbeat: tetap kirim walau tidak ada perubahan, supaya klien tahu
+        // koneksi hidup (dan fallback polling klien tidak ikut jalan).
+        private const val SSE_HEARTBEAT_MS = 3_000L
         private const val BATTERY_CACHE_MS = 3_000L
 
         fun ipv4Addresses(): List<String> = runCatching {

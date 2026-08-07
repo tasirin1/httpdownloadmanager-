@@ -962,11 +962,11 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             // Daftar engine sudah terurut addedAt desc, jadi tanpa sort ulang.
             0 -> filtered
             1 -> filtered.asReversed()
-            2 -> searched.sortedBy { it.fileName.lowercase() }
-            3 -> searched.sortedByDescending { it.fileName.lowercase() }
-            4 -> searched.sortedByDescending { it.totalBytes }
-            5 -> searched.sortedBy { it.totalBytes }
-            else -> searched.sortedWith(
+            2 -> filtered.sortedBy { it.fileName.lowercase() }
+            3 -> filtered.sortedByDescending { it.fileName.lowercase() }
+            4 -> filtered.sortedByDescending { it.totalBytes }
+            5 -> filtered.sortedBy { it.totalBytes }
+            else -> filtered.sortedWith(
                 compareBy<DownloadItem> { stateRank[it.state] ?: 0 }
                     .thenBy { it.fileName.lowercase() }
             )

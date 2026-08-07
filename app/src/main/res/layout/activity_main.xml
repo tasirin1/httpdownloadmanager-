@@ -19,7 +19,7 @@
             android:layout_marginEnd="8dp"
             android:text="@string/server_status_stopped"
             android:textColor="@color/status_off"
-            android:textSize="12sp" />
+            android:textSize="14sp" />
     </com.google.android.material.appbar.MaterialToolbar>
 
     <LinearLayout
@@ -43,10 +43,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
+            android:minHeight="44dp"
             android:paddingHorizontal="12dp"
             android:paddingVertical="4dp"
             android:text="@string/change_storage_short"
-            android:textSize="12sp" />
+            android:textSize="14sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -73,7 +74,7 @@
             android:gravity="end"
             android:text="@string/speed_zero"
             android:textColor="@color/primary"
-            android:textSize="13sp"
+            android:textSize="14sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -93,10 +94,11 @@
             android:focusable="true"
             android:gravity="center"
             android:layout_marginEnd="6dp"
-            android:paddingHorizontal="10dp"
-            android:paddingVertical="6dp"
+            android:minHeight="44dp"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="10dp"
             android:text="@string/filter_all"
-            android:textSize="13sp" />
+            android:textSize="14sp" />
 
         <TextView
             android:id="@+id/filter_active"
@@ -106,10 +108,11 @@
             android:focusable="true"
             android:gravity="center"
             android:layout_marginEnd="6dp"
-            android:paddingHorizontal="10dp"
-            android:paddingVertical="6dp"
+            android:minHeight="44dp"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="10dp"
             android:text="@string/filter_active"
-            android:textSize="13sp" />
+            android:textSize="14sp" />
 
         <TextView
             android:id="@+id/filter_completed"
@@ -119,10 +122,11 @@
             android:focusable="true"
             android:gravity="center"
             android:layout_marginEnd="6dp"
-            android:paddingHorizontal="10dp"
-            android:paddingVertical="6dp"
+            android:minHeight="44dp"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="10dp"
             android:text="@string/filter_completed"
-            android:textSize="13sp" />
+            android:textSize="14sp" />
 
         <TextView
             android:id="@+id/filter_failed"
@@ -132,10 +136,11 @@
             android:focusable="true"
             android:gravity="center"
             android:layout_marginEnd="6dp"
-            android:paddingHorizontal="10dp"
-            android:paddingVertical="6dp"
+            android:minHeight="44dp"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="10dp"
             android:text="@string/filter_failed"
-            android:textSize="13sp" />
+            android:textSize="14sp" />
 
         <TextView
             android:id="@+id/sort_button"
@@ -144,11 +149,12 @@
             android:layout_weight="1"
             android:focusable="true"
             android:gravity="end"
+            android:minHeight="44dp"
             android:paddingHorizontal="10dp"
-            android:paddingVertical="6dp"
+            android:paddingVertical="10dp"
             android:text="@string/sort_by"
             android:textColor="@color/primary"
-            android:textSize="13sp" />
+            android:textSize="14sp" />
     </LinearLayout>
 
     <EditText
@@ -178,9 +184,10 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginHorizontal="2dp"
+            android:minHeight="48dp"
             android:paddingVertical="6dp"
             android:text="@string/pause_all"
-            android:textSize="12sp" />
+            android:textSize="14sp" />
 
         <Button
             android:id="@+id/btn_resume_all"
@@ -188,9 +195,10 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginHorizontal="2dp"
+            android:minHeight="48dp"
             android:paddingVertical="6dp"
             android:text="@string/resume_all"
-            android:textSize="12sp" />
+            android:textSize="14sp" />
 
         <Button
             android:id="@+id/btn_retry_failed"
@@ -198,9 +206,10 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginHorizontal="2dp"
+            android:minHeight="48dp"
             android:paddingVertical="6dp"
             android:text="@string/retry_failed"
-            android:textSize="12sp" />
+            android:textSize="14sp" />
     </LinearLayout>
 
     <FrameLayout

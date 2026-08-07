@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Download Manager</string>
+    <string name="app_name">Tasirin Download Manager</string>
 
     <string name="add_download">Tambah Download</string>
     <string name="url_hint_multi">URL (bisa banyak, satu per baris)</string>
@@ -78,7 +78,7 @@
     <string name="action_about">Tentang</string>
     <string name="log_exported">Log server diekspor ke folder Download (httpdm-serverlog-*.txt)</string>
     <string name="log_export_failed">Gagal mengekspor log</string>
-    <string name="about_title">Tentang Download Manager</string>
+    <string name="about_title">Tentang Tasirin Download Manager</string>
     <string name="about_version">Versi %1$s</string>
     <string name="about_profile">&#128100; Pembuat: Julius Rudi Tasirin
 &#128241; Dibuat pakai: Samsung A05 (RAM 4 GB, ROM 64 GB)
@@ -200,7 +200,7 @@
     </string-array>
 
     <string name="notification_channel">Progress download</string>
-    <string name="notification_title">Download Manager</string>
+    <string name="notification_title">Tasirin Download Manager</string>
     <string name="notification_active_files">Mendownload %d file&#8230;</string>
     <string name="notification_done">%d download selesai</string>
 

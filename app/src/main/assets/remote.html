@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Download Manager Remote</title>
+<title>Tasirin Download Manager Remote</title>
 <meta name="theme-color" content="#4353e6">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%234353e6'/%3E%3Cpath d='M12 5v8.6l3.2-3.2 1.4 1.4L12 17.4l-4.6-4.6 1.4-1.4L12 13.6V5z' fill='%23fff'/%3E%3C/svg%3E">
 <style>
@@ -369,7 +369,7 @@
 <body>
 <div class="topbar">
   <div class="topbar-in">
-    <div class="brand"><span class="logo">&#11015;</span><span>Download Manager<small>Remote Control</small></span></div>
+    <div class="brand"><span class="logo">&#11015;</span><span>Tasirin Download Manager<small>Remote Control</small></span></div>
     <span id="speedTotal" class="speed-total hidden" title="Kecepatan download aktif">&#9889; 0 B/s <span class="st-sub"></span></span>
     <button id="newBtn" class="pill primary" type="button">+ New Download</button>
     <button id="galleryBtn" class="pill" type="button">&#128247; Galeri</button>
@@ -701,7 +701,7 @@ function renderStatus(st) {
   el.classList.remove('offline');
   const footer = document.getElementById('appFooter');
   if (footer && st.appVersion) {
-    footer.textContent = 'Server v' + st.appVersion + (st.appBuild ? ' (build ' + st.appBuild + ')' : '') + ' \u00b7 HTTP Download Manager';
+    footer.textContent = 'Server v' + st.appVersion + (st.appBuild ? ' (build ' + st.appBuild + ')' : '') + ' \u00b7 Tasirin Download Manager';
   }
   if (st.port && location.port && Number(st.port) !== Number(location.port)) {
     const proto = location.protocol;

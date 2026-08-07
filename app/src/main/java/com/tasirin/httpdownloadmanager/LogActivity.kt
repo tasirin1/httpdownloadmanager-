@@ -80,7 +80,7 @@ class LogActivity : AppCompatActivity() {
     private fun exportLogTxt() {
         val log = App.httpServer.snapshotLog()
         val header = buildString {
-            appendLine("=== HTTP Download Manager - Log Server (realtime) ===")
+            appendLine("=== Tasirin Download Manager - Log Server (realtime) ===")
             appendLine("Waktu: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())}")
             appendLine(
                 "Versi app: " + runCatching {

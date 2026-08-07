@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="Download Manager" width="96"><br>
-  <b>Download Manager — Android</b><br>
+  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="Tasirin Download Manager" width="96"><br>
+  <b>Tasirin Download Manager — Android</b><br>
   Download manager + remote control web lengkap, nyaman dipakai di TV box & HP.
 </p>
 
-# Download Manager (Android)
+# Tasirin Download Manager (Android)
 
 **Satu aplikasi untuk semua kebutuhan file di perangkat Android:** unduh cepat, kelola dari browser lewat jaringan Wi-Fi, jelajah file, mainkan galeri ala YouTube, dan pantau semuanya secara realtime — cocok dipakai di HP maupun TV box (Android 5.0+ / API 21+).
 
@@ -14,7 +14,7 @@ Dibangun dengan **Kotlin + Jetpack**, tanpa iklan, tanpa akun. Kode terbuka di G
 
 | | |
 |---|---|
-| 🚀 **Download Manager lengkap** | multi-segmen, resume dengan Range, antrean pintar, batas kecepatan, auto-retry |
+| 🚀 **Manajer unduhan lengkap** | multi-segmen, resume dengan Range, antrean pintar, batas kecepatan, auto-retry |
 | 📡 **Remote web realtime (SSE)** | kontrol dari browser perangkat lain, update langsung tanpa refresh manual |
 | 🖥️ **Player video ala YouTube** | seekbar merah, double-tap ±10 detik, gesture volume/kecerahan, auto-next |
 | 🗂️ **File manager remote** | jelajah, upload, hapus massal, ZIP folder, pratinjau media langsung |
@@ -26,7 +26,7 @@ Dibangun dengan **Kotlin + Jetpack**, tanpa iklan, tanpa akun. Kode terbuka di G
 
 APK terbaru selalu tersedia di **GitHub Releases** — setiap push ke `main` langsung di-build dan rilis diperbarui otomatis:
 
-**[⬇️ Unduh APK terbaru](https://github.com/tasirin1/httpdownloadmanager-/releases/latest)**
+**[⬇️ Unduh APK terbaru](https://github.com/tasirin1/tasirin-download-manager/releases/latest)**
 
 Pasang di HP / TV box (Android 5.0+), beri izin Penyimpanan saat diminta, selesai.
 

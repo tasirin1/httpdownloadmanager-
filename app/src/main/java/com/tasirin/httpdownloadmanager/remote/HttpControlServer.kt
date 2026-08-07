@@ -417,7 +417,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
   <div class="icon">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
   </div>
-  <h1>Download Manager</h1>
+  <h1>Tasirin Download Manager</h1>
   <p class="sub">Server remote terkunci &middot; masukkan PIN untuk melanjutkan</p>
   <form method="POST" action="/api/login" autocomplete="off">
     <label for="pin">PIN</label>
@@ -427,7 +427,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
     <button type="submit">Masuk &rarr;</button>
   </form>
   <div class="err ${if (error.isEmpty()) "" else "show"}">&#9888;&#65039; $error</div>
-  <div class="foot">HTTP Download Manager &middot; akses lokal jaringan Anda</div>
+  <div class="foot">Tasirin Download Manager &middot; akses lokal jaringan Anda</div>
 </div>
 </body>
 </html>"""

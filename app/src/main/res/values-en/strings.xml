@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Download Manager</string>
+    <string name="app_name">Tasirin Download Manager</string>
 
     <string name="add_download">Add Download</string>
     <string name="url_hint_multi">URL (multiple allowed, one per line)</string>
@@ -78,7 +78,7 @@
     <string name="action_about">About</string>
     <string name="log_exported">Server log exported to Download folder (httpdm-serverlog-*.txt)</string>
     <string name="log_export_failed">Failed to export log</string>
-    <string name="about_title">About Download Manager</string>
+    <string name="about_title">About Tasirin Download Manager</string>
     <string name="about_version">Version %1$s</string>
     <string name="about_profile">&#128100; Creator: Julius Rudi Tasirin
 &#128241; Built on: Samsung A05 (4 GB RAM, 64 GB ROM)
@@ -200,7 +200,7 @@
     </string-array>
 
     <string name="notification_channel">Download progress</string>
-    <string name="notification_title">Download Manager</string>
+    <string name="notification_title">Tasirin Download Manager</string>
     <string name="notification_active_files">Downloading %d file(s)&#8230;</string>
     <string name="notification_done">%d download(s) completed</string>
 

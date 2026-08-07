@@ -584,10 +584,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.about_title)
             .setMessage(
-                getString(R.string.about_version, version) + " (build $build)\n" +
-                    getString(R.string.about_author) + "\n" +
-                    getString(R.string.about_repo) + "\n\n" +
-                    getString(R.string.about_changelog)
+                getString(R.string.about_version, version) + " (build $build)\n\n" +
+                    getString(R.string.about_profile)
             )
             .setPositiveButton(R.string.ok, null)
             .show()

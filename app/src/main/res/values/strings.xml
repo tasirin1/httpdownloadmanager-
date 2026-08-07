@@ -77,31 +77,15 @@
     <string name="log_export_failed">Gagal mengekspor log</string>
     <string name="about_title">Tentang Download Manager</string>
     <string name="about_version">Versi %1$s</string>
-    <string name="about_author">Pembuat: Julius Rudi Tasirin</string>
-    <string name="about_repo">GitHub: github.com/tasirin1/httpdownloadmanager-</string>
+    <string name="about_profile">&#128100; Pembuat: Julius Rudi Tasirin
+&#128241; Dibuat pakai: Samsung A05 (RAM 4 GB, ROM 64 GB)
+&#129302; Dikoding oleh: AnyClaw AI
+&#127760; VPN: Indonesia
+&#9881;&#65039; Build &amp; sumber kode: GitHub
+&#9749; Berbekal: segelas kopi + gabut waktu luang
+&#128250; Target uji coba &amp; hiburan: STB B860H V2
+&#128025; GitHub: tasirin1</string>
     <string name="ok">OK</string>
-    <string name="about_changelog">Catatan perubahan (fitur utama):
-&#8226; Remote real-time (SSE, tanpa polling), kecepatan putar video 0.5&#215;&#8211;2&#215;, bagikan file via tautan sementara 24 jam + QR code
-&#8226; Tampilan remote dirombak: FAB tambah download di HP, menu aksi item bottom-sheet, skeleton loading, empty state cantik, filter sticky, indikator koneksi + refresh manual, animasi halus, favicon &amp; theme-color
-&#8226; Info file otomatis sebelum download mulai (nama asli, ukuran, tipe) + peringatan jika lebih besar dari penyimpanan
-&#8226; ETA &amp; kecepatan stabil (rata-rata bergerak, tidak melompat-lompat)
-&#8226; Antrean pintar: unduh file kecil lebih dulu (opsional, di pengaturan)
-&#8226; Download yang terputus karena jaringan hilang lanjut otomatis saat koneksi pulih
-&#8226; Remote HTTP dari browser: PIN login, QR code, port custom, server latar belakang + auto-start
-&#8226; Galeri remote ala YouTube: thumbnail 16:9, durasi video asli (cache), load bertahap
-&#8226; Player video ala YouTube: seekbar + buffered, fullscreen otomatis landscape, double-tap &#177;10 dtk, gesture kecerahan/volume, lanjut dari posisi terakhir, saran video
-&#8226; File manager remote: info isi folder, buat folder, rename, pindah, hapus massal, ZIP
-&#8226; Upload banyak file sekaligus: dipecah per potongan, retry otomatis, upload folder utuh + drag &amp; drop, nama duplikat otomatis (file (1).ext), konfirmasi saat tutup halaman
-&#8226; Nama duplikat di folder tujuan otomatis diganti saat download selesai (file (1).ext, file (2).ext, dst.) di semua lokasi simpan
-&#8226; Halaman remote: item aktif di urutan atas, total kecepatan live di bar atas, menu aksi &#8220;&#8943;&#8221; di layar HP, konfirmasi sebelum hapus/bersihkan daftar
-&#8226; File manager remote: breadcrumb tap-able, menu aksi &#8220;&#8943;&#8221; (bottom-sheet di HP), dialog rename/pindah/hapus yang rapi, long-press untuk pilih massal, ketuk file media langsung pratinjau
-&#8226; Streaming &amp; download file via browser (HTTP Range)
-&#8226; Download multi-segmen paralel, resume, batas kecepatan &amp; prioritas per-download
-&#8226; Retry otomatis dengan jeda bertahap, auto-start saat boot
-&#8226; Verifikasi checksum MD5/SHA1/SHA256
-&#8226; Tema ikuti sistem (otomatis/terang/gelap)
-&#8226; Kunci otomatis halaman remote setelah 10 menit idle (PIN diminta lagi)
-&#8226; Bahasa Indonesia/Inggris, share URL langsung</string>
     <string name="checksum_hint_optional">Checksum opsional (md5:/sha1:/sha256:) — contoh md5:abcdef&#8230;</string>
     <string name="shortcut_add_download">Tambah Download</string>
     <string name="filter_all">Semua</string>

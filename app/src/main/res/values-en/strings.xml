@@ -77,31 +77,15 @@
     <string name="log_export_failed">Failed to export log</string>
     <string name="about_title">About Download Manager</string>
     <string name="about_version">Version %1$s</string>
-    <string name="about_author">Created by: Julius Rudi Tasirin</string>
-    <string name="about_repo">GitHub: github.com/tasirin1/httpdownloadmanager-</string>
+    <string name="about_profile">&#128100; Creator: Julius Rudi Tasirin
+&#128241; Built on: Samsung A05 (4 GB RAM, 64 GB ROM)
+&#129302; Coded by: AnyClaw AI
+&#127760; VPN: Indonesia
+&#9881;&#65039; Build &amp; source code: GitHub
+&#9749; Powered by: a cup of coffee + spare time
+&#128250; Test target &amp; entertainment: STB B860H V2
+&#128025; GitHub: tasirin1</string>
     <string name="ok">OK</string>
-    <string name="about_changelog">Changelog (main features):
-&#8226; Real-time remote (SSE, no polling), video playback speed 0.5&#215;&#8211;2&#215;, share files via 24-hour temporary links + QR code
-&#8226; Remote UI overhaul: mobile FAB for new download, bottom-sheet item actions, skeleton loading, pretty empty states, sticky filters, connection indicator + manual refresh, smooth animations, favicon &amp; theme-color
-&#8226; Automatic file info before download starts (real name, size, type) + warning when larger than available storage
-&#8226; Stable ETA &amp; speed (moving average, no more jumping)
-&#8226; Smart queue: small files first (optional, in settings)
-&#8226; Downloads interrupted by lost connection auto-resume when connectivity returns
-&#8226; Remote HTTP from browser: PIN login, QR code, custom port, background server + auto-start
-&#8226; YouTube-style remote gallery: 16:9 thumbnails, real video durations (cached), progressive loading
-&#8226; YouTube-style video player: seekbar + buffered, auto-landscape fullscreen, double-tap &#177;10s, brightness/volume gestures, resume from last position, related videos
-&#8226; Remote file manager: folder info, create folder, rename, move, bulk delete, ZIP
-&#8226; Upload multiple files at once: chunked with automatic retry, whole-folder upload + drag &amp; drop, automatic duplicate rename (file (1).ext), close-page confirmation
-&#8226; Duplicate names in the destination are auto-renamed on download completion (file (1).ext, file (2).ext, etc.) for every save location
-&#8226; Remote page: active downloads pinned to the top, live total speed in the top bar, &#8220;&#8943;&#8221; action menu on phones, confirmation before delete/clear list
-&#8226; Remote file manager: tappable breadcrumbs, &#8220;&#8943;&#8221; action menu (bottom sheet on phones), neat rename/move/delete dialogs, long-press for multi-select, tap media files to preview
-&#8226; Stream &amp; download files via browser (HTTP Range)
-&#8226; Parallel multi-segment downloads, resume, per-download speed limit &amp; priority
-&#8226; Automatic retry with gradual backoff, auto-start on boot
-&#8226; MD5/SHA1/SHA256 checksum verification
-&#8226; Theme follows system (auto/light/dark)
-&#8226; Remote page auto-lock after 10 minutes idle (PIN required again)
-&#8226; Indonesian/English, direct URL sharing</string>
     <string name="checksum_hint_optional">Optional checksum (md5:/sha1:/sha256:) — e.g. md5:abcdef&#8230;</string>
     <string name="shortcut_add_download">Add Download</string>
     <string name="filter_all">All</string>

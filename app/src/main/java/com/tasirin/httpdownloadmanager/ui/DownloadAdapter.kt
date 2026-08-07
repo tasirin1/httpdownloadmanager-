@@ -4,7 +4,6 @@ import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -111,45 +110,6 @@ class DownloadAdapter(private val listener: Listener) :
             b.textLocation.visibility = View.GONE
         }
 
-        b.buttonActions.setOnClickListener { v ->
-            val menu = PopupMenu(v.context, v)
-            menu.menuInflater.inflate(R.menu.item_actions, menu.menu)
-            val m = menu.menu
-            m.findItem(R.id.action_item_pause).isVisible =
-                item.state == DownloadState.DOWNLOADING
-            m.findItem(R.id.action_item_resume).isVisible =
-                item.state == DownloadState.PAUSED || item.state == DownloadState.FAILED
-            m.findItem(R.id.action_item_open).isVisible =
-                item.state == DownloadState.COMPLETED
-            m.findItem(R.id.action_item_folder).isVisible =
-                item.state == DownloadState.COMPLETED
-            m.findItem(R.id.action_item_cancel).isVisible =
-                item.state == DownloadState.DOWNLOADING ||
-                    item.state == DownloadState.PENDING ||
-                    item.state == DownloadState.PAUSED
-            m.findItem(R.id.action_item_delete).isVisible =
-                item.state == DownloadState.COMPLETED ||
-                    item.state == DownloadState.FAILED ||
-                    item.state == DownloadState.CANCELLED
-            val monitorItem = m.findItem(R.id.action_item_monitor)
-            monitorItem.isVisible = item.state == DownloadState.COMPLETED
-            monitorItem.title = v.context.getString(
-                if (item.monitor) R.string.action_monitor_off else R.string.action_monitor_on
-            )
-            menu.setOnMenuItemClickListener { mi ->
-                when (mi.itemId) {
-                    R.id.action_item_pause -> listener.onAction(item, Action.PAUSE)
-                    R.id.action_item_resume -> listener.onAction(item, Action.RESUME)
-                    R.id.action_item_cancel -> listener.onAction(item, Action.CANCEL)
-                    R.id.action_item_open -> listener.onAction(item, Action.OPEN)
-                    R.id.action_item_folder -> listener.onAction(item, Action.OPEN_FOLDER)
-                    R.id.action_item_delete -> listener.onAction(item, Action.DELETE)
-                    R.id.action_item_monitor -> listener.onAction(item, Action.MONITOR)
-                }
-                true
-            }
-            menu.show()
-        }
         b.root.setOnLongClickListener {
             listener.onLongPress(item)
             true

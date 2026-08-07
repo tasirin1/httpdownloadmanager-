@@ -45,17 +45,6 @@
                 app:iconGravity="textStart"
                 app:iconPadding="0dp" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/button_actions"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:contentDescription="@string/more_actions"
-                android:minWidth="44dp"
-                android:minHeight="44dp"
-                android:paddingHorizontal="10dp"
-                android:text="&#8942;"
-                android:textSize="18sp" />
         </LinearLayout>
 
         <LinearLayout

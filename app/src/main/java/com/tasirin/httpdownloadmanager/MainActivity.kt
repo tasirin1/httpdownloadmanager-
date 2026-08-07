@@ -104,8 +104,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         binding.fabAdd.setOnClickListener { showAddDialog() }
         binding.emptyAddButton.setOnClickListener { showAddDialog() }
 
-        binding.btnChangeStorageHome.setOnClickListener { showStorageDialog() }
-
         binding.btnPauseAll.setOnClickListener {
             App.engine.pauseAll()
             Snackbar.make(binding.root, R.string.pause_all, Snackbar.LENGTH_SHORT).show()
@@ -128,21 +126,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                         if (filtered.isEmpty()) View.VISIBLE else View.GONE
                     updateBulkButtons()
                 }
-            }
-        }
-
-        lifecycleScope.launch {
-            while (true) {
-                // Hanya perbarui grafik saat layar terlihat: hemat CPU/baterai
-                // bila aplikasi di latar belakang.
-                if (uiActive) {
-                    val points = App.engine.speedHistorySnapshot()
-                    binding.speedChart.setData(points)
-                    val now = points.lastOrNull() ?: 0L
-                    binding.speedNow.text =
-                        if (now > 0) Formats.speed(now) else getString(R.string.speed_zero)
-                }
-                delay(1_000)
             }
         }
 
@@ -208,26 +191,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
     override fun onResume() {
         super.onResume()
-        uiActive = true
         updateServerStatus()
-        updateStorageInfo()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        uiActive = false
-    }
-
-    private fun updateStorageInfo() {
-        val tv = findViewById<TextView>(R.id.storage_info) ?: return
-        val folder = StoragePrefs.getFolderName(this)
-            ?: StoragePrefs.getTextFolder(this)
-            ?: getString(R.string.storage_default_folder)
-        tv.text = getString(
-            R.string.storage_home_info,
-            folder,
-            Formats.bytes(App.engine.freeSpaceBytes())
-        )
     }
 
     private fun updateServerStatus() {
@@ -619,9 +583,19 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
     override fun onLongPress(item: DownloadItem) {
         val options = mutableListOf<Pair<String, () -> Unit>>()
+        if (item.state == DownloadState.DOWNLOADING || item.state == DownloadState.PENDING) {
+            options.add(getString(R.string.pause) to { App.engine.pause(item.id) })
+        }
+        if (item.state == DownloadState.PAUSED || item.state == DownloadState.FAILED) {
+            options.add(getString(R.string.resume) to { App.engine.resume(item.id) })
+        }
         if (item.state == DownloadState.COMPLETED) {
             options.add(getString(R.string.open) to { openDownload(item) })
             options.add(getString(R.string.open_folder) to { openFolder(item) })
+            options.add(
+                getString(if (item.monitor) R.string.action_monitor_off else R.string.action_monitor_on) to
+                    { App.engine.setMonitor(item.id, !item.monitor) }
+            )
             options.add(getString(R.string.action_rename) to { showRenameDialog(item) })
             options.add(getString(R.string.action_move) to {
                 pendingMoveId = item.id
@@ -638,7 +612,18 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 }
             )
         }
-        options.add(getString(R.string.delete) to { App.engine.remove(item.id) })
+        if (item.state == DownloadState.DOWNLOADING ||
+            item.state == DownloadState.PENDING ||
+            item.state == DownloadState.PAUSED
+        ) {
+            options.add(getString(R.string.cancel) to { App.engine.cancel(item.id) })
+        }
+        if (item.state == DownloadState.COMPLETED ||
+            item.state == DownloadState.FAILED ||
+            item.state == DownloadState.CANCELLED
+        ) {
+            options.add(getString(R.string.delete) to { App.engine.remove(item.id) })
+        }
         val labels = options.map { it.first }.toTypedArray()
         MaterialAlertDialogBuilder(this)
             .setTitle(item.fileName)
@@ -778,7 +763,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         StoragePrefs.setTextFolder(this, path)
         StoragePrefs.saveFolder(this, null, null)
         refreshActiveStorageUi()
-        updateStorageInfo()
         Toast.makeText(
             this,
             getString(R.string.storage_text_folder_saved, path),
@@ -881,9 +865,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
     private enum class DownloadFilter { ALL, ACTIVE, COMPLETED, FAILED }
 
-    private var uiActive = false
     private var currentFilter = DownloadFilter.ALL
-    private var searchQuery = ""
     private var sortMode = 0
 
     private fun setupFilterViews() {
@@ -907,16 +889,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             }
         }
         updateFilterColors()
-        findViewById<EditText>(R.id.input_search)?.addTextChangedListener(
-            object : TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {
-                    searchQuery = s?.toString().orEmpty()
-                    refreshList()
-                }
-                override fun afterTextChanged(s: Editable?) {}
-            }
-        )
     }
 
     private fun updateFilterColors() {
@@ -978,14 +950,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
                 it.state == DownloadState.FAILED || it.state == DownloadState.CANCELLED
             }
         }
-        val q = searchQuery.trim().lowercase()
-        val searched = if (q.isEmpty()) {
-            filtered
-        } else {
-            filtered.filter {
-                it.fileName.lowercase().contains(q) || it.url.lowercase().contains(q)
-            }
-        }
         val stateRank = mapOf(
             DownloadState.PENDING to 0,
             DownloadState.DOWNLOADING to 1,
@@ -996,8 +960,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         )
         return when (sortMode) {
             // Daftar engine sudah terurut addedAt desc, jadi tanpa sort ulang.
-            0 -> searched
-            1 -> searched.asReversed()
+            0 -> filtered
+            1 -> filtered.asReversed()
             2 -> searched.sortedBy { it.fileName.lowercase() }
             3 -> searched.sortedByDescending { it.fileName.lowercase() }
             4 -> searched.sortedByDescending { it.totalBytes }

@@ -77,7 +77,7 @@ Fitur halaman remote:
 
 ## 🗂️ Penyimpanan
 
-Default file disimpan ke **Folder Downloads**. Izin memakai pola `WRITE_EXTERNAL_STORAGE` penuh + `requestLegacyExternalStorage` (target SDK 28), jadi folder publik bisa diakses langsung di Android 5–11; Android 12+ otomatis memakai MediaStore.
+Default file disimpan ke **Folder Downloads**. `minSdk 21` dipertahankan (Android 5+ tetap didukung), `targetSdk 34`. Android 5–10 memakai `WRITE_EXTERNAL_STORAGE` + legacy storage (akses penuh); Android 11+ memakai `MANAGE_EXTERNAL_STORAGE` ("Akses semua file").
 
 - **Input path teks**: ketik path mentah seperti `/storage/emulated/0/Download` — folder otomatis dibuat kalau belum ada
 - **Folder tambahan (mount)**: ketuk **+** untuk menambah path lain (mis. `/sdcard/Movies`) agar ikut tampil di file manager — cocok untuk folder buatan Total Commander, folder SD card, dll.

@@ -10,10 +10,10 @@ android {
     defaultConfig {
         applicationId = "com.tasirin.httpdownloadmanager"
         minSdk = 21
-        // targetSdk 28 sengaja (sama seperti aplikasi Vaultwarden Host):
-        // biar WRITE_EXTERNAL_STORAGE tetap bekerja penuh di semua Android
-        // (5–11) tanpa dibatasi scoped storage.
-        targetSdk = 28
+        // targetSdk 34: Android 5 (minSdk 21) tetap didukung penuh.
+        // Android 5–10: WRITE_EXTERNAL_STORAGE + legacy storage bekerja penuh.
+        // Android 11+: MANAGE_EXTERNAL_STORAGE ("Akses semua file").
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
     }

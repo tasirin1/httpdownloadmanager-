@@ -8,16 +8,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="@string/settings_storage_label"
+        android:text="@string/storage_download_folder"
         android:textAppearance="?attr/textAppearanceBodyMedium" />
-
-    <TextView
-        android:id="@+id/current_storage"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:textColor="@color/text_secondary"
-        android:textSize="13sp" />
 
     <EditText
         android:id="@+id/input_storage_path"
@@ -29,24 +21,23 @@
         android:inputType="text"
         android:maxLines="2" />
 
-    <Button
-        android:id="@+id/btn_pick_storage"
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/storage_choose_folder" />
+        android:layout_marginTop="16dp"
+        android:text="@string/storage_extra_folders"
+        android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+    <LinearLayout
+        android:id="@+id/extra_folders_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
 
     <Button
-        android:id="@+id/btn_pick_tc"
+        android:id="@+id/btn_add_folder"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="@string/storage_open_tc" />
-
-    <Button
-        android:id="@+id/btn_reset_storage"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/storage_use_default" />
+        android:text="@string/storage_add_folder" />
 </LinearLayout>

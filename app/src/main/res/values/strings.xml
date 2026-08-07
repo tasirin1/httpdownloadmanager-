@@ -32,16 +32,14 @@
     <string name="status_failed">Gagal</string>
 
     <string name="action_storage">Penyimpanan</string>
-    <string name="storage_current">Lokasi saat ini: %1$s</string>
     <string name="storage_default_folder">Folder Downloads (default)</string>
-    <string name="storage_custom_folder">Folder kustom</string>
-    <string name="storage_choose_folder">Pilih folder&#8230;</string>
-    <string name="storage_use_default">Pakai default</string>
     <string name="storage_picker_error">Gagal menggunakan folder: %1$s</string>
     <string name="storage_picker_unavailable">Tidak ada aplikasi untuk memilih folder di perangkat ini</string>
-    <string name="storage_open_tc">Buka Total Commander</string>
-    <string name="storage_tc_hint">Cari folder di Total Commander, salin path-nya (tahan folder &#8594; Properti), lalu tempel ke kolom path di atas.</string>
-    <string name="storage_folder_selected">Folder dipilih: %1$s</string>
+    <string name="storage_download_folder">Folder Download (tujuan download)</string>
+    <string name="storage_extra_folders">Folder tambahan di File Manager</string>
+    <string name="storage_add_folder">+ Tambah folder</string>
+    <string name="storage_extra_folder_hint">Path folder, mis. /sdcard/movie</string>
+    <string name="storage_remove_folder">&#10005;</string>
     <string name="storage_text_folder_hint">Path folder (contoh: /storage/emulated/0/Download)</string>
     <string name="storage_text_folder_invalid">Path tidak valid atau bukan folder</string>
     <string name="storage_text_folder_saved">Folder disimpan: %1$s</string>

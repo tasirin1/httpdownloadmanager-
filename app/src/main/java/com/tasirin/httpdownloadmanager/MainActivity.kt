@@ -32,7 +32,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.content.FileProvider
-import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -43,7 +42,6 @@ import com.tasirin.httpdownloadmanager.data.DownloadState
 import com.tasirin.httpdownloadmanager.databinding.ActivityMainBinding
 import com.tasirin.httpdownloadmanager.ui.DownloadAdapter
 import com.tasirin.httpdownloadmanager.util.MimeTypes
-import com.tasirin.httpdownloadmanager.util.ExternalApps
 import com.tasirin.httpdownloadmanager.util.Formats
 import com.tasirin.httpdownloadmanager.util.StoragePrefs
 import kotlinx.coroutines.Dispatchers
@@ -58,7 +56,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     private lateinit var binding: ActivityMainBinding
     private lateinit var adapter: DownloadAdapter
     private var pendingMoveId: String? = null
-    private var activeStorageCurrent: TextView? = null
     private var activeStorageInput: EditText? = null
     private var storagePathEdited = false
     private var updatingStorageInput = false
@@ -66,35 +63,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { /* hasil izin tidak wajib untuk fungsi inti */ }
-
-    private val folderPicker = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        if (uri != null) {
-            runCatching {
-                takePersistablePermission(uri)
-                val name = DocumentFile.fromTreeUri(this, uri)?.name
-                StoragePrefs.saveFolder(this, uri, name)
-                StoragePrefs.setTextFolder(this, null)
-                refreshActiveStorageUi()
-                updateStorageInfo()
-                Toast.makeText(
-                    this,
-                    getString(
-                        R.string.storage_folder_selected,
-                        name ?: getString(R.string.storage_custom_folder)
-                    ),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }.onFailure {
-                Toast.makeText(
-                    this,
-                    getString(R.string.storage_picker_error, it.message ?: "?"),
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-        }
-    }
 
     private val movePicker = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -694,22 +662,36 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     }
 
 
-    private fun wireTotalCommanderButton(container: View) {
-        val btn = container.findViewById<Button>(R.id.btn_pick_tc)
-        if (ExternalApps.launchIntentForTotalCommander(this) == null) {
-            btn.visibility = View.GONE
-            return
-        }
-        btn.setOnClickListener {
-            if (launchTotalCommander()) {
-                Toast.makeText(this, R.string.storage_tc_hint, Toast.LENGTH_LONG).show()
+    private fun wireStorageSection(view: View) {
+        val pathInput = view.findViewById<EditText>(R.id.input_storage_path)
+        activeStorageInput = pathInput
+        storagePathEdited = false
+        pathInput.setText(StoragePrefs.getTextFolder(this) ?: defaultDownloadsPath())
+        pathInput.setSelection(pathInput.text.length)
+        pathInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                if (!updatingStorageInput) storagePathEdited = true
             }
+        })
+
+        val box = view.findViewById<LinearLayout>(R.id.extra_folders_container)
+        StoragePrefs.getExtraFolders(this).forEach { addExtraFolderRow(box, it) }
+        view.findViewById<Button>(R.id.btn_add_folder).setOnClickListener {
+            addExtraFolderRow(box, "")
         }
     }
 
-    private fun launchTotalCommander(): Boolean {
-        val tc = ExternalApps.launchIntentForTotalCommander(this) ?: return false
-        return runCatching { startActivity(tc) }.isSuccess
+    private fun addExtraFolderRow(box: LinearLayout, path: String) {
+        val row = layoutInflater.inflate(R.layout.row_extra_folder, box, false)
+        val input = row.findViewById<EditText>(R.id.extra_folder_path)
+        input.setText(path)
+        input.setSelection(input.text.length)
+        row.findViewById<Button>(R.id.btn_remove_folder).setOnClickListener {
+            box.removeView(row)
+        }
+        box.addView(row)
     }
 
     private fun launchDocumentTree(launcher: ActivityResultLauncher<Uri?>) {
@@ -722,7 +704,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             )
         }
         if (intent.resolveActivity(packageManager) == null) {
-            if (launchTotalCommander()) return
             Toast.makeText(this, R.string.storage_picker_unavailable, Toast.LENGTH_LONG).show()
             return
         }
@@ -738,49 +719,25 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         }.getOrNull()
     }
 
-    private fun currentStorageLabel(): String {
-        val name = StoragePrefs.getFolderName(this)
-            ?: StoragePrefs.getTextFolder(this)
-            ?: getString(R.string.storage_default_folder)
-        return getString(R.string.storage_current, name)
-    }
-
-    private fun wireStorageSection(view: View) {
-        val currentStorage = view.findViewById<TextView>(R.id.current_storage)
-        val pathInput = view.findViewById<EditText>(R.id.input_storage_path)
-        activeStorageCurrent = currentStorage
-        activeStorageInput = pathInput
-        storagePathEdited = false
-        currentStorage.text = currentStorageLabel()
-        pathInput.setText(StoragePrefs.getTextFolder(this) ?: defaultDownloadsPath())
-        pathInput.setSelection(pathInput.text.length)
-        pathInput.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                if (!updatingStorageInput) storagePathEdited = true
+    private fun applyExtraFolders(view: View) {
+        val box = view.findViewById<LinearLayout>(R.id.extra_folders_container)
+        val paths = mutableListOf<String>()
+        for (i in 0 until box.childCount) {
+            val input = box.getChildAt(i).findViewById<EditText>(R.id.extra_folder_path)
+            val path = input.text?.toString()?.trim().orEmpty()
+            if (path.isEmpty()) continue
+            val dir = File(path)
+            if (!dir.isDirectory && !dir.mkdirs()) {
+                Toast.makeText(this, R.string.storage_text_folder_invalid, Toast.LENGTH_LONG).show()
+                return
             }
-        })
-
-        view.findViewById<Button>(R.id.btn_pick_storage).setOnClickListener {
-            if (Build.VERSION.SDK_INT >= 23) {
-                requestPermissionsIfNeeded()
-            }
-            launchDocumentTree(folderPicker)
+            paths.add(path)
         }
-        wireTotalCommanderButton(view)
-        view.findViewById<Button>(R.id.btn_reset_storage).setOnClickListener {
-            StoragePrefs.saveFolder(this, null, null)
-            StoragePrefs.setTextFolder(this, null)
-            refreshActiveStorageUi()
-            updateStorageInfo()
-            Toast.makeText(this, R.string.storage_default_folder, Toast.LENGTH_SHORT).show()
-        }
+        StoragePrefs.setExtraFolders(this, paths)
     }
 
     private fun refreshActiveStorageUi() {
         val input = activeStorageInput
-        activeStorageCurrent?.text = currentStorageLabel()
         storagePathEdited = false
         if (input != null) {
             updatingStorageInput = true
@@ -791,7 +748,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     }
 
     private fun clearActiveStorageUi() {
-        activeStorageCurrent = null
         activeStorageInput = null
         storagePathEdited = false
         updatingStorageInput = false
@@ -832,6 +788,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton(R.string.save) { _, _ ->
                 applyStoragePath(view.findViewById(R.id.input_storage_path))
+                applyExtraFolders(view)
             }
             .show()
         dialog.setOnDismissListener { clearActiveStorageUi() }

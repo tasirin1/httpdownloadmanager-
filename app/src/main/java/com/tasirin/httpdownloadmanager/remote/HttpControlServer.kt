@@ -1373,6 +1373,10 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         StoragePrefs.getTextFolder(context)?.let { tf ->
             if (File(tf).isDirectory) add("Folder teks", FS_PREFIX + tf)
         }
+        StoragePrefs.getExtraFolders(context).forEach { path ->
+            val f = File(path)
+            if (f.isDirectory) add(f.name, FS_PREFIX + f.absolutePath)
+        }
         // Folder standar device via path langsung: API < 29 punya izin penuh,
         // API 29+ wajib "Akses semua file" diaktifkan (Penyimpanan utama).
         if (Build.VERSION.SDK_INT < 29 || StoragePrefs.isFsFullAccessEnabled(context)) {
@@ -1720,6 +1724,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         val roots = mutableListOf<File>()
         roots.add(File(context.filesDir, "downloads"))
         StoragePrefs.getTextFolder(context)?.let { roots.add(File(it)) }
+        StoragePrefs.getExtraFolders(context).forEach { roots.add(File(it)) }
         if (StoragePrefs.isFsFullAccessEnabled(context)) {
             roots.add(File("/storage/emulated/0"))
         }

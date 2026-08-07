@@ -29,6 +29,7 @@ object StoragePrefs {
     private const val KEY_DELETE_PARTIAL_ON_CANCEL = "delete_partial_on_cancel"
     private const val KEY_PIN_ENFORCED = "pin_enforced"
     private const val KEY_FS_FULL_ACCESS = "fs_full_access"
+    private const val KEY_EXTRA_FOLDERS = "extra_folders"
 
     fun getFolderUri(context: Context): Uri? {
         val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -80,6 +81,23 @@ object StoragePrefs {
     fun getTextFolder(context: Context): String? =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(KEY_TEXT_FOLDER, null)?.takeIf { it.isNotBlank() }
+
+    fun getExtraFolders(context: Context): List<String> =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_EXTRA_FOLDERS, null)
+            ?.split("\n")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            .orEmpty()
+
+    fun setExtraFolders(context: Context, folders: List<String>) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(
+                KEY_EXTRA_FOLDERS,
+                folders.map { it.trim() }.filter { it.isNotEmpty() }.distinct().joinToString("\n")
+            )
+            .apply()
+    }
 
     fun setTextFolder(context: Context, path: String?) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()

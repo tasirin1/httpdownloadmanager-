@@ -32,16 +32,14 @@
     <string name="status_failed">Failed</string>
 
     <string name="action_storage">Storage</string>
-    <string name="storage_current">Current location: %1$s</string>
     <string name="storage_default_folder">Downloads folder (default)</string>
-    <string name="storage_custom_folder">Custom folder</string>
-    <string name="storage_choose_folder">Choose folder&#8230;</string>
-    <string name="storage_use_default">Use default</string>
     <string name="storage_picker_error">Failed to use folder: %1$s</string>
     <string name="storage_picker_unavailable">No app available to pick a folder on this device</string>
-    <string name="storage_open_tc">Open Total Commander</string>
-    <string name="storage_tc_hint">Find the folder in Total Commander, copy its path (long-press folder &#8594; Properties), then paste it into the path field above.</string>
-    <string name="storage_folder_selected">Folder selected: %1$s</string>
+    <string name="storage_download_folder">Download folder (download destination)</string>
+    <string name="storage_extra_folders">Extra folders in File Manager</string>
+    <string name="storage_add_folder">+ Add folder</string>
+    <string name="storage_extra_folder_hint">Folder path, e.g. /sdcard/movie</string>
+    <string name="storage_remove_folder">&#10005;</string>
     <string name="storage_text_folder_hint">Folder path (e.g. /storage/emulated/0/Download)</string>
     <string name="storage_text_folder_invalid">Path is not valid or not a folder</string>
     <string name="storage_text_folder_saved">Folder saved: %1$s</string>

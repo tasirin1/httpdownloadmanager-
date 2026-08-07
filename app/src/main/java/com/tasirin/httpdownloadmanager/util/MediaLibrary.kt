@@ -11,6 +11,7 @@ import android.os.HandlerThread
 import android.provider.MediaStore
 import android.util.Base64
 import androidx.documentfile.provider.DocumentFile
+import com.tasirin.httpdownloadmanager.App
 import java.io.File
 
 object MediaLibrary {
@@ -268,6 +269,14 @@ object MediaLibrary {
             }
         }
 
+        if (galleryImageFolder != null || galleryVideoFolder != null) {
+            App.logEvent(
+                "GALERI SCAN: ${list.count { !it.isVideo }} foto, " +
+                    "${list.count { it.isVideo }} video " +
+                    "(foto: ${galleryImageFolder ?: "semua"}, video: ${galleryVideoFolder ?: "semua"})"
+            )
+        }
+
         // Hapus duplikat: file yang sama bisa muncul sebagai path (f:) dan
         // sebagai MediaStore (u:) — dedupe berdasar path file bila ada.
         return list
@@ -291,6 +300,17 @@ object MediaLibrary {
         val dir = cfg.removePrefix("f:").trim('/')
         if (dir.isEmpty()) return true
         val fp = filePath?.replace('\\', '/') ?: return false
-        return fp.startsWith("/$dir/")
+        // MediaStore melaporkan path asli (/storage/emulated/0/...), sedangkan
+        // pengguna biasa menulis /sdcard/... — samakan dulu.
+        val norm = when {
+            dir == "sdcard" || dir.startsWith("sdcard/") ->
+                "storage/emulated/0/" + dir.removePrefix("sdcard").trim('/')
+            dir == "mnt/sdcard" || dir.startsWith("mnt/sdcard/") ->
+                "storage/emulated/0/" + dir.removePrefix("mnt/sdcard").trim('/')
+            dir == "storage/self/primary" || dir.startsWith("storage/self/primary/") ->
+                "storage/emulated/0/" + dir.removePrefix("storage/self/primary").trim('/')
+            else -> dir
+        }
+        return fp.removePrefix("/").startsWith("$norm/")
     }
 }

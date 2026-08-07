@@ -8,7 +8,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.os.PowerManager
 import android.provider.DocumentsContract
 import android.provider.MediaStore
@@ -23,7 +22,6 @@ import android.view.WindowManager
 import android.view.MenuItem
 import android.view.View
 import android.widget.ArrayAdapter
-import android.widget.ScrollView
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -60,9 +58,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     private lateinit var binding: ActivityMainBinding
     private lateinit var adapter: DownloadAdapter
     private var pendingMoveId: String? = null
-    private var activeStorageInput: EditText? = null
-    private var storagePathEdited = false
-    private var updatingStorageInput = false
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -660,38 +655,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
     }
 
 
-    private fun wireStorageSection(view: View) {
-        val pathInput = view.findViewById<EditText>(R.id.input_storage_path)
-        activeStorageInput = pathInput
-        storagePathEdited = false
-        pathInput.setText(StoragePrefs.getTextFolder(this) ?: defaultDownloadsPath())
-        pathInput.setSelection(pathInput.text.length)
-        pathInput.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                if (!updatingStorageInput) storagePathEdited = true
-            }
-        })
-
-        val box = view.findViewById<LinearLayout>(R.id.extra_folders_container)
-        StoragePrefs.getExtraFolders(this).forEach { addExtraFolderRow(box, it) }
-        view.findViewById<Button>(R.id.btn_add_folder).setOnClickListener {
-            addExtraFolderRow(box, "")
-        }
-    }
-
-    private fun addExtraFolderRow(box: LinearLayout, path: String) {
-        val row = layoutInflater.inflate(R.layout.row_extra_folder, box, false)
-        val input = row.findViewById<EditText>(R.id.extra_folder_path)
-        input.setText(path)
-        input.setSelection(input.text.length)
-        row.findViewById<Button>(R.id.btn_remove_folder).setOnClickListener {
-            box.removeView(row)
-        }
-        box.addView(row)
-    }
-
     private fun launchDocumentTree(launcher: ActivityResultLauncher<Uri?>) {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
             addFlags(
@@ -717,87 +680,6 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         }.getOrNull()
     }
 
-    private fun applyExtraFolders(view: View) {
-        val box = view.findViewById<LinearLayout>(R.id.extra_folders_container)
-        val paths = mutableListOf<String>()
-        for (i in 0 until box.childCount) {
-            val input = box.getChildAt(i).findViewById<EditText>(R.id.extra_folder_path)
-            val path = input.text?.toString()?.trim().orEmpty()
-            if (path.isEmpty()) continue
-            val dir = File(path)
-            if (!dir.isDirectory && !dir.mkdirs()) {
-                Toast.makeText(this, R.string.storage_text_folder_invalid, Toast.LENGTH_LONG).show()
-                return
-            }
-            paths.add(path)
-        }
-        StoragePrefs.setExtraFolders(this, paths)
-    }
-
-    private fun refreshActiveStorageUi() {
-        val input = activeStorageInput
-        storagePathEdited = false
-        if (input != null) {
-            updatingStorageInput = true
-            input.setText(StoragePrefs.getTextFolder(this) ?: defaultDownloadsPath())
-            input.setSelection(input.text.length)
-            updatingStorageInput = false
-        }
-    }
-
-    private fun clearActiveStorageUi() {
-        activeStorageInput = null
-        storagePathEdited = false
-        updatingStorageInput = false
-    }
-
-    private fun applyStoragePath(pathInput: EditText) {
-        if (!storagePathEdited) return
-        val path = pathInput.text?.toString()?.trim().orEmpty()
-        if (path.isEmpty()) return
-        val dir = File(path)
-        if (!dir.isDirectory && !dir.mkdirs()) {
-            Toast.makeText(this, R.string.storage_text_folder_invalid, Toast.LENGTH_LONG).show()
-            return
-        }
-        StoragePrefs.setTextFolder(this, path)
-        StoragePrefs.saveFolder(this, null, null)
-        refreshActiveStorageUi()
-        Toast.makeText(
-            this,
-            getString(R.string.storage_text_folder_saved, path),
-            Toast.LENGTH_SHORT
-        ).show()
-    }
-
-    private fun showStorageDialog() {
-        if (Build.VERSION.SDK_INT >= 23 &&
-            checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissionsIfNeeded()
-        }
-        val view = layoutInflater.inflate(R.layout.dialog_storage, null)
-        wireStorageSection(view)
-        val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.action_storage)
-            .setView(view)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.save) { _, _ ->
-                applyStoragePath(view.findViewById(R.id.input_storage_path))
-                applyExtraFolders(view)
-            }
-            .show()
-        dialog.setOnDismissListener { clearActiveStorageUi() }
-    }
-
-    private fun defaultDownloadsPath(): String {
-        if (Build.VERSION.SDK_INT >= 29) return "/storage/emulated/0/Download"
-        return runCatching {
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                .absolutePath
-        }.getOrDefault("/storage/emulated/0/Download")
-    }
 
     private fun requestBatteryExemption() {
         if (Build.VERSION.SDK_INT < 23) return

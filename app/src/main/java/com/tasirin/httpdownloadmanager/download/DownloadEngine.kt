@@ -89,7 +89,6 @@ class DownloadEngine(private val context: Context) {
 
     private fun startBackgroundLoops() {
         scope.launch { monitorLoop() }
-        scope.launch { speedSamplerLoop() }
     }
 
     fun addDownload(
@@ -492,8 +491,6 @@ class DownloadEngine(private val context: Context) {
         }
     }
 
-    // --- Grafik kecepatan realtime ---
-    private val speedHistory = ArrayDeque<Long>()
     @Volatile private var sharedLimiter: GlobalRateLimiter? = null
 
     private fun globalRateLimiter(): GlobalRateLimiter? {
@@ -506,23 +503,6 @@ class DownloadEngine(private val context: Context) {
             sharedLimiter = created
             return created
         }
-    }
-
-    private suspend fun speedSamplerLoop() {
-        while (true) {
-            delay(1_000)
-            val total = _items.value
-                .filter { it.state == DownloadState.DOWNLOADING }
-                .sumOf { it.speedBps }
-            synchronized(speedHistory) {
-                speedHistory.addLast(total)
-                while (speedHistory.size > SPEED_HISTORY_POINTS) speedHistory.removeFirst()
-            }
-        }
-    }
-
-    fun speedHistorySnapshot(): List<Long> = synchronized(speedHistory) {
-        speedHistory.toList()
     }
 
     fun move(id: String, destTreeUri: Uri) {
@@ -1396,7 +1376,6 @@ class DownloadEngine(private val context: Context) {
         private const val MIN_FREE_BYTES = 2L * 1024 * 1024
         private const val SAVE_DEBOUNCE_MS = 400L
         private const val MONITOR_INTERVAL_MS = 30 * 60 * 1000L
-        private const val SPEED_HISTORY_POINTS = 60
     }
 }
 

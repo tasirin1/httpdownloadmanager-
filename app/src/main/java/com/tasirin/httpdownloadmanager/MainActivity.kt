@@ -1,6 +1,7 @@
 package com.tasirin.httpdownloadmanager
 
 import android.Manifest
+import android.app.Dialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -17,6 +18,8 @@ import android.text.TextUtils
 import android.text.TextWatcher
 import android.util.Log
 import android.view.Menu
+import android.view.Window
+import android.view.WindowManager
 import android.view.MenuItem
 import android.view.View
 import android.widget.ArrayAdapter
@@ -582,19 +585,19 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         }.getOrNull()
         val version = info?.versionName ?: "1.0"
         val build = info?.versionCode ?: 0
-        // Konten di-scroll agar muat di layar TV/remote (teks profil panjang).
-        val content = TextView(this).apply {
-            text = getString(R.string.about_version, version) + " (build $build)\n\n" +
+        // Dialog khusus TV: judul & isi rata kiri, scroll agar muat di layar/remote.
+        val view = layoutInflater.inflate(R.layout.dialog_about, null)
+        view.findViewById<TextView>(R.id.about_body).text =
+            getString(R.string.about_version, version) + " (build $build)\n\n" +
                 getString(R.string.about_profile)
-            setTextIsSelectable(true)
-            setPadding(64, 32, 64, 32)
-        }
-        val scroll = ScrollView(this).apply { addView(content) }
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.about_title)
-            .setView(scroll)
-            .setPositiveButton(R.string.ok, null)
-            .show()
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(view)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        val maxWidth = (640 * resources.displayMetrics.density).toInt()
+        dialog.window?.setLayout(maxWidth, WindowManager.LayoutParams.WRAP_CONTENT)
+        dialog.show()
+        view.findViewById<Button>(R.id.btn_about_ok).setOnClickListener { dialog.dismiss() }
     }
 
     override fun onAction(item: DownloadItem, action: DownloadAdapter.Action) {

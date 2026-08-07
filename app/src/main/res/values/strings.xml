@@ -17,7 +17,7 @@
     <string name="resume">Lanjut</string>
     <string name="open">Buka</string>
     <string name="delete">Hapus</string>
-    <string name="empty_hint">Belum ada download.\nKetuk tombol + untuk menambah URL.</string>
+    <string name="empty_hint">Belum ada download.\nTambahkan URL untuk mulai mengunduh.</string>
     <string name="no_app_to_open">Tidak ada aplikasi untuk membuka file ini</string>
     <string name="speed_and_eta">%1$s · ETA %2$s</string>
 

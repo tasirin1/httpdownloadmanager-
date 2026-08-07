@@ -102,6 +102,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         binding.recycler.adapter = adapter
 
         binding.fabAdd.setOnClickListener { showAddDialog() }
+        binding.emptyAddButton.setOnClickListener { showAddDialog() }
 
         binding.btnChangeStorageHome.setOnClickListener { showStorageDialog() }
 
@@ -235,9 +236,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         tv.text = getString(
             if (alive) R.string.server_status_running else R.string.server_status_stopped
         )
-        tv.setTextColor(
-            ContextCompat.getColor(this, if (alive) R.color.status_on else R.color.status_off)
-        )
+        tv.setTextColor(ContextCompat.getColor(this, R.color.white))
+        tv.setBackgroundResource(if (alive) R.drawable.bg_status_on else R.drawable.bg_status_off)
     }
 
     /** Stop DownloadService bila tidak ada download aktif (server juga mati). */

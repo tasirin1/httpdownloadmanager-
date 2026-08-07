@@ -59,6 +59,7 @@ class FileSaver(context: Context) {
             val target = uniqueTargetFile(File(dir, fileName))
             target.outputStream().use { out -> partial.inputStream().use { it.copyTo(out) } }
             partial.delete()
+            MediaLibrary.notifyMediaChanged(appContext, target.absolutePath)
             PublishResult(filePath = target.absolutePath, fileName = target.name)
         }.getOrNull()
     }
@@ -250,6 +251,7 @@ class FileSaver(context: Context) {
         val target = uniqueTargetFile(File(dir, fileName))
         target.outputStream().use { out -> partial.inputStream().use { it.copyTo(out) } }
         partial.delete()
+        MediaLibrary.notifyMediaChanged(appContext, target.absolutePath)
         PublishResult(filePath = target.absolutePath, fileName = target.name)
     }.getOrNull()
 
@@ -333,6 +335,7 @@ class FileSaver(context: Context) {
                 try {
                     target.outputStream().use { out -> partial.inputStream().use { it.copyTo(out) } }
                     partial.delete()
+                    MediaLibrary.notifyMediaChanged(appContext, target.absolutePath)
                     return PublishResult(filePath = target.absolutePath, fileName = target.name)
                 } catch (_: Exception) {
                     // fallback ke penyimpanan internal
@@ -346,6 +349,7 @@ class FileSaver(context: Context) {
         val target = uniqueTargetFile(File(downloadDir, fileName))
         target.outputStream().use { out -> partial.inputStream().use { it.copyTo(out) } }
         partial.delete()
+        MediaLibrary.notifyMediaChanged(appContext, target.absolutePath)
         return PublishResult(filePath = target.absolutePath, fileName = target.name)
     }
 

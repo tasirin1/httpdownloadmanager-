@@ -3,6 +3,7 @@ package com.tasirin.httpdownloadmanager.util
 import android.content.ContentUris
 import android.content.Context
 import android.database.ContentObserver
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -94,6 +95,20 @@ object MediaLibrary {
             } else {
                 entry
             }
+        }
+    }
+
+    /** Beri tahu MediaStore ada file baru/berubah + invalidasi cache scan,
+     *  supaya galeri langsung mendeteksi file yang baru ditulis aplikasi
+     *  (download selesai, upload, pindah/rename dari file manager). */
+    fun notifyMediaChanged(context: Context, vararg paths: String) {
+        scanCache = null
+        val valid = paths.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+        if (valid.isEmpty()) return
+        runCatching {
+            MediaScannerConnection.scanFile(
+                context.applicationContext, valid.toTypedArray(), null, null
+            )
         }
     }
 
@@ -270,6 +285,20 @@ object MediaLibrary {
             }
         }
 
+        // 4b) MediaStore Android lama (API < 29) sering tidak mengindeks file
+        //     baru yang ditulis lewat file manager/upload. Scan folder galeri
+        //     langsung dari filesystem biar file baru langsung terdeteksi.
+        if (Build.VERSION.SDK_INT < 29 || StoragePrefs.isFsFullAccessEnabled(context)) {
+            runCatching {
+                listOfNotNull(galleryImageFolder, galleryVideoFolder).forEach { cfg ->
+                    val dir = galleryDir(cfg)
+                    if (dir != null && dir.isDirectory) {
+                        dir.listFiles()?.forEach { addFile(it) }
+                    }
+                }
+            }
+        }
+
         // 5) Folder Download publik (lama, untuk Android < 10 bila MediaStore
         //    tidak mengembalikan apa pun karena izin belum diberikan).
         if (Build.VERSION.SDK_INT < 29) {
@@ -299,6 +328,28 @@ object MediaLibrary {
     /** Cek apakah file media masuk folder galeri terpilih.
      *  Format konfigurasi: "f:/path" (atau path polos) atau "m:RelativePath".
      *  Kosong = semua storage. */
+    /** Resolve konfigurasi folder galeri ("f:/path" atau path polos) menjadi
+     *  File tujuan di filesystem; null untuk format "m:RelativePath". */
+    private fun galleryDir(config: String): File? {
+        val raw = config.trim().removePrefix("f:").trim()
+        if (raw.isEmpty()) return null
+        val norm = when {
+            raw == "sdcard" -> "/storage/emulated/0"
+            raw.startsWith("sdcard/") -> "/storage/emulated/0/" + raw.removePrefix("sdcard")
+            raw.startsWith("/sdcard") -> "/storage/emulated/0" + raw.removePrefix("/sdcard")
+            raw == "mnt/sdcard" -> "/storage/emulated/0"
+            raw.startsWith("mnt/sdcard/") -> "/storage/emulated/0/" + raw.removePrefix("mnt/sdcard")
+            raw.startsWith("/mnt/sdcard") -> "/storage/emulated/0" + raw.removePrefix("/mnt/sdcard")
+            raw.startsWith("/storage/emulated/0") -> raw
+            raw.startsWith("/") -> raw
+            raw == "storage/self/primary" -> "/storage/emulated/0"
+            raw.startsWith("storage/self/primary/") ->
+                "/storage/emulated/0/" + raw.removePrefix("storage/self/primary")
+            else -> "/" + raw.trim('/')
+        }
+        return File(norm)
+    }
+
     private fun mediaInFolder(filePath: String?, relativePath: String?, config: String): Boolean {
         val cfg = config.trim()
         if (cfg.isEmpty()) return true

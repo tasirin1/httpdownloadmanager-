@@ -691,8 +691,13 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                 appendLog("UPLOAD #$id chunk terakhir diterima -> memfinalisasi sebagai $finalName")
                 serverScope.launch {
                     try {
-                        App.engine.importStream(finalName, storage, folderPath, tmp.length()) { out ->
+                        val published = App.engine.importStream(
+                            finalName, storage, folderPath, tmp.length()
+                        ) { out ->
                             tmp.inputStream().use { it.copyTo(out) }
+                        }
+                        published.filePath?.let {
+                            MediaLibrary.notifyMediaChanged(context, it)
                         }
                         completedUploads[id] = finalName to System.currentTimeMillis()
                         appendLog("UPLOAD #$id SELESAI -> $finalName")
@@ -1585,12 +1590,21 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         val file = File(path)
         return when (action) {
             "delete" -> runCatching {
-                if (file.isDirectory) file.deleteRecursively() else file.delete()
+                val gone = if (file.isDirectory) file.deleteRecursively() else file.delete()
+                if (gone) MediaLibrary.notifyMediaChanged(context, file.absolutePath)
+                gone
             }.getOrDefault(false)
             "rename" -> {
                 if (name.isBlank() || name.contains('/') || name.contains('\\')) return false
                 runCatching {
-                    File(file.parentFile, name).let { file.renameTo(it) }
+                    val target = File(file.parentFile, name)
+                    val ok = file.renameTo(target)
+                    if (ok) {
+                        MediaLibrary.notifyMediaChanged(
+                            context, file.absolutePath, target.absolutePath
+                        )
+                    }
+                    ok
                 }.getOrDefault(false)
             }
             "move" -> {
@@ -1605,11 +1619,15 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                 if (file.parentFile?.absolutePath == destDir.absolutePath) return true
                 val target = File(destDir, file.name)
                 if (target.exists()) return false
-                if (file.renameTo(target)) return true
+                if (file.renameTo(target)) {
+                    MediaLibrary.notifyMediaChanged(context, file.absolutePath, target.absolutePath)
+                    return true
+                }
                 if (!file.isFile) return false
                 runCatching {
                     file.copyTo(target, overwrite = false)
                     file.delete()
+                    MediaLibrary.notifyMediaChanged(context, file.absolutePath, target.absolutePath)
                     true
                 }.getOrDefault(false)
             }

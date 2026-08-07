@@ -714,11 +714,23 @@ class DownloadEngine(private val context: Context) {
                 url.contains("github.io"))
 
     private fun githubMirrors(url: String): List<String> {
-        val prefixes = listOf(
-            "https://ghfast.top/",
-            "https://gh-proxy.com/",
-            "https://ghproxy.net/"
-        )
+        // URL signed release-asset (release-assets.githubusercontent.com) hanya
+        // bisa di-proxy oleh gh-proxy.com; mirror lain menolak (403/501).
+        val signedAsset = url.contains("release-assets.githubusercontent.com") ||
+            url.contains("/github-production-release-asset/")
+        val prefixes = if (signedAsset) {
+            listOf(
+                "https://gh-proxy.com/",
+                "https://ghfast.top/",
+                "https://ghproxy.net/"
+            )
+        } else {
+            listOf(
+                "https://ghfast.top/",
+                "https://gh-proxy.com/",
+                "https://ghproxy.net/"
+            )
+        }
         return prefixes.map { it + url }
     }
 
@@ -773,8 +785,10 @@ class DownloadEngine(private val context: Context) {
                 probeHeaders = headersOf(probe)
                 val total = contentLength(probe)
                 val ranges = probe.getHeaderField("Accept-Ranges") == "bytes"
+                // Mirror (proxy GitHub) umumnya tidak mendukung Range, jadi
+                // lewati multi-segmen untuk URL cadangan.
                 if (ranges && total >= SEGMENT_MIN_BYTES &&
-                    StoragePrefs.segmentCount(context) > 1
+                    StoragePrefs.segmentCount(context) > 1 && item.mirrors.isEmpty()
                 ) {
                     useSegments = true
                     segmentedTotal = total
@@ -970,12 +984,48 @@ class DownloadEngine(private val context: Context) {
         }
 
         throttle.reset(segments.sumOf { it.downloaded })
-        coroutineScope {
-            segments.forEach { seg ->
-                launch {
-                    downloadSegment(item.id, fileName, seg, saver, throttle)
+        try {
+            coroutineScope {
+                segments.forEach { seg ->
+                    launch {
+                        downloadSegment(item.id, fileName, seg, saver, throttle)
+                    }
                 }
             }
+        } catch (e: IOException) {
+            val current = _items.value.find { it.id == item.id }
+            val fresh = current == null || current.segments.sumOf { it.downloaded } == 0L
+            if (fresh && e.message?.contains("tidak mendukung Range") == true) {
+                // Server/proxy mengiklankan Range tapi menolaknya: buang segmen
+                // (belum ada data) lalu unduh sekali jalan tanpa Range.
+                App.logEvent(
+                    "DOWNLOAD ${item.fileName}: Range ditolak (${e.message}), " +
+                        "unduh ulang sekali jalan"
+                )
+                saver.partialFiles(current ?: item).forEach { runCatching { it.delete() } }
+                updateItem(item.id) {
+                    it.copy(
+                        segments = emptyList(),
+                        bytesDownloaded = 0,
+                        speedBps = 0,
+                        etaSeconds = 0
+                    )
+                }
+                val fallbackConn = openConn(item.url)
+                try {
+                    fallbackConn.requestMethod = "GET"
+                    fallbackConn.connectTimeout = 15_000
+                    fallbackConn.readTimeout = 30_000
+                    fallbackConn.setRequestProperty("User-Agent", "HttpDownloadManager/1.0")
+                    fallbackConn.setRequestProperty("Accept-Encoding", "identity")
+                    applyAuthHeaders(fallbackConn, item)
+                    runSingle(item, fallbackConn, saver, throttle)
+                } finally {
+                    fallbackConn.disconnect()
+                }
+                return
+            }
+            throw e
         }
 
         val current = _items.value.find { it.id == item.id } ?: return

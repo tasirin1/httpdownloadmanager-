@@ -43,5 +43,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
+        android:background="@drawable/bg_btn_tv"
+        android:backgroundTint="@null"
         android:text="@string/storage_add_folder" />
 </LinearLayout>

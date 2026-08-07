@@ -3,6 +3,16 @@
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryDark">@color/primary_dark</item>
         <item name="colorAccent">@color/accent</item>
+        <!-- Fokus D-pad wajib kelihatan di tema terang & gelap, termasuk
+             Android 6 yang tidak menggambar highlight fokus otomatis. -->
+        <item name="android:colorControlHighlight">@color/accent</item>
+        <item name="colorControlHighlight">@color/accent</item>
+    </style>
+
+    <style name="TvOutlinedButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:background">@drawable/bg_btn_tv</item>
+        <item name="android:backgroundTint">@null</item>
+        <item name="backgroundTint">@null</item>
     </style>
 
     <style name="Theme.HttpDownloadManager.Splash" parent="Theme.SplashScreen">

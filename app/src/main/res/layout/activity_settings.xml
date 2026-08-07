@@ -41,7 +41,7 @@
 
             <Button
                 android:id="@+id/storage_btn"
-                style="?attr/materialButtonOutlinedStyle"
+                style="@style/TvOutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
@@ -67,7 +67,7 @@
 
             <Button
                 android:id="@+id/server_switch"
-                style="?attr/materialButtonOutlinedStyle"
+                style="@style/TvOutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
@@ -76,7 +76,7 @@
 
             <Button
                 android:id="@+id/check_server_autostart"
-                style="?attr/materialButtonOutlinedStyle"
+                style="@style/TvOutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
@@ -110,7 +110,7 @@
 
             <Button
                 android:id="@+id/check_pin_enforced"
-                style="?attr/materialButtonOutlinedStyle"
+                style="@style/TvOutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
@@ -122,7 +122,7 @@
 
             <Button
                 android:id="@+id/check_fs_full_access"
-                style="?attr/materialButtonOutlinedStyle"
+                style="@style/TvOutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
@@ -156,7 +156,7 @@
 
             <Button
                 android:id="@+id/btn_log"
-                style="?attr/materialButtonOutlinedStyle"
+                style="@style/TvOutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:nextFocusUp="@id/input_port"
@@ -174,7 +174,7 @@
 
             <Button
                 android:id="@+id/check_background"
-                style="?attr/materialButtonOutlinedStyle"
+                style="@style/TvOutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
@@ -185,7 +185,7 @@
 
             <Button
                 android:id="@+id/check_autostart"
-                style="?attr/materialButtonOutlinedStyle"
+                style="@style/TvOutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
@@ -196,7 +196,7 @@
 
             <Button
                 android:id="@+id/check_auto_sort"
-                style="?attr/materialButtonOutlinedStyle"
+                style="@style/TvOutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
@@ -207,7 +207,7 @@
 
             <Button
                 android:id="@+id/check_small_first"
-                style="?attr/materialButtonOutlinedStyle"
+                style="@style/TvOutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
@@ -218,7 +218,7 @@
 
             <Button
                 android:id="@+id/check_battery"
-                style="?attr/materialButtonOutlinedStyle"
+                style="@style/TvOutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
@@ -229,7 +229,7 @@
 
             <Button
                 android:id="@+id/check_delete_partial"
-                style="?attr/materialButtonOutlinedStyle"
+                style="@style/TvOutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
@@ -400,7 +400,7 @@
 
             <Button
                 android:id="@+id/btn_cleanup"
-                style="?attr/materialButtonOutlinedStyle"
+                style="@style/TvOutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
@@ -419,6 +419,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
+                android:background="@drawable/bg_btn_tv"
+                android:backgroundTint="@null"
                 android:text="@string/save" />
         </LinearLayout>
     </ScrollView>

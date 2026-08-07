@@ -24,6 +24,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="6dp"
+        android:background="@drawable/bg_btn_tv"
+        android:backgroundTint="@null"
         android:text="@string/storage_remove_folder"
         android:textSize="12sp" />
 </LinearLayout>

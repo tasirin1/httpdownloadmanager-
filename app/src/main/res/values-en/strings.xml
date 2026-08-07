@@ -14,14 +14,14 @@
 
     <string name="settings_section_update">Update</string>
     <string name="update_check">Check for Updates</string>
-    <string name="update_checking">Checking for updates…</string>
+    <string name="update_checking">Checking for updates&#8230;</string>
     <string name="update_failed">Update check failed — check internet connection</string>
-    <string name="update_latest">You're on the latest version ✓</string>
+    <string name="update_latest">You are on the latest version</string>
     <string name="update_available">Update available: %1$s (build %2$d)</string>
     <string name="update_title">Update available</string>
     <string name="update_message">Version %1$s (build %2$d) is available (%3$s).\nDownload now?</string>
     <string name="update_download">Download &amp; Install</string>
-    <string name="update_downloading">Downloading update…</string>
+    <string name="update_downloading">Downloading update&#8230;</string>
     <string name="update_progress_detail">%1$s / %2$s</string>
     <string name="update_progress_unknown">%1$s downloaded</string>
     <string name="update_download_failed">Failed to download update</string>

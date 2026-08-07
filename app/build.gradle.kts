@@ -27,7 +27,7 @@ android {
             if (!storeFileProp.isNullOrBlank() && !storePasswordProp.isNullOrBlank() &&
                 !keyAliasProp.isNullOrBlank() && !keyPasswordProp.isNullOrBlank()
             ) {
-                storeFile = file(storeFileProp)
+                storeFile = rootProject.file(storeFileProp)  // resolve dari root repo (workflow menaruh keystore.jks di sana)
                 storePassword = storePasswordProp
                 keyAlias = keyAliasProp
                 keyPassword = keyPasswordProp

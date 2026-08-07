@@ -13,6 +13,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
+        android:background="@drawable/bg_input_tv"
         android:hint="@string/storage_extra_folder_hint"
         android:importantForAutofill="no"
         android:inputType="text"

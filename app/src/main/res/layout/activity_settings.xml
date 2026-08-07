@@ -82,6 +82,7 @@
                 android:layout_marginTop="6dp"
                 android:minHeight="48dp"
                 android:gravity="start|center_vertical"
+                android:nextFocusDown="@id/input_pin"
                 android:paddingHorizontal="16dp"
                 android:text="@string/settings_server_autostart" />
 
@@ -99,9 +100,13 @@
                 android:id="@+id/input_pin"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="@drawable/bg_input_tv"
                 android:hint="@string/settings_pin_hint"
-                android:inputType="numberPassword"
-                android:maxLength="10" />
+                android:inputType="text"
+                android:maxLength="10"
+                android:password="true"
+                android:nextFocusDown="@id/check_pin_enforced"
+                android:nextFocusUp="@id/check_server_autostart" />
 
             <Button
                 android:id="@+id/check_pin_enforced"
@@ -111,6 +116,7 @@
                 android:layout_marginTop="6dp"
                 android:minHeight="48dp"
                 android:gravity="start|center_vertical"
+                android:nextFocusUp="@id/input_pin"
                 android:paddingHorizontal="16dp"
                 android:text="@string/settings_pin_enforced" />
 
@@ -122,6 +128,7 @@
                 android:layout_marginTop="6dp"
                 android:minHeight="48dp"
                 android:gravity="start|center_vertical"
+                android:nextFocusDown="@id/input_port"
                 android:paddingHorizontal="16dp"
                 android:text="@string/settings_fs_full_access" />
 
@@ -139,15 +146,20 @@
                 android:id="@+id/input_port"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="@drawable/bg_input_tv"
+                android:digits="0123456789"
                 android:hint="@string/settings_port_hint"
                 android:importantForAutofill="no"
-                android:inputType="number" />
+                android:inputType="text"
+                android:nextFocusDown="@id/btn_log"
+                android:nextFocusUp="@id/check_fs_full_access" />
 
             <Button
                 android:id="@+id/btn_log"
                 style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:nextFocusUp="@id/input_port"
                 android:layout_marginTop="16dp"
                 android:text="@string/remote_log_label" />
 
@@ -342,6 +354,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
+                android:background="@drawable/bg_input_tv"
                 android:hint="@string/settings_gallery_folder_hint"
                 android:importantForAutofill="no"
                 android:inputType="text"
@@ -362,6 +375,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
+                android:background="@drawable/bg_input_tv"
                 android:hint="@string/settings_gallery_folder_hint"
                 android:importantForAutofill="no"
                 android:inputType="text"

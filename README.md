@@ -28,7 +28,7 @@ APK terbaru selalu tersedia di **GitHub Releases** — setiap push ke `main` lan
 
 **[⬇️ Unduh APK terbaru](https://github.com/tasirin1/tasirin-download-manager/releases/latest)**
 
-Pasang di HP / TV box (Android 5.0+), beri izin Penyimpanan saat diminta, selesai.
+APK release sudah **ditandatangani dengan kunci rilis resmi** (bukan debug), jadi lebih dipercaya Android/Play Protect. Pasang di HP / TV box (Android 5.0+), beri izin Penyimpanan saat diminta, selesai.
 
 ---
 
@@ -113,7 +113,9 @@ Catatan: beberapa vendor (MIUI, dll.) punya pembatasan baterai ketat — aktifka
 
 ### Otomatis (GitHub Actions)
 
-Workflow `.github/workflows/build.yml` berjalan otomatis setiap push ke `main` (atau manual via **Actions → Build APK → Run workflow**). Hasilnya otomatis jadi release baru. Untuk release yang ditandatangani, isi secrets `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` di pengaturan repo.
+Workflow `.github/workflows/build.yml` berjalan otomatis setiap push ke `main` (atau manual via **Actions → Build APK → Run workflow**). Hasilnya otomatis jadi release baru. Untuk release yang ditandatangani, isi secrets `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` di pengaturan repo — lalu APK release (signed) yang otomatis diunggah ke release, bukan APK debug.
+
+> **⚠️ Backup keystore & password-nya selamanya.** Kunci release menandatangani semua rilis — kalau hilang, perangkat tidak bisa update APK lama tanpa uninstall, dan ganti kunci baru bikin Play Protect curiga. Simpan aman (password manager), jangan pernah commit ke repo.
 
 **Persyaratan**: Android 5.0+ (minSdk 21), Java 17 + Android SDK.
 

@@ -74,10 +74,14 @@ jobs:
         run: |
           VER=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
           CODE=$(grep -oP 'versionCode = \K[0-9]+' app/build.gradle.kts)
-          OUT="http-download-manager-v${VER}-${CODE}.apk"
-          cp app/build/outputs/apk/debug/app-debug.apk "$OUT"
+          OUT="tasirin-download-manager-v${VER}-${CODE}.apk"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            cp app/build/outputs/apk/release/app-release.apk "$OUT"
+          else
+            cp app/build/outputs/apk/debug/app-debug.apk "$OUT"
+          fi
           gh release delete "v${VER}" --yes --cleanup-tag || true
           gh release create "v${VER}" "$OUT" \
-            --title "HTTP Download Manager v${VER} (build ${CODE})" \
-            --notes "APK rilis terbaru (build ${CODE}). Unduh lalu pasang di HP. Beri izin Penyimpanan saat diminta. Aktifkan 'Instal dari sumber tidak dikenal' bila perlu." \
+            --title "Tasirin Download Manager v${VER} (build ${CODE})" \
+            --notes "APK rilis terbaru (build ${CODE}), ditandatangani dengan kunci release resmi (bukan debug). Unduh lalu pasang di HP/TV box. Beri izin Penyimpanan saat diminta." \
             --latest

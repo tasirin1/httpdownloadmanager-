@@ -35,6 +35,7 @@ import com.tasirin.httpdownloadmanager.databinding.ActivitySettingsBinding
 import com.tasirin.httpdownloadmanager.download.DownloadService
 import com.tasirin.httpdownloadmanager.remote.HttpControlServer
 import com.tasirin.httpdownloadmanager.util.Formats
+import com.tasirin.httpdownloadmanager.util.ExternalApps
 import com.tasirin.httpdownloadmanager.util.StoragePrefs
 import java.io.File
 
@@ -382,6 +383,7 @@ class SettingsActivity : AppCompatActivity() {
             if (Build.VERSION.SDK_INT >= 23) requestPermissionsIfNeeded()
             launchDocumentTree(folderPicker)
         }
+        wireTotalCommanderButton(null)
         findViewById<Button>(R.id.btn_reset_storage).setOnClickListener {
             StoragePrefs.saveFolder(this, null, null)
             StoragePrefs.setTextFolder(this, null)
@@ -474,6 +476,29 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+
+    /** Tombol "Buka Total Commander": pengguna mencari folder, menyalin path,
+     *  lalu menempelkannya ke kolom path di atas (pola seperti aplikasi
+     *  Vaultwarden Host yang memakai kolom path teks). */
+    private fun wireTotalCommanderButton(container: View?) {
+        val btn = container?.findViewById<Button>(R.id.btn_pick_tc)
+            ?: findViewById<Button>(R.id.btn_pick_tc)
+        if (ExternalApps.launchIntentForTotalCommander(this) == null) {
+            btn.visibility = View.GONE
+            return
+        }
+        btn.setOnClickListener {
+            if (launchTotalCommander()) {
+                Toast.makeText(this, R.string.storage_tc_hint, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun launchTotalCommander(): Boolean {
+        val tc = ExternalApps.launchIntentForTotalCommander(this) ?: return false
+        return runCatching { startActivity(tc) }.isSuccess
+    }
+
     private fun launchDocumentTree(launcher: androidx.activity.result.ActivityResultLauncher<Uri?>) {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
             addFlags(
@@ -484,6 +509,7 @@ class SettingsActivity : AppCompatActivity() {
             )
         }
         if (intent.resolveActivity(packageManager) == null) {
+            if (launchTotalCommander()) return
             Toast.makeText(this, R.string.storage_picker_unavailable, Toast.LENGTH_LONG).show()
             return
         }

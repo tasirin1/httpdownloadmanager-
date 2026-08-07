@@ -43,6 +43,7 @@ import com.tasirin.httpdownloadmanager.data.DownloadState
 import com.tasirin.httpdownloadmanager.databinding.ActivityMainBinding
 import com.tasirin.httpdownloadmanager.ui.DownloadAdapter
 import com.tasirin.httpdownloadmanager.util.MimeTypes
+import com.tasirin.httpdownloadmanager.util.ExternalApps
 import com.tasirin.httpdownloadmanager.util.Formats
 import com.tasirin.httpdownloadmanager.util.StoragePrefs
 import kotlinx.coroutines.Dispatchers
@@ -692,6 +693,25 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         }
     }
 
+
+    private fun wireTotalCommanderButton(container: View) {
+        val btn = container.findViewById<Button>(R.id.btn_pick_tc)
+        if (ExternalApps.launchIntentForTotalCommander(this) == null) {
+            btn.visibility = View.GONE
+            return
+        }
+        btn.setOnClickListener {
+            if (launchTotalCommander()) {
+                Toast.makeText(this, R.string.storage_tc_hint, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun launchTotalCommander(): Boolean {
+        val tc = ExternalApps.launchIntentForTotalCommander(this) ?: return false
+        return runCatching { startActivity(tc) }.isSuccess
+    }
+
     private fun launchDocumentTree(launcher: ActivityResultLauncher<Uri?>) {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
             addFlags(
@@ -702,6 +722,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             )
         }
         if (intent.resolveActivity(packageManager) == null) {
+            if (launchTotalCommander()) return
             Toast.makeText(this, R.string.storage_picker_unavailable, Toast.LENGTH_LONG).show()
             return
         }
@@ -747,6 +768,7 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
             }
             launchDocumentTree(folderPicker)
         }
+        wireTotalCommanderButton(view)
         view.findViewById<Button>(R.id.btn_reset_storage).setOnClickListener {
             StoragePrefs.saveFolder(this, null, null)
             StoragePrefs.setTextFolder(this, null)

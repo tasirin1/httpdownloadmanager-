@@ -39,6 +39,8 @@
     <string name="storage_use_default">Pakai default</string>
     <string name="storage_picker_error">Gagal menggunakan folder: %1$s</string>
     <string name="storage_picker_unavailable">Tidak ada aplikasi untuk memilih folder di perangkat ini</string>
+    <string name="storage_open_tc">Buka Total Commander</string>
+    <string name="storage_tc_hint">Cari folder di Total Commander, salin path-nya (tahan folder &#8594; Properti), lalu tempel ke kolom path di atas.</string>
     <string name="storage_folder_selected">Folder dipilih: %1$s</string>
     <string name="storage_text_folder_hint">Path folder (contoh: /storage/emulated/0/Download)</string>
     <string name="storage_text_folder_invalid">Path tidak valid atau bukan folder</string>

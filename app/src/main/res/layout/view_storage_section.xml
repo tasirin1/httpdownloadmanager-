@@ -37,6 +37,13 @@
         android:text="@string/storage_choose_folder" />
 
     <Button
+        android:id="@+id/btn_pick_tc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/storage_open_tc" />
+
+    <Button
         android:id="@+id/btn_reset_storage"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

@@ -1,9 +1,11 @@
 package com.tasirin.httpdownloadmanager.ui
 
+import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -27,6 +29,13 @@ class DownloadAdapter(private val listener: Listener) :
 
     class ViewHolder(val binding: ItemDownloadBinding) : RecyclerView.ViewHolder(binding.root)
 
+    private fun progressColor(state: DownloadState): Int = when (state) {
+        DownloadState.PENDING, DownloadState.DOWNLOADING -> R.color.primary
+        DownloadState.COMPLETED -> R.color.status_on
+        DownloadState.FAILED -> R.color.status_off
+        DownloadState.PAUSED, DownloadState.CANCELLED -> R.color.text_secondary
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val binding = ItemDownloadBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         binding.progressBar.max = 100
@@ -40,6 +49,9 @@ class DownloadAdapter(private val listener: Listener) :
         b.textName.text = item.fileName
         b.textStatus.text = statusText(item, b.root.context)
         b.progressBar.progress = item.progressPercent
+        b.progressBar.progressTintList = ColorStateList.valueOf(
+            ContextCompat.getColor(b.root.context, progressColor(item.state))
+        )
 
         val quick = b.buttonQuick
         val quickResume = item.state == DownloadState.PAUSED || item.state == DownloadState.FAILED

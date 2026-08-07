@@ -241,7 +241,7 @@
   .mm-rel-meta { color: #606060; font-size: 11.5px; margin-top: 3px; }
   .mm-rel-empty { color: #606060; font-size: 12.5px; padding: 6px 0 18px; }
   .mm-big { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.22); cursor: pointer; }
-  .mm-big .icon { width: 56px; height: 56px; border-radius: 50%; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; }
+  .mm-big .icon { width: 56px; height: 56px; flex: 0 0 56px; border-radius: 50%; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; }
   .mm-big .icon svg { width: 26px; height: 26px; color: #fff; margin-left: 3px; }
   .mm-spin { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
   .mm-spin::before { content: ''; width: 36px; height: 36px; border-radius: 50%; border: 3px solid rgba(255,255,255,.25); border-top-color: #fff; animation: mmSpin 1s linear infinite; }
@@ -1056,6 +1056,7 @@ function applyRoute() {
   fsView.classList.toggle('hidden', route !== 'files');
   galleryBtn.textContent = route === 'gallery' ? '\u2715 Tutup galeri' : '\u{1F4F7} Galeri';
   fsBtn.textContent = route === 'files' ? '\u2715 Tutup file' : '\u{1F4C1} File Manager';
+  document.getElementById('fabNewBtn').classList.toggle('hidden', route !== 'downloads');
   if (route === 'gallery') {
     restartAnim(galleryView);
     toggleAddForm(false);

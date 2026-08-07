@@ -1306,6 +1306,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
             o.put("token", e.token)
             if (e.isVideo && !e.isPartial) {
                 var d = cache.optLong(e.token, 0L)
+                if (d <= 0 && e.durationMs > 0) d = e.durationMs
                 if (d <= 0 && extracted < 20) {
                     d = videoDurationMs(e.token)
                     if (d > 0) cache.put(e.token, d)
@@ -2046,7 +2047,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
         private const val MAX_UPLOAD_MB = 2048
         private const val SHARE_TTL_HOURS = 24
         private const val SHARE_TTL_MS = SHARE_TTL_HOURS * 60L * 60 * 1000
-        private const val GALLERY_SCAN_TTL_MS = 5_000L
+        private const val GALLERY_SCAN_TTL_MS = 15_000L
         private const val GALLERY_PAGE_SIZE = 100
         private const val DEFAULT_CHUNK_BYTES = 2L * 1024 * 1024
         private const val MAX_LOGIN_ATTEMPTS = 5

@@ -17,7 +17,7 @@ import java.io.File
 
 object MediaLibrary {
 
-    private const val SCAN_TTL_MS = 5_000L
+    private const val SCAN_TTL_MS = 15_000L
 
     @Volatile
     private var scanCache: Pair<Long, List<MediaEntry>>? = null
@@ -56,7 +56,8 @@ object MediaLibrary {
         val filePath: String? = null,
         val contentUri: String? = null,
         val isPartial: Boolean = false,
-        val progressPercent: Int = -1
+        val progressPercent: Int = -1,
+        val durationMs: Long = 0L
     )
 
     private val IMAGE_EXTS = setOf("jpg", "jpeg", "png", "gif", "webp", "bmp")
@@ -226,28 +227,21 @@ object MediaLibrary {
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI to false,
                 MediaStore.Video.Media.EXTERNAL_CONTENT_URI to true
             )
-            // RELATIVE_PATH baru ada di Android 10+; di bawah itu query dengan
-            // kolom ini akan error dan seluruh scan gagal (galeri jadi kosong).
-            val projection = if (Build.VERSION.SDK_INT >= 29) {
-                arrayOf(
-                    MediaStore.MediaColumns._ID,
-                    MediaStore.MediaColumns.DISPLAY_NAME,
-                    MediaStore.MediaColumns.SIZE,
-                    MediaStore.MediaColumns.DATE_MODIFIED,
-                    MediaStore.MediaColumns.DATA,
-                    MediaStore.MediaColumns.RELATIVE_PATH
-                )
-            } else {
-                arrayOf(
-                    MediaStore.MediaColumns._ID,
-                    MediaStore.MediaColumns.DISPLAY_NAME,
-                    MediaStore.MediaColumns.SIZE,
-                    MediaStore.MediaColumns.DATE_MODIFIED,
-                    MediaStore.MediaColumns.DATA
-                )
-            }
             for ((collection, isVideo) in collections) {
                 runCatching {
+                    // DURATION hanya ada di tabel Video; projection gambar yang
+                    // memuat kolom ini bisa bikin query gagal di sebagian device.
+                    // RELATIVE_PATH baru ada di Android 10+; di bawah itu query
+                    // dengan kolom ini akan error dan seluruh scan gagal.
+                    val projection = buildList {
+                        add(MediaStore.MediaColumns._ID)
+                        add(MediaStore.MediaColumns.DISPLAY_NAME)
+                        add(MediaStore.MediaColumns.SIZE)
+                        add(MediaStore.MediaColumns.DATE_MODIFIED)
+                        add(MediaStore.MediaColumns.DATA)
+                        if (Build.VERSION.SDK_INT >= 29) add(MediaStore.MediaColumns.RELATIVE_PATH)
+                        if (isVideo) add(MediaStore.Video.Media.DURATION)
+                    }.toTypedArray()
                     resolver.query(
                         collection, projection, null, null,
                         "${MediaStore.MediaColumns.DATE_MODIFIED} DESC"
@@ -258,6 +252,7 @@ object MediaLibrary {
                         val iMod = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
                         val iData = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
                         val iRel = c.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
+                        val iDur = c.getColumnIndex(MediaStore.Video.Media.DURATION)
                         while (c.moveToNext()) {
                             val name = c.getString(iName) ?: continue
                             val folderCfg = if (isVideo) galleryVideoFolder else galleryImageFolder
@@ -276,7 +271,8 @@ object MediaLibrary {
                                     isVideo = isVideo,
                                     token = tokenForUri(uri),
                                     filePath = dataPath,
-                                    contentUri = uri
+                                    contentUri = uri,
+                                    durationMs = if (isVideo && iDur >= 0) c.getLong(iDur) else 0L
                                 )
                             )
                         }

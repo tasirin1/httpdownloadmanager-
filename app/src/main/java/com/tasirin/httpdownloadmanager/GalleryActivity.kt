@@ -366,16 +366,15 @@ private class GalleryAdapter(
     private val items = mutableListOf<MediaLibrary.MediaEntry>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    private fun formatDate(ms: Long): String {
-        if (ms <= 0) return ""
-        return java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
-            .format(java.util.Date(ms))
-    }
-
     fun submit(list: List<MediaLibrary.MediaEntry>) {
         items.clear()
         items.addAll(list)
         notifyDataSetChanged()
+    }
+
+    private fun formatDate(ms: Long): String {
+        if (ms <= 0) return ""
+        return DATE_FMT.format(java.util.Date(ms))
     }
 
     class Holder(val binding: ItemGalleryBinding) : RecyclerView.ViewHolder(binding.root) {
@@ -417,5 +416,10 @@ private class GalleryAdapter(
                 b.imageThumb.setImageBitmap(bmp)
             }
         }
+    }
+
+    private companion object {
+        // SimpleDateFormat tidak thread-safe, tapi binding selalu di main thread.
+        val DATE_FMT = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
     }
 }

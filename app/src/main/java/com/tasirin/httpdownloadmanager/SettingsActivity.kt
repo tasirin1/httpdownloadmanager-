@@ -20,6 +20,8 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -34,6 +36,8 @@ import com.tasirin.httpdownloadmanager.download.DownloadService
 import com.tasirin.httpdownloadmanager.remote.HttpControlServer
 import com.tasirin.httpdownloadmanager.util.Formats
 import com.tasirin.httpdownloadmanager.util.StoragePrefs
+import com.tasirin.httpdownloadmanager.util.UpdateInfo
+import com.tasirin.httpdownloadmanager.util.Updater
 import java.io.File
 
 /** Halaman pengaturan: server remote, keamanan, log, unduhan, dan penyimpanan. */
@@ -75,6 +79,7 @@ class SettingsActivity : AppCompatActivity() {
         wireStorageSection()
         wireGallerySection()
         wireSave()
+        binding.btnCheckUpdate.setOnClickListener { checkForUpdate() }
     }
 
     override fun onResume() {
@@ -519,6 +524,79 @@ class SettingsActivity : AppCompatActivity() {
             renderServer()
             Toast.makeText(this, R.string.settings_saved, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun checkForUpdate() {
+        binding.updateStatus.text = getString(R.string.update_checking)
+        Thread {
+            val info = Updater.checkLatest(this)
+            runOnUiThread {
+                if (info == null) {
+                    binding.updateStatus.text = getString(R.string.update_failed)
+                    return@runOnUiThread
+                }
+                val current = runCatching {
+                    packageManager.getPackageInfo(packageName, 0).versionCode
+                }.getOrDefault(0)
+                if (info.versionCode <= current) {
+                    binding.updateStatus.text = getString(R.string.update_latest)
+                } else {
+                    binding.updateStatus.text = getString(
+                        R.string.update_available, info.versionName, info.versionCode
+                    )
+                    MaterialAlertDialogBuilder(this)
+                        .setTitle(R.string.update_title)
+                        .setMessage(
+                            getString(
+                                R.string.update_message,
+                                info.versionName,
+                                info.versionCode,
+                                Formats.bytes(info.apkSize)
+                            )
+                        )
+                        .setNegativeButton(R.string.cancel, null)
+                        .setPositiveButton(R.string.update_download) { _, _ ->
+                            downloadUpdate(info)
+                        }
+                        .show()
+                }
+            }
+        }.start()
+    }
+
+    private fun downloadUpdate(info: UpdateInfo) {
+        val view = layoutInflater.inflate(R.layout.dialog_update_progress, null)
+        val bar = view.findViewById<ProgressBar>(R.id.update_progress_bar)
+        val txt = view.findViewById<TextView>(R.id.update_progress_text)
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.update_title)
+            .setView(view)
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+        Thread {
+            val file = Updater.download(this, info) { done, total ->
+                runOnUiThread {
+                    if (total > 0) {
+                        bar.progress = (done * 100 / total).toInt()
+                        txt.text = getString(
+                            R.string.update_progress_detail,
+                            Formats.bytes(done),
+                            Formats.bytes(total)
+                        )
+                    } else {
+                        txt.text = getString(R.string.update_progress_unknown, Formats.bytes(done))
+                    }
+                }
+            }
+            runOnUiThread {
+                runCatching { if (dialog.isShowing) dialog.dismiss() }
+                binding.updateStatus.text = when {
+                    file == null -> getString(R.string.update_download_failed)
+                    Updater.install(this, file) -> getString(R.string.update_ready)
+                    else -> getString(R.string.update_install_failed)
+                }
+            }
+        }.start()
     }
 
     private fun refreshActiveStorageUi() {

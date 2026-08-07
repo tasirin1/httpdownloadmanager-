@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <files-path name="downloads" path="downloads/" />
+    <cache-path name="updates" path="updates/" />
     <external-path name="public_downloads" path="Download/" />
     <external-path name="external_storage" path="." />
 </paths>

@@ -65,6 +65,15 @@ class DownloadEngine(private val context: Context) {
     private val activeConns = ConcurrentHashMap<String, HttpURLConnection>()
     private val speedTracker = SpeedTracker()
     private var saveJob: Job? = null
+    // URL yang pernah gagal di sesi ini: cadangan yang sama tidak dicoba
+    // berulang-ulang (hemat waktu saat ISP/proxy menolak beberapa host).
+    private val failedUrls = ConcurrentHashMap.newKeySet<String>()
+
+    private val connectTimeoutMs: Int
+        get() = StoragePrefs.getConnectTimeoutSec(context) * 1000
+
+    private val readTimeoutMs: Int
+        get() = StoragePrefs.getReadTimeoutSec(context) * 1000
 
     @Volatile
     private var interruptedResumed = false
@@ -284,8 +293,8 @@ class DownloadEngine(private val context: Context) {
             val conn = openConn(url)
             try {
                 conn.requestMethod = "GET"
-                conn.connectTimeout = 15_000
-                conn.readTimeout = 20_000
+                conn.connectTimeout = connectTimeoutMs
+                conn.readTimeout = readTimeoutMs
                 conn.setRequestProperty("User-Agent", "HttpDownloadManager/1.0")
                 conn.connect()
                 val code = conn.responseCode
@@ -618,6 +627,8 @@ class DownloadEngine(private val context: Context) {
         speedTracker.reset(id)
         val maxRetries = StoragePrefs.maxRetries(context)
         val attempts = (retryAttempts[id] ?: 0) + 1
+        val rangeRejected = message?.contains("tidak mendukung Range") == true
+        failedUrls.add(item.url)
         // Fitur mirror: gagal dari URL aktif -> pindah ke URL cadangan berikutnya.
         // Bila host GitHub tak terjangkau, buat mirror proxy otomatis.
         val autoMirrors = if (item.mirrors.isEmpty() && isConnectError(message) &&
@@ -627,8 +638,11 @@ class DownloadEngine(private val context: Context) {
         } else {
             emptyList()
         }
-        val allMirrors = if (item.mirrors.isNotEmpty()) item.mirrors else autoMirrors
-        if (allMirrors.isNotEmpty()) {
+        val allMirrors = (if (item.mirrors.isNotEmpty()) item.mirrors else autoMirrors)
+            .filterNot { it in failedUrls }
+        // Error Range pasti gagal lagi di URL yang sama, dan mirror yang pernah
+        // gagal tidak perlu dicoba ulang: langsung coba cadangan berikutnya.
+        if (allMirrors.isNotEmpty() && (rangeRejected || isConnectError(message))) {
             val next = allMirrors.first()
             App.logEvent("DOWNLOAD GAGAL: ${item.fileName} — ${message ?: "?"} (pindah ke mirror: $next)")
             updateItem(id) {
@@ -647,6 +661,23 @@ class DownloadEngine(private val context: Context) {
                     attemptStart(id)
                 }
             }
+            return
+        }
+        if (rangeRejected) {
+            // Server/proxy menolak resume (HTTP 403/501/416): mengulang URL yang
+            // sama hanya membuang waktu, jadi tandai gagal tanpa percobaan ulang.
+            retryAttempts.remove(id)
+            App.logEvent("DOWNLOAD GAGAL: ${item.fileName} — ${message ?: "?"} (server menolak resume; coba URL/mirror lain)")
+            updateItem(id) {
+                it.copy(
+                    state = DownloadState.FAILED,
+                    error = message,
+                    autoResume = false,
+                    speedBps = 0,
+                    etaSeconds = 0
+                )
+            }
+            flushSave()
             return
         }
         if (maxRetries > 0 && attempts <= maxRetries && item.autoResume) {
@@ -775,8 +806,8 @@ class DownloadEngine(private val context: Context) {
         val probe = openConn(item.url)
         try {
             probe.requestMethod = "HEAD"
-            probe.connectTimeout = 15_000
-            probe.readTimeout = 30_000
+            probe.connectTimeout = connectTimeoutMs
+            probe.readTimeout = readTimeoutMs
             probe.setRequestProperty("User-Agent", "HttpDownloadManager/1.0")
             applyAuthHeaders(probe, item)
             probe.connect()
@@ -809,8 +840,8 @@ class DownloadEngine(private val context: Context) {
         val conn = openConn(item.url)
         try {
             conn.requestMethod = "GET"
-            conn.connectTimeout = 15_000
-            conn.readTimeout = 30_000
+            conn.connectTimeout = connectTimeoutMs
+            conn.readTimeout = readTimeoutMs
             conn.setRequestProperty("User-Agent", "HttpDownloadManager/1.0")
             conn.setRequestProperty("Accept-Encoding", "identity")
             applyAuthHeaders(conn, item)
@@ -998,6 +1029,7 @@ class DownloadEngine(private val context: Context) {
                 // Server/proxy menolak Range (mis. proxy transparan ISP): semua
                 // percobaan Range akan gagal selamanya, jadi buang segmen lalu
                 // unduh sekali jalan tanpa Range (partial lama ikut dibuang).
+                failedUrls.add(item.url)
                 App.logEvent(
                     "DOWNLOAD ${item.fileName}: Range ditolak (${e.message}), " +
                         "unduh ulang sekali jalan"
@@ -1014,8 +1046,8 @@ class DownloadEngine(private val context: Context) {
                 val fallbackConn = openConn(item.url)
                 try {
                     fallbackConn.requestMethod = "GET"
-                    fallbackConn.connectTimeout = 15_000
-                    fallbackConn.readTimeout = 30_000
+                    fallbackConn.connectTimeout = connectTimeoutMs
+                    fallbackConn.readTimeout = readTimeoutMs
                     fallbackConn.setRequestProperty("User-Agent", "HttpDownloadManager/1.0")
                     fallbackConn.setRequestProperty("Accept-Encoding", "identity")
                     applyAuthHeaders(fallbackConn, item)
@@ -1083,8 +1115,8 @@ class DownloadEngine(private val context: Context) {
         activeConns[id] = conn
         try {
             conn.requestMethod = "GET"
-            conn.connectTimeout = 15_000
-            conn.readTimeout = 30_000
+            conn.connectTimeout = connectTimeoutMs
+            conn.readTimeout = readTimeoutMs
             conn.setRequestProperty("User-Agent", "HttpDownloadManager/1.0")
             conn.setRequestProperty("Accept-Encoding", "identity")
             applyAuthHeaders(conn, item)

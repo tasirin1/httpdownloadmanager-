@@ -117,6 +117,7 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     session.method == Method.GET && session.uri == "/api/pin_enabled" ->
                         jsonResponse(JSONObject().put("enabled", pinEnabled()))
                     session.method == Method.GET && session.uri == "/api/downloads" -> downloadsJson()
+                    session.method == Method.GET && session.uri == "/api/snapshot" -> snapshotJson()
                     session.method == Method.GET && session.uri == "/api/status" -> statusJson()
                     session.method == Method.GET && session.uri == "/api/events" -> sseResponse()
                     session.method == Method.POST && session.uri == "/api/share" -> createShare(session)
@@ -454,6 +455,14 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
 
     private fun downloadsJson(): Response {
         return jsonResponse(downloadsPayload())
+    }
+
+    /** Gabungan daftar download + status: satu request untuk polling pengaman. */
+    private fun snapshotJson(): Response {
+        val payload = JSONObject()
+            .put("items", itemsJson())
+            .put("status", statusObject())
+        return jsonResponse(payload)
     }
 
     private fun downloadsPayload(): JSONObject {

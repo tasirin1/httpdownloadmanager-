@@ -4,10 +4,16 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Context
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.text.SpannableStringBuilder
+import android.text.style.BackgroundColorSpan
+import android.text.style.ForegroundColorSpan
+import android.text.Editable
+import android.text.TextWatcher
 import android.widget.Toast
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
@@ -24,7 +30,8 @@ class LogActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLogBinding
     private var logAutoScroll = false
-    private var lastLogText: String? = null
+    private var logSearch = ""
+    private var lastLogKey: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         runCatching { installSplashScreen() }
@@ -50,6 +57,14 @@ class LogActivity : AppCompatActivity() {
             refreshLog()
         }
         binding.logExport.setOnClickListener { exportLogTxt() }
+        binding.logSearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                logSearch = s?.toString().orEmpty()
+                refreshLog()
+            }
+        })
 
         refreshLog()
         val pollLog = object : Runnable {
@@ -116,10 +131,17 @@ class LogActivity : AppCompatActivity() {
     private fun refreshLog() {
         val text = App.httpServer.snapshotLog()
             .ifEmpty { getString(R.string.remote_log_empty) }
-        if (text == lastLogText) return
-        lastLogText = text
+        binding.logCount.text = getString(
+            R.string.remote_log_lines,
+            text.lines().count { it.isNotBlank() }
+        )
+        // Kunci render = isi log + kata kunci: teks sama tapi kata kunci
+        // berubah tetap harus di-highlight ulang.
+        val key = text + "\u0000" + logSearch
+        if (key == lastLogKey) return
+        lastLogKey = key
         val prevScroll = binding.logScroll.scrollY
-        binding.log.text = text
+        binding.log.text = highlightLog(text)
         binding.logScroll.post {
             if (logAutoScroll) {
                 binding.logScroll.fullScroll(View.FOCUS_DOWN)
@@ -129,6 +151,46 @@ class LogActivity : AppCompatActivity() {
                 binding.logScroll.scrollTo(0, prevScroll.coerceIn(0, max.coerceAtLeast(0)))
             }
         }
+    }
+
+    /** Sorot baris GAGAL/ERROR merah dan kata kunci pencarian kuning. */
+    private fun highlightLog(text: String): CharSequence {
+        val q = logSearch.trim()
+        if (q.isEmpty() && !text.contains("GAGAL") && !text.contains("ERROR") &&
+            !text.contains("FAILED")
+        ) {
+            return text
+        }
+        val sb = SpannableStringBuilder(text)
+        val queryLower = q.lowercase()
+        if (q.isNotEmpty()) {
+            val textLower = text.lowercase()
+            var from = 0
+            while (true) {
+                val idx = textLower.indexOf(queryLower, from)
+                if (idx < 0) break
+                sb.setSpan(
+                    BackgroundColorSpan(0xFFFFE082.toInt()),
+                    idx, idx + q.length, SpannableStringBuilder.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                from = idx + q.length
+            }
+        }
+        var lineStart = 0
+        while (lineStart < sb.length) {
+            val lineEnd = text.indexOf('\n', lineStart)
+            val end = if (lineEnd < 0) sb.length else lineEnd
+            val upper = text.substring(lineStart, end).uppercase()
+            if (upper.contains("GAGAL") || upper.contains("ERROR") || upper.contains("FAILED")) {
+                sb.setSpan(
+                    ForegroundColorSpan(Color.RED),
+                    lineStart, end, SpannableStringBuilder.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+            if (lineEnd < 0) break
+            lineStart = lineEnd + 1
+        }
+        return sb
     }
 
     override fun onSupportNavigateUp(): Boolean {

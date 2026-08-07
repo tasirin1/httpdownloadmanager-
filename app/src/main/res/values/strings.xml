@@ -61,6 +61,9 @@
     <string name="settings_concurrent">Unduhan bersamaan (antrean)</string>
     <string name="settings_speed_limit">Batas kecepatan</string>
     <string name="settings_retry">Percobaan ulang saat gagal</string>
+    <string name="settings_connect_timeout">Timeout koneksi</string>
+    <string name="settings_read_timeout">Timeout baca</string>
+    <string name="settings_timeout_hint">Untuk jaringan lambat/WISP, naikkan agar download tidak gagal sebelum mulai</string>
     <string name="settings_battery">Tanpa optimasi baterai (download tetap jalan di latar belakang)</string>
     <string name="settings_delete_partial_on_cancel">Hapus file parsial saat dibatalkan</string>
     <string name="settings_small_first">Unduh file kecil lebih dulu (antrean pintar)</string>
@@ -217,6 +220,22 @@
         <item>8</item>
     </string-array>
 
+    <string-array name="connect_timeout_options">
+        <item>5 dtk</item>
+        <item>10 dtk</item>
+        <item>15 dtk (default)</item>
+        <item>30 dtk</item>
+        <item>60 dtk</item>
+    </string-array>
+
+    <string-array name="read_timeout_options">
+        <item>10 dtk</item>
+        <item>15 dtk</item>
+        <item>30 dtk (default)</item>
+        <item>60 dtk</item>
+        <item>120 dtk</item>
+    </string-array>
+
     <string name="mirrors_hint_optional">URL cadangan (opsional, satu per baris) — otomatis dipakai bila URL utama gagal</string>
     <string name="action_monitor_on">Pantau pembaruan file</string>
     <string name="action_monitor_off">Berhenti memantau</string>
@@ -241,6 +260,8 @@
     <string name="remote_log_clear">Bersihkan</string>
     <string name="remote_log_empty">(Belum ada aktivitas — buka halaman remote di browser lalu coba upload)</string>
     <string name="remote_log_copied">Log disalin ke clipboard</string>
+    <string name="remote_log_search_hint">Cari di log…</string>
+    <string name="remote_log_lines">%1$d baris</string>
     <string name="settings_section_cleanup">Pembersihan</string>
     <string name="cleanup_button">Bersihkan file sampah</string>
     <string name="cleanup_done">Bersih: %1$d file (%2$s) dihapus</string>

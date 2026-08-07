@@ -333,6 +333,40 @@ class SettingsActivity : AppCompatActivity() {
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
+
+        val connectOptions = resources.getStringArray(R.array.connect_timeout_options)
+        val connectValues = intArrayOf(5, 10, 15, 30, 60)
+        binding.spinnerConnectTimeout.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_item, connectOptions
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        binding.spinnerConnectTimeout.setSelection(
+            connectValues.indexOf(StoragePrefs.getConnectTimeoutSec(this)).coerceAtLeast(0)
+        )
+        binding.spinnerConnectTimeout.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                StoragePrefs.setConnectTimeoutSec(this@SettingsActivity, connectValues[position])
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+
+        val readOptions = resources.getStringArray(R.array.read_timeout_options)
+        val readValues = intArrayOf(10, 15, 30, 60, 120)
+        binding.spinnerReadTimeout.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_item, readOptions
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+        binding.spinnerReadTimeout.setSelection(
+            readValues.indexOf(StoragePrefs.getReadTimeoutSec(this)).coerceAtLeast(0)
+        )
+        binding.spinnerReadTimeout.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                StoragePrefs.setReadTimeoutSec(this@SettingsActivity, readValues[position])
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
     }
 
     private fun wireStorageSection() {

@@ -61,6 +61,9 @@
     <string name="settings_concurrent">Concurrent downloads (queue)</string>
     <string name="settings_speed_limit">Speed limit</string>
     <string name="settings_retry">Retry attempts on failure</string>
+    <string name="settings_connect_timeout">Connection timeout</string>
+    <string name="settings_read_timeout">Read timeout</string>
+    <string name="settings_timeout_hint">For slow networks/WISP, raise this so downloads do not fail before starting</string>
     <string name="settings_battery">No battery optimization (keep downloads running in background)</string>
     <string name="settings_delete_partial_on_cancel">Delete partial file when cancelled</string>
     <string name="settings_small_first">Download small files first (smart queue)</string>
@@ -217,6 +220,22 @@
         <item>8</item>
     </string-array>
 
+    <string-array name="connect_timeout_options">
+        <item>5 s</item>
+        <item>10 s</item>
+        <item>15 s (default)</item>
+        <item>30 s</item>
+        <item>60 s</item>
+    </string-array>
+
+    <string-array name="read_timeout_options">
+        <item>10 s</item>
+        <item>15 s</item>
+        <item>30 s (default)</item>
+        <item>60 s</item>
+        <item>120 s</item>
+    </string-array>
+
     <string name="mirrors_hint_optional">Mirror URLs (optional, one per line) — used automatically if the main URL fails</string>
     <string name="action_monitor_on">Watch for updates</string>
     <string name="action_monitor_off">Stop watching</string>
@@ -241,6 +260,8 @@
     <string name="remote_log_clear">Clear</string>
     <string name="remote_log_empty">(No activity yet — open the remote page in a browser and try an upload)</string>
     <string name="remote_log_copied">Log copied to clipboard</string>
+    <string name="remote_log_search_hint">Search in log…</string>
+    <string name="remote_log_lines">%1$d lines</string>
     <string name="settings_section_cleanup">Cleanup</string>
     <string name="cleanup_button">Clean up junk files</string>
     <string name="cleanup_done">Cleaned: %1$d file (%2$s) removed</string>

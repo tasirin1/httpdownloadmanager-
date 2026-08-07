@@ -252,6 +252,38 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_connect_timeout"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+            <Spinner
+                android:id="@+id/spinner_connect_timeout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_read_timeout"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+            <Spinner
+                android:id="@+id/spinner_read_timeout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/settings_timeout_hint"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?android:attr/textColorSecondary" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
                 android:text="@string/settings_section_storage"
                 android:textColor="@color/primary"

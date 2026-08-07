@@ -30,6 +30,8 @@ object StoragePrefs {
     private const val KEY_PIN_ENFORCED = "pin_enforced"
     private const val KEY_FS_FULL_ACCESS = "fs_full_access"
     private const val KEY_EXTRA_FOLDERS = "extra_folders"
+    private const val KEY_CONNECT_TIMEOUT_SEC = "connect_timeout_sec"
+    private const val KEY_READ_TIMEOUT_SEC = "read_timeout_sec"
 
     fun getFolderUri(context: Context): Uri? {
         val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -264,6 +266,26 @@ object StoragePrefs {
     fun setSortMode(context: Context, value: Int) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putInt(KEY_SORT_MODE, value.coerceIn(0, 6))
+            .apply()
+    }
+
+    fun getConnectTimeoutSec(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getInt(KEY_CONNECT_TIMEOUT_SEC, 15)
+
+    fun setConnectTimeoutSec(context: Context, sec: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putInt(KEY_CONNECT_TIMEOUT_SEC, sec.coerceIn(5, 120))
+            .apply()
+    }
+
+    fun getReadTimeoutSec(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getInt(KEY_READ_TIMEOUT_SEC, 30)
+
+    fun setReadTimeoutSec(context: Context, sec: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putInt(KEY_READ_TIMEOUT_SEC, sec.coerceIn(10, 300))
             .apply()
     }
 

@@ -579,6 +579,11 @@
 
 <script>
 const API = '';
+// Buang query string yang nyangkut (mis. ?path=... dari bookmark lama) supaya
+// tidak ikut menempel di request API dan mengotori log server.
+if (location.search) {
+  try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+}
 const connBanner = document.getElementById('connBanner');
 const connBannerText = document.getElementById('connBannerText');
 const connReloadBtn = document.getElementById('connReloadBtn');
@@ -2382,8 +2387,10 @@ async function refresh() {
     document.getElementById('status').textContent = '';
     document.getElementById('deviceStatus').classList.remove('offline');
     hideConnBanner();
-    (data.items || []).forEach(sampleSpeed);
-    render(data.items);
+    const items = data.items || [];
+    lastItems = items;
+    items.forEach(sampleSpeed);
+    render(items);
   } catch (e) {
     failCount++;
     if (failCount > 2) {
@@ -2842,6 +2849,7 @@ function connectEvents() {
         return;
       }
       const items = data.items || [];
+      lastItems = items;
       if (data.status) renderStatus(data.status);
       items.forEach(sampleSpeed);
       render(items);
@@ -2855,25 +2863,80 @@ function connectEvents() {
     }
   };
 }
-if (typeof EventSource !== 'undefined') {
-  connectEvents();
-  // Fallback polling: aktif hanya saat SSE tidak terhubung (mis. jaringan
-  // memblokir streaming), EventSource akan coba menyambung ulang sendiri.
-  // Polling pengaman: jalan juga saat EventSource "terlihat" terbuka tapi
-  // diam (beberapa WebView lama / HTTP/1.0 tidak menerima stream bertahap).
-  setInterval(function () {
-    const stale = !sse || sse.readyState !== EventSource.OPEN ||
-      Date.now() - lastSseAt > 4000;
-    if (stale) {
-      if (currentRoute() === 'downloads') refresh();
-      refreshStatus();
+// ===== Polling pengaman adaptif + reconnect SSE =====
+// SSE (bila hidup) adalah sumber utama realtime; polling hanya pengaman saat
+// stream diam/terblokir (mis. buffering proxy WISP). Interval naik-turun:
+// cepat saat ada transfer aktif, lambat saat idle. Bila SSE "terlihat" terbuka
+// tapi tidak mengirim apa-apa terlalu lama, paksa buka ulang EventSource.
+let lastItems = [];
+let lastForcedReconnectAt = 0;
+let pollTimer = null;
+const POLL_FAST_MS = 2000;
+const POLL_IDLE_MS = 10000;
+const SSE_SILENT_MS = 20000;
+const SSE_RECONNECT_COOLDOWN_MS = 10000;
+
+function anyActiveTransfer() {
+  if (fsUploading) return true;
+  for (let i = 0; i < lastItems.length; i++) {
+    const st = lastItems[i].state;
+    if (st === 'DOWNLOADING' || st === 'PENDING') return true;
+  }
+  return false;
+}
+
+async function pollSnapshot() {
+  try {
+    const res = await fetch(API + '/api/snapshot');
+    if (!res.ok) {
+      if (res.status === 401) return;
+      throw new Error('HTTP ' + res.status);
     }
-  }, 2000);
+    const data = await res.json();
+    failCount = 0;
+    hasLoadedItems = true;
+    document.getElementById('status').textContent = '';
+    document.getElementById('deviceStatus').classList.remove('offline');
+    hideConnBanner();
+    if (data.status) renderStatus(data.status);
+    const items = data.items || [];
+    lastItems = items;
+    items.forEach(sampleSpeed);
+    if (currentRoute() === 'downloads') render(items);
+  } catch (e) {
+    failCount++;
+    if (failCount > 2) {
+      document.getElementById('status').textContent = 'Tidak dapat terhubung ke server. Cek server di aplikasi.';
+    }
+  }
+}
+
+function pollTick() {
+  // SSE diam terlalu lama (stream terbuka tapi tidak ada data): paksa
+  // reconnect, biasanya memulihkan realtime tanpa polling terus-menerus.
+  if (sse && sse.readyState === EventSource.OPEN &&
+      Date.now() - lastSseAt > SSE_SILENT_MS &&
+      Date.now() - lastForcedReconnectAt > SSE_RECONNECT_COOLDOWN_MS) {
+    lastForcedReconnectAt = Date.now();
+    connectEvents();
+  }
+  const stale = !sse || sse.readyState !== EventSource.OPEN ||
+    Date.now() - lastSseAt > 4000;
+  if (stale) pollSnapshot();
+  pollTimer = setTimeout(pollTick, anyActiveTransfer() ? POLL_FAST_MS : POLL_IDLE_MS);
+}
+
+function startPolling() {
+  connectEvents();
+  pollTimer = setTimeout(pollTick, anyActiveTransfer() ? POLL_FAST_MS : POLL_IDLE_MS);
+}
+
+if (typeof EventSource !== 'undefined') {
+  startPolling();
 } else {
-  setInterval(function () {
-    if (currentRoute() === 'downloads') refresh();
-    refreshStatus();
-  }, 1500);
+  // Browser tanpa EventSource (sangat tua): polling adaptif saja.
+  sse = null;
+  pollTimer = setTimeout(pollTick, anyActiveTransfer() ? POLL_FAST_MS : POLL_IDLE_MS);
 }
 </script>
 </body>

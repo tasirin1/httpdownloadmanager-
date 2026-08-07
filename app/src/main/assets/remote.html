@@ -36,7 +36,6 @@
   .topbar { position: sticky; top: 0; z-index: 40; background: rgba(255,255,255,.85); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); box-shadow: 0 1px 8px rgba(23,32,58,.04); }
   .topbar-in { max-width: 880px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 16px; margin-right: auto; color: var(--ink); cursor: pointer; }
-  .brand .logo { width: 32px; height: 32px; border-radius: 9px; background: linear-gradient(135deg, var(--primary), #7a5cff); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 3px 8px rgba(67,83,230,.35); }
   .brand small { display: block; font-weight: 500; font-size: 10.5px; opacity: .6; letter-spacing: .3px; }
   .pill { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s ease; }
   .pill:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
@@ -127,25 +126,15 @@
   .fs-crumb:hover { color: var(--primary); border-color: var(--primary); }
   .fs-crumb.on { background: var(--primary-soft); color: var(--primary); cursor: default; }
   .fs-crumb-sep { color: var(--muted); opacity: .55; padding: 0 1px; }
-  .fs-more-btn { display: none; }
+  .fs-more-btn { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 34px; height: 34px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--muted); font-size: 17px; line-height: 1; cursor: pointer; align-self: center; }
+  .fs-more-btn:hover { color: var(--primary); border-color: var(--primary); }
   .fs-list { display: flex; flex-direction: column; gap: 6px; }
   .fs-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 10px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; box-shadow: var(--shadow-sm); transition: border-color .15s ease; }
   .fs-row.fs-dir { cursor: pointer; }
   .fs-row.fs-dir:hover { border-color: var(--primary); }
-  .fs-row .icon { flex: 0 0 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; background: var(--blue-bg); }
   .fs-row .fs-main { flex: 1 1 140px; min-width: 0; }
   .fs-row .fs-name { font-weight: 700; font-size: 13px; word-break: break-all; }
   .fs-row .fs-meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
-  .fs-row .fs-actions { flex: 1 1 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 6px; margin-top: 2px; }
-  .fs-row .fs-actions a, .fs-row .fs-actions button { padding: 5px 10px; font-size: 11.5px; font-weight: 600; text-decoration: none; border-radius: 999px; border: 1px solid transparent; cursor: pointer; transition: all .15s ease; text-align: center; white-space: nowrap; }
-  .fs-actions a, .fs-actions button { background: var(--bg-soft); color: var(--ink); }
-  .fs-actions a.fs-stream { background: var(--green-bg); color: var(--green); }
-  .fs-actions a.fs-stream:hover { border-color: var(--green); }
-  .fs-actions a.fs-dl { background: var(--amber-bg); color: var(--amber); }
-  .fs-actions a.fs-dl:hover { border-color: var(--amber); }
-  .fs-actions button:hover { border-color: var(--muted); }
-  .fs-actions button.danger { color: var(--red); }
-  .fs-actions button.danger:hover { background: var(--red-bg); border-color: var(--red); }
   .fs-root { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; margin-bottom: 8px; box-shadow: var(--shadow-sm); transition: border-color .15s ease; }
   .fs-root:hover { border-color: var(--primary); }
   .fs-root .fs-rcap small { display: block; color: var(--muted); font-size: 12px; word-break: break-all; margin-top: 2px; }
@@ -211,10 +200,9 @@
   html[data-theme="dark"] input:focus, html[data-theme="dark"] select:focus { box-shadow: 0 0 0 3px var(--primary-soft); }
   html[data-theme="dark"] .bar { background: #232b38; }
   html[data-theme="dark"] .gal-cell { background: #0e1116; }
-  html[data-theme="dark"] .fs-actions a, html[data-theme="dark"] .fs-actions button,
   html[data-theme="dark"] .actions button, html[data-theme="dark"] .btn-ghost { background: #232b38; color: var(--ink); }
-  html[data-theme="dark"] .actions a.stream, html[data-theme="dark"] a.fs-stream { background: var(--green-bg); color: var(--green); }
-  html[data-theme="dark"] .actions a.dl, html[data-theme="dark"] a.fs-dl { background: var(--amber-bg); color: var(--amber); }
+  html[data-theme="dark"] .actions a.stream { background: var(--green-bg); color: var(--green); }
+  html[data-theme="dark"] .actions a.dl { background: var(--amber-bg); color: var(--amber); }
   #mediaModal { position: fixed; inset: 0; background: #f9f9f9; z-index: 60; display: none; flex-direction: column; }
   #mediaModal.open { display: flex; }
   #mmTop { flex: 0 0 auto; display: flex; align-items: center; padding: 6px 10px; }
@@ -325,7 +313,6 @@
     .topbar-in { padding: 10px 12px; gap: 6px; }
     .brand { font-size: 15px; flex: 1 1 100%; margin-right: 0; }
     .brand small { display: none; }
-    .brand .logo { width: 30px; height: 30px; font-size: 15px; }
     .pill { flex: 1 1 0; justify-content: center; padding: 9px 6px; font-size: 12px; }
     .speed-total { flex: 1 1 100%; justify-content: center; }
     .fab { display: flex; }
@@ -339,8 +326,6 @@
     .sk-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px 10px; }
     .mm-rel-thumb { width: 120px; height: 68px; }
     .fs-row { padding: 10px 12px; }
-    .fs-row .fs-actions { gap: 7px; }
-    .fs-row .fs-actions a, .fs-row .fs-actions button { flex: 0 0 auto; min-width: 0; padding: 5px 9px; text-align: center; }
     .fs-path { font-size: 12px; }
     .fs-tools { grid-template-columns: repeat(2, 1fr); }
     .fs-tools > *:last-child { grid-column: span 2; }
@@ -357,9 +342,6 @@
     .item-menu-btn { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 36px; height: 36px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; }
     .item-menu-btn:hover { color: var(--primary); border-color: var(--primary); }
     .actions { display: none; }
-    .fs-more-btn { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 34px; height: 34px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--muted); font-size: 17px; line-height: 1; cursor: pointer; align-self: center; }
-    .fs-more-btn:hover { color: var(--primary); border-color: var(--primary); }
-    .fs-row .fs-actions { display: none; }
     .grid2 { grid-template-columns: 1fr; }
     .status-card { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; align-items: center; font-size: 12px; padding: 12px 14px; }
     .status-card .st-item { white-space: normal; }
@@ -369,7 +351,7 @@
 <body>
 <div class="topbar">
   <div class="topbar-in">
-    <div class="brand"><span class="logo">&#11015;</span><span>Tasirin Download Manager<small>Remote Control</small></span></div>
+    <div class="brand"><span>Tasirin Download Manager<small>Remote Control</small></span></div>
     <span id="speedTotal" class="speed-total hidden" title="Kecepatan download aktif">&#9889; 0 B/s <span class="st-sub"></span></span>
     <button id="newBtn" class="pill primary" type="button">+ New Download</button>
     <button id="galleryBtn" class="pill" type="button">&#128247; Galeri</button>
@@ -445,34 +427,34 @@
 
   <div id="fsView" class="hidden">
   <div class="gal-toolbar">
-    <h2>&#128193; File Manager</h2>
+    <h2>File Manager</h2>
     <span class="count" id="fsCount"></span>
-    <button id="fsUpBtn" type="button" class="btn-ghost" style="margin-left:auto">&#11014; Naik</button>
+    <button id="fsUpBtn" type="button" class="btn-ghost" style="margin-left:auto">Naik</button>
   </div>
   <div id="fsPath" class="fs-path"></div>
   <div class="fs-tools" id="fsToolsRow">
     <span class="fs-loc-wrap">
       <select id="fsLocation" title="Pindah ke lokasi">
-        <option value="">&#128193; Lokasi&hellip;</option>
+        <option value="">Lokasi&hellip;</option>
       </select>
     </span>
-    <button id="fsMkdirBtn" type="button">&#128193; Folder</button>
+    <button id="fsMkdirBtn" type="button">Folder</button>
     <span class="fs-up-wrap">
-      <button id="fsUploadBtn" type="button">&#11014; Upload</button>
+      <button id="fsUploadBtn" type="button">Upload</button>
       <div id="fsUpMenu" class="hidden">
-        <button type="button" data-up="file">&#128196; Upload file&hellip;</button>
-        <button type="button" data-up="dir">&#128193; Upload folder&hellip;</button>
+        <button type="button" data-up="file">Upload file&hellip;</button>
+        <button type="button" data-up="dir">Upload folder&hellip;</button>
       </div>
     </span>
-    <button id="fsSelectBtn" type="button">&#9989; Pilih</button>
-    <button id="fsDupesBtn" type="button">&#128269; Duplikat</button>
+    <button id="fsSelectBtn" type="button">Pilih</button>
+    <button id="fsDupesBtn" type="button">Duplikat</button>
   </div>
   <input id="fsUploadFile" type="file" class="hidden" multiple>
   <input id="fsUploadDir" type="file" class="hidden" webkitdirectory multiple>
     <div id="fsBatch" class="fs-batch hidden">
       <span id="fsBatchCount"></span>
-      <button id="fsBatchMove" type="button">&#10145; Pindah</button>
-      <button id="fsBatchDelete" type="button" class="danger">&#128465; Hapus</button>
+      <button id="fsBatchMove" type="button">Pindah</button>
+      <button id="fsBatchDelete" type="button" class="danger">Hapus</button>
       <button id="fsBatchCancel" type="button">Batal</button>
     </div>
     <div id="fsStatus"></div>
@@ -1109,7 +1091,7 @@ function applyRoute() {
     toggleAddForm(false);
     fsSelectMode = false;
     fsSelected.length = 0;
-    fsSelectBtn.textContent = '\u9989 Pilih';
+    fsSelectBtn.textContent = 'Pilih';
     fsBatch.classList.add('hidden');
     loadFsLocations();
     loadFs();
@@ -1212,7 +1194,7 @@ async function loadFsLocations() {
     fsLocation.innerHTML = '';
     const ph = document.createElement('option');
     ph.value = '';
-    ph.textContent = '\u{1F4C1} Lokasi\u2026';
+    ph.textContent = 'Lokasi\u2026';
     fsLocation.appendChild(ph);
     fsLocations.forEach(function (r) {
       const o = document.createElement('option');
@@ -1223,7 +1205,7 @@ async function loadFsLocations() {
     const matched = fsLocations.some(function (r) { return r.path === cur; });
     if (cur && matched) fsLocation.value = cur;
   } catch (e) {
-    fsLocation.innerHTML = '<option value="">\u{1F4C1} Lokasi\u2026</option>';
+    fsLocation.innerHTML = '<option value="">Lokasi\u2026</option>';
   }
 }
 
@@ -1277,8 +1259,7 @@ function renderFs(items) {
       const row = document.createElement('div');
       row.className = 'fs-root';
       row.setAttribute('tabindex', '0');
-      row.innerHTML = '<div class="icon">&#128193;</div>' +
-        '<div class="fs-main"><div class="fs-name">' + escapeHtml(r.name) + '</div>' +
+      row.innerHTML = '<div class="fs-main"><div class="fs-name">' + escapeHtml(r.name) + '</div>' +
         '<div class="fs-rcap"><small>' + escapeHtml(r.path) + '</small></div></div>';
       row.addEventListener('click', function () {
         fsPath = r.path;
@@ -1297,7 +1278,6 @@ function renderFs(items) {
     row.className = 'fs-row';
     row.setAttribute('tabindex', '0');
     if (it.kind === 'dir') row.classList.add('fs-dir');
-    const icon = it.kind === 'dir' ? '\u{1F4C1}' : fileIcon(it.name);
     let meta = '';
     if (it.kind === 'file') {
       meta = fmt(it.size);
@@ -1310,28 +1290,11 @@ function renderFs(items) {
     const check = fsSelectMode
       ? '<span class="fs-check' + (selIdx >= 0 ? ' on' : '') + '">' + (selIdx >= 0 ? '\u2713' : '') + '</span>'
       : '';
-    let actions = '';
-    if (!fsSelectMode) {
-      if (it.kind === 'file') {
-        const media = API + '/api/media?token=' + encodeURIComponent(it.token);
-        if (FS_MEDIA_EXTS.indexOf(extOf(it.name).toLowerCase()) >= 0) {
-          actions += '<a class="fs-stream" href="' + media + '" target="_blank">&#9654; Stream</a>';
-        }
-        actions += '<a class="fs-dl" href="' + media + '&dl=1" download>&#11015; Download</a>';
-      } else {
-        actions += '<a class="fs-dl" href="' + API + '/api/fs_zip?path=' +
-          encodeURIComponent(it.path) + '" download title="Download folder sebagai ZIP">&#128230; ZIP</a>';
-      }
-      actions += '<button data-op="rename">&#9998; Rename</button>';
-      actions += '<button data-op="move">&#10145; Pindah</button>';
-      actions += '<button data-op="delete" class="danger">&#128465; Hapus</button>';
-    }
     row.innerHTML =
-      check + '<div class="icon">' + icon + '</div>' +
+      check +
       '<div class="fs-main"><div class="fs-name">' + escapeHtml(it.name) + '</div>' +
       (meta ? '<div class="fs-meta">' + meta + '</div>' : '') + '</div>' +
-      (!fsSelectMode ? '<button class="fs-more-btn" type="button" title="Aksi">\u22EF</button>' : '') +
-      (actions ? '<div class="fs-actions">' + actions + '</div>' : '');
+      (!fsSelectMode ? '<button class="fs-more-btn" type="button" title="Aksi">\u22EF</button>' : '');
     row.addEventListener('click', function () {
       if (fsLpFired) { fsLpFired = false; return; }
       if (fsSelectMode) {
@@ -1351,12 +1314,6 @@ function renderFs(items) {
         openFsSheet(it);
       });
     }
-    row.querySelectorAll('[data-op]').forEach(function (b) {
-      b.addEventListener('click', function (ev) {
-        ev.stopPropagation();
-        doFsOp(it, b.dataset.op);
-      });
-    });
     box.appendChild(row);
   }
 }
@@ -1369,7 +1326,7 @@ function attachFsLongPress(row, it) {
     fsLpTimer = setTimeout(function () {
       fsLpFired = true;
       fsSelectMode = true;
-      fsSelectBtn.textContent = '\u2715 Batal pilih';
+      fsSelectBtn.textContent = 'Batal pilih';
       fsSelected.length = 0;
       fsSelected.push(it);
       renderFs(fsItems);
@@ -1408,7 +1365,7 @@ fsSelectBtn.addEventListener('click', function () {
   if (!fsPath) return;
   fsSelectMode = !fsSelectMode;
   fsSelected.length = 0;
-  fsSelectBtn.textContent = fsSelectMode ? '\u2715 Batal pilih' : '\u9989 Pilih';
+  fsSelectBtn.textContent = fsSelectMode ? 'Batal pilih' : 'Pilih';
   fsBatch.classList.add('hidden');
   loadFs();
 });
@@ -1443,7 +1400,7 @@ document.getElementById('fsBatchMove').addEventListener('click', function () {
 document.getElementById('fsBatchCancel').addEventListener('click', function () {
   fsSelectMode = false;
   fsSelected.length = 0;
-  fsSelectBtn.textContent = '\u9989 Pilih';
+  fsSelectBtn.textContent = 'Pilih';
   fsBatch.classList.add('hidden');
   loadFs();
 });

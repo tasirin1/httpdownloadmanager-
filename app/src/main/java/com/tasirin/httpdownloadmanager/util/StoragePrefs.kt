@@ -32,6 +32,8 @@ object StoragePrefs {
     private const val KEY_EXTRA_FOLDERS = "extra_folders"
     private const val KEY_CONNECT_TIMEOUT_SEC = "connect_timeout_sec"
     private const val KEY_READ_TIMEOUT_SEC = "read_timeout_sec"
+    private const val KEY_GALLERY_IMAGE_FOLDER = "gallery_image_folder"
+    private const val KEY_GALLERY_VIDEO_FOLDER = "gallery_video_folder"
 
     fun getFolderUri(context: Context): Uri? {
         val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -286,6 +288,26 @@ object StoragePrefs {
     fun setReadTimeoutSec(context: Context, sec: Int) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putInt(KEY_READ_TIMEOUT_SEC, sec.coerceIn(10, 300))
+            .apply()
+    }
+
+    fun getGalleryImageFolder(context: Context): String? =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_GALLERY_IMAGE_FOLDER, null)?.takeIf { it.isNotBlank() }
+
+    fun setGalleryImageFolder(context: Context, path: String?) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_GALLERY_IMAGE_FOLDER, path?.takeIf { it.isNotBlank() }?.trim())
+            .apply()
+    }
+
+    fun getGalleryVideoFolder(context: Context): String? =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_GALLERY_VIDEO_FOLDER, null)?.takeIf { it.isNotBlank() }
+
+    fun setGalleryVideoFolder(context: Context, path: String?) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_GALLERY_VIDEO_FOLDER, path?.takeIf { it.isNotBlank() }?.trim())
             .apply()
     }
 

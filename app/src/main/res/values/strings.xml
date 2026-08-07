@@ -264,6 +264,11 @@
     <string name="remote_log_copied">Log disalin ke clipboard</string>
     <string name="remote_log_search_hint">Cari di log…</string>
     <string name="remote_log_lines">%1$d baris</string>
+    <string name="settings_section_gallery">Galeri</string>
+    <string name="settings_gallery_image_label">Folder galeri foto (opsional)</string>
+    <string name="settings_gallery_video_label">Folder galeri video (opsional)</string>
+    <string name="settings_gallery_folder_hint">Path folder, contoh: /storage/emulated/0/DCIM/Camera</string>
+    <string name="settings_gallery_hint">Kosongkan untuk scan semua storage. Format: f:path atau m:RelativePath</string>
     <string name="settings_section_cleanup">Pembersihan</string>
     <string name="cleanup_button">Bersihkan file sampah</string>
     <string name="cleanup_done">Bersih: %1$d file (%2$s) dihapus</string>

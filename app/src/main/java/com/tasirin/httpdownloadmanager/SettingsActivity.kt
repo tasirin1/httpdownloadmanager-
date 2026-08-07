@@ -73,6 +73,7 @@ class SettingsActivity : AppCompatActivity() {
         }
         wireDownloadSettings()
         wireStorageSection()
+        wireGallerySection()
         wireSave()
     }
 
@@ -391,6 +392,21 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    private fun wireGallerySection() {
+        binding.inputGalleryImage.setText(StoragePrefs.getGalleryImageFolder(this).orEmpty())
+        binding.inputGalleryVideo.setText(StoragePrefs.getGalleryVideoFolder(this).orEmpty())
+    }
+
+    private fun applyGalleryFolders() {
+        StoragePrefs.setGalleryImageFolder(
+            this, binding.inputGalleryImage.text?.toString()?.trim().orEmpty()
+        )
+        StoragePrefs.setGalleryVideoFolder(
+            this, binding.inputGalleryVideo.text?.toString()?.trim().orEmpty()
+        )
+        App.logEvent("FOLDER GALERI: foto=${StoragePrefs.getGalleryImageFolder(this) ?: "semua"} video=${StoragePrefs.getGalleryVideoFolder(this) ?: "semua"}")
+    }
+
     private fun addExtraFolderRow(box: LinearLayout, path: String) {
         val row = layoutInflater.inflate(R.layout.row_extra_folder, box, false)
         val input = row.findViewById<EditText>(R.id.extra_folder_path)
@@ -423,6 +439,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnSave.setOnClickListener {
             applyStoragePath(findViewById<EditText>(R.id.input_storage_path))
             applyExtraFolders(binding.root)
+            applyGalleryFolders()
             val newPin = binding.inputPin.text?.toString()?.trim().orEmpty()
             val oldPin = StoragePrefs.getServerPin(this).orEmpty()
             if (newPin != oldPin) {

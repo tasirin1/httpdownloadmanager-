@@ -264,6 +264,11 @@
     <string name="remote_log_copied">Log copied to clipboard</string>
     <string name="remote_log_search_hint">Search in log…</string>
     <string name="remote_log_lines">%1$d lines</string>
+    <string name="settings_section_gallery">Gallery</string>
+    <string name="settings_gallery_image_label">Photo gallery folder (optional)</string>
+    <string name="settings_gallery_video_label">Video gallery folder (optional)</string>
+    <string name="settings_gallery_folder_hint">Folder path, e.g. /storage/emulated/0/DCIM/Camera</string>
+    <string name="settings_gallery_hint">Leave empty to scan all storage. Format: f:path or m:RelativePath</string>
     <string name="settings_section_cleanup">Cleanup</string>
     <string name="cleanup_button">Clean up junk files</string>
     <string name="cleanup_done">Cleaned: %1$d file (%2$s) removed</string>

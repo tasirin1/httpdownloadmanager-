@@ -199,9 +199,11 @@ object MediaLibrary {
             }
         }
 
-        // 4) SEMUA foto & video dari device lewat MediaStore (seluruh penyimpanan
-        //    bersama: Download, DCIM, Pictures, dll), di semua versi Android.
-        //    Urutan koleksi: gambar dulu lalu video.
+        // 4) Foto & video dari device lewat MediaStore. Bila folder galeri foto
+        //    / video diatur, scan dibatasi ke folder itu saja (bukan seluruh
+        //    penyimpanan). Kosong = semua storage. Urutan: gambar dulu, video.
+        val galleryImageFolder = StoragePrefs.getGalleryImageFolder(context)
+        val galleryVideoFolder = StoragePrefs.getGalleryVideoFolder(context)
         runCatching {
             val resolver = context.contentResolver
             val collections = listOf(
@@ -213,7 +215,8 @@ object MediaLibrary {
                 MediaStore.MediaColumns.DISPLAY_NAME,
                 MediaStore.MediaColumns.SIZE,
                 MediaStore.MediaColumns.DATE_MODIFIED,
-                MediaStore.MediaColumns.DATA
+                MediaStore.MediaColumns.DATA,
+                MediaStore.MediaColumns.RELATIVE_PATH
             )
             for ((collection, isVideo) in collections) {
                 runCatching {
@@ -226,8 +229,15 @@ object MediaLibrary {
                         val iSize = c.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
                         val iMod = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
                         val iData = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
+                        val iRel = c.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
                         while (c.moveToNext()) {
                             val name = c.getString(iName) ?: continue
+                            val folderCfg = if (isVideo) galleryVideoFolder else galleryImageFolder
+                            if (folderCfg != null) {
+                                val dataPath0 = c.getString(iData)?.takeIf { it.isNotBlank() }
+                                val relPath0 = if (iRel >= 0) c.getString(iRel) else null
+                                if (!mediaInFolder(dataPath0, relPath0, folderCfg)) continue
+                            }
                             val uri = ContentUris.withAppendedId(collection, c.getLong(iId)).toString()
                             val dataPath = c.getString(iData)?.takeIf { it.isNotBlank() }
                             list.add(
@@ -263,5 +273,24 @@ object MediaLibrary {
         return list
             .distinctBy { it.filePath ?: it.contentUri ?: it.token }
             .sortedByDescending { it.modified }
+    }
+
+    /** Cek apakah file media masuk folder galeri terpilih.
+     *  Format konfigurasi: "f:/path" (atau path polos) atau "m:RelativePath".
+     *  Kosong = semua storage. */
+    private fun mediaInFolder(filePath: String?, relativePath: String?, config: String): Boolean {
+        val cfg = config.trim()
+        if (cfg.isEmpty()) return true
+        if (cfg.startsWith("m:") || cfg.startsWith("M:")) {
+            val rel = cfg.removePrefix("m:").removePrefix("M:").trim('/')
+            if (rel.isEmpty()) return true
+            if (relativePath != null) return relativePath.trim('/').startsWith(rel)
+            val fp = filePath?.replace('\\', '/') ?: return false
+            return fp.substringAfterLast("/storage/emulated/0/", fp).trim('/').startsWith(rel)
+        }
+        val dir = cfg.removePrefix("f:").trim('/')
+        if (dir.isEmpty()) return true
+        val fp = filePath?.replace('\\', '/') ?: return false
+        return fp.startsWith("/$dir/")
     }
 }

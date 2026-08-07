@@ -297,6 +297,57 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
+                android:text="@string/settings_section_gallery"
+                android:textColor="@color/primary"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/settings_gallery_image_label"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+            <EditText
+                android:id="@+id/input_gallery_image"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:hint="@string/settings_gallery_folder_hint"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:maxLines="2" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="@string/settings_gallery_video_label"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+            <EditText
+                android:id="@+id/input_gallery_video"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:hint="@string/settings_gallery_folder_hint"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:maxLines="2" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/settings_gallery_hint"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?android:attr/textColorSecondary" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
                 android:text="@string/settings_section_cleanup"
                 android:textColor="@color/primary"
                 android:textSize="14sp"

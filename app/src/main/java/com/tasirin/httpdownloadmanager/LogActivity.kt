@@ -69,7 +69,8 @@ class LogActivity : AppCompatActivity() {
             appendLine("Waktu: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())}")
             appendLine(
                 "Versi app: " + runCatching {
-                    packageManager.getPackageInfo(packageName, 0).versionName
+                    val info = packageManager.getPackageInfo(packageName, 0)
+                    info.versionName + " (build " + info.versionCode + ")"
                 }.getOrDefault("?")
             )
             appendLine("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")

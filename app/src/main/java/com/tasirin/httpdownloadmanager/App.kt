@@ -33,7 +33,8 @@ class App : Application() {
         registerNetworkCallback()
         logEvent(
             "APLIKASI MULAI v" + runCatching {
-                packageManager.getPackageInfo(packageName, 0).versionName
+                val info = packageManager.getPackageInfo(packageName, 0)
+                info.versionName + " (build " + info.versionCode + ")"
             }.getOrDefault("?") + " (Android " + Build.VERSION.RELEASE +
                 " API " + Build.VERSION.SDK_INT + ", " + Build.MANUFACTURER +
                 " " + Build.MODEL + ")"

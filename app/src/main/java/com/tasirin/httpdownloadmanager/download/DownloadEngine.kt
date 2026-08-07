@@ -994,10 +994,10 @@ class DownloadEngine(private val context: Context) {
             }
         } catch (e: IOException) {
             val current = _items.value.find { it.id == item.id }
-            val fresh = current == null || current.segments.sumOf { it.downloaded } == 0L
-            if (fresh && e.message?.contains("tidak mendukung Range") == true) {
-                // Server/proxy mengiklankan Range tapi menolaknya: buang segmen
-                // (belum ada data) lalu unduh sekali jalan tanpa Range.
+            if (e.message?.contains("tidak mendukung Range") == true) {
+                // Server/proxy menolak Range (mis. proxy transparan ISP): semua
+                // percobaan Range akan gagal selamanya, jadi buang segmen lalu
+                // unduh sekali jalan tanpa Range (partial lama ikut dibuang).
                 App.logEvent(
                     "DOWNLOAD ${item.fileName}: Range ditolak (${e.message}), " +
                         "unduh ulang sekali jalan"

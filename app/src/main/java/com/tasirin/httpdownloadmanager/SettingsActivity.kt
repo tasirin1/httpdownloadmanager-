@@ -141,7 +141,9 @@ class SettingsActivity : AppCompatActivity() {
                 requestPermissionsIfNeeded()
             }
         }
-        binding.serverSwitch.isChecked = server.isAlive
+        binding.serverSwitch.text = getString(
+            if (server.isAlive) R.string.server_stop else R.string.server_start
+        )
         if (server.isAlive) {
             binding.serverStatus.setText(R.string.remote_running)
             val urls = HttpControlServer.ipv4Addresses()
@@ -161,30 +163,28 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun wireServerSwitch() {
-        var updating = false
-        binding.serverSwitch.setOnCheckedChangeListener { _, checked ->
-            if (updating) return@setOnCheckedChangeListener
-            if (checked) {
+        binding.serverSwitch.setOnClickListener {
+            if (App.httpServer.isAlive) {
+                StoragePrefs.setServerBackgroundEnabled(this, false)
+                StoragePrefs.setServerAutoStartEnabled(this, false)
+                App.httpServer.stopServer()
+                stopServiceIfIdle()
+                Snackbar.make(binding.root, R.string.remote_stopped, Snackbar.LENGTH_SHORT).show()
+            } else {
                 if (StoragePrefs.isPinEnforced(this) &&
                     StoragePrefs.getServerPin(this).isNullOrEmpty()
                 ) {
-                    updating = true
-                    binding.serverSwitch.isChecked = false
-                    updating = false
                     Snackbar.make(
                         binding.root,
                         R.string.remote_pin_required,
                         Snackbar.LENGTH_LONG
                     ).show()
-                    return@setOnCheckedChangeListener
+                    return@setOnClickListener
                 }
                 StoragePrefs.setServerBackgroundEnabled(this, true)
                 val result = runCatching { App.httpServer.startServer() }
                 if (result.isFailure) {
                     StoragePrefs.setServerBackgroundEnabled(this, false)
-                    updating = true
-                    binding.serverSwitch.isChecked = false
-                    updating = false
                     Snackbar.make(
                         binding.root,
                         getString(
@@ -200,66 +200,116 @@ class SettingsActivity : AppCompatActivity() {
                         Snackbar.LENGTH_SHORT
                     ).show()
                 }
-            } else {
-                StoragePrefs.setServerBackgroundEnabled(this, false)
-                StoragePrefs.setServerAutoStartEnabled(this, false)
-                App.httpServer.stopServer()
-                stopServiceIfIdle()
-                Snackbar.make(binding.root, R.string.remote_stopped, Snackbar.LENGTH_SHORT).show()
             }
             renderServer()
+            renderChecks()
         }
     }
 
+    private fun renderToggle(btn: Button, on: Boolean, label: String) {
+        btn.text = "$label: " + getString(if (on) R.string.toggle_on else R.string.toggle_off)
+    }
+
+    private fun renderChecks() {
+        renderToggle(
+            binding.checkServerAutostart,
+            StoragePrefs.isServerAutoStartEnabled(this),
+            getString(R.string.settings_server_autostart)
+        )
+        renderToggle(
+            binding.checkPinEnforced,
+            StoragePrefs.isPinEnforced(this),
+            getString(R.string.settings_pin_enforced)
+        )
+        renderToggle(
+            binding.checkFsFullAccess,
+            StoragePrefs.isFsFullAccessEnabled(this),
+            getString(R.string.settings_fs_full_access)
+        )
+        renderToggle(
+            binding.checkBackground,
+            StoragePrefs.isBackgroundEnabled(this),
+            getString(R.string.settings_background)
+        )
+        renderToggle(
+            binding.checkAutostart,
+            StoragePrefs.isAutoStartEnabled(this),
+            getString(R.string.settings_autostart)
+        )
+        renderToggle(
+            binding.checkBattery,
+            StoragePrefs.isBatteryExemptEnabled(this),
+            getString(R.string.settings_battery)
+        )
+        renderToggle(
+            binding.checkAutoSort,
+            StoragePrefs.isAutoSortEnabled(this),
+            getString(R.string.settings_auto_sort)
+        )
+        renderToggle(
+            binding.checkSmallFirst,
+            StoragePrefs.isSmallFirstEnabled(this),
+            getString(R.string.settings_small_first)
+        )
+        renderToggle(
+            binding.checkDeletePartial,
+            StoragePrefs.isDeletePartialOnCancel(this),
+            getString(R.string.settings_delete_partial_on_cancel)
+        )
+    }
+
     private fun wireServerChecks() {
-        binding.checkServerAutostart.isChecked = StoragePrefs.isServerAutoStartEnabled(this)
-        binding.checkServerAutostart.setOnCheckedChangeListener { _, checked ->
-            StoragePrefs.setServerAutoStartEnabled(this, checked)
+        binding.checkServerAutostart.setOnClickListener {
+            StoragePrefs.setServerAutoStartEnabled(this, !StoragePrefs.isServerAutoStartEnabled(this))
+            renderChecks()
         }
-        binding.checkPinEnforced.isChecked = StoragePrefs.isPinEnforced(this)
-        binding.checkPinEnforced.setOnCheckedChangeListener { _, checked ->
-            StoragePrefs.setPinEnforced(this, checked)
-            if (checked && StoragePrefs.getServerPin(this).isNullOrEmpty()) {
+        binding.checkPinEnforced.setOnClickListener {
+            val next = !StoragePrefs.isPinEnforced(this)
+            StoragePrefs.setPinEnforced(this, next)
+            if (next && StoragePrefs.getServerPin(this).isNullOrEmpty()) {
                 StoragePrefs.setServerBackgroundEnabled(this, false)
                 StoragePrefs.setServerAutoStartEnabled(this, false)
                 runCatching { App.httpServer.stopServer() }
                 stopServiceIfIdle()
                 renderServer()
             }
+            renderChecks()
         }
-        binding.checkFsFullAccess.isChecked = StoragePrefs.isFsFullAccessEnabled(this)
-        binding.checkFsFullAccess.setOnCheckedChangeListener { _, checked ->
-            StoragePrefs.setFsFullAccessEnabled(this, checked)
+        binding.checkFsFullAccess.setOnClickListener {
+            StoragePrefs.setFsFullAccessEnabled(this, !StoragePrefs.isFsFullAccessEnabled(this))
+            renderChecks()
         }
         binding.inputPin.setText(StoragePrefs.getServerPin(this).orEmpty())
         binding.inputPort.setText(StoragePrefs.serverPort(this).toString())
+        renderChecks()
     }
 
     private fun wireDownloadSettings() {
-        binding.checkBackground.isChecked = StoragePrefs.isBackgroundEnabled(this)
-        binding.checkBackground.setOnCheckedChangeListener { _, c ->
-            StoragePrefs.setBackgroundEnabled(this, c)
+        binding.checkBackground.setOnClickListener {
+            StoragePrefs.setBackgroundEnabled(this, !StoragePrefs.isBackgroundEnabled(this))
+            renderChecks()
         }
-        binding.checkAutostart.isChecked = StoragePrefs.isAutoStartEnabled(this)
-        binding.checkAutostart.setOnCheckedChangeListener { _, c ->
-            StoragePrefs.setAutoStartEnabled(this, c)
+        binding.checkAutostart.setOnClickListener {
+            StoragePrefs.setAutoStartEnabled(this, !StoragePrefs.isAutoStartEnabled(this))
+            renderChecks()
         }
-        binding.checkBattery.isChecked = StoragePrefs.isBatteryExemptEnabled(this)
-        binding.checkBattery.setOnCheckedChangeListener { _, c ->
-            StoragePrefs.setBatteryExemptEnabled(this, c)
-            if (c) requestBatteryExemption()
+        binding.checkBattery.setOnClickListener {
+            val next = !StoragePrefs.isBatteryExemptEnabled(this)
+            StoragePrefs.setBatteryExemptEnabled(this, next)
+            if (next) requestBatteryExemption()
+            renderChecks()
         }
-        binding.checkAutoSort.isChecked = StoragePrefs.isAutoSortEnabled(this)
-        binding.checkAutoSort.setOnCheckedChangeListener { _, c ->
-            StoragePrefs.setAutoSortEnabled(this, c)
+        binding.checkAutoSort.setOnClickListener {
+            StoragePrefs.setAutoSortEnabled(this, !StoragePrefs.isAutoSortEnabled(this))
+            renderChecks()
         }
-        binding.checkSmallFirst.isChecked = StoragePrefs.isSmallFirstEnabled(this)
-        binding.checkSmallFirst.setOnCheckedChangeListener { _, c ->
-            StoragePrefs.setSmallFirstEnabled(this, c)
+        binding.checkSmallFirst.setOnClickListener {
+            StoragePrefs.setSmallFirstEnabled(this, !StoragePrefs.isSmallFirstEnabled(this))
+            renderChecks()
         }
-        binding.checkDeletePartial.isChecked = StoragePrefs.isDeletePartialOnCancel(this)
-        binding.checkDeletePartial.setOnCheckedChangeListener { _, c ->
-            StoragePrefs.setDeletePartialOnCancel(this, c)
+        binding.checkDeletePartial.setOnClickListener {
+            StoragePrefs.setDeletePartialOnCancel(this, !StoragePrefs.isDeletePartialOnCancel(this))
+            renderChecks()
         }
 
         val concurrentOptions = resources.getStringArray(R.array.concurrent_options)

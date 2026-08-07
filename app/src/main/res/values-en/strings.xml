@@ -127,6 +127,10 @@
     <string name="settings_speed_custom">Custom: %1$d KB/s</string>
     <string name="settings_port_invalid">Invalid port (1024–65535)</string>
     <string name="server_switch">Server</string>
+    <string name="server_start">Start server</string>
+    <string name="server_stop">Stop server</string>
+    <string name="toggle_on">On</string>
+    <string name="toggle_off">Off</string>
     <string name="remote_autostart_hint">Start automatically after device restart</string>
     <string name="settings_segments">Parallel segments per download</string>
 

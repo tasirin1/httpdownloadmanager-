@@ -127,6 +127,10 @@
     <string name="settings_speed_custom">Kustom: %1$d KB/s</string>
     <string name="settings_port_invalid">Port tidak valid (1024–65535)</string>
     <string name="server_switch">Server</string>
+    <string name="server_start">Nyalakan server</string>
+    <string name="server_stop">Matikan server</string>
+    <string name="toggle_on">Nyala</string>
+    <string name="toggle_off">Mati</string>
     <string name="remote_autostart_hint">Jalankan otomatis setelah perangkat restart</string>
     <string name="settings_segments">Segmen paralel per download</string>
 

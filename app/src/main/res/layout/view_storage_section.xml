@@ -12,6 +12,9 @@
         android:textAppearance="?attr/textAppearanceBodyMedium" />
 
     <EditText
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:minHeight="48dp"
         android:id="@+id/input_storage_path"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

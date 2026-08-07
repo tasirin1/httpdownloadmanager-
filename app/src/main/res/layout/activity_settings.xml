@@ -65,44 +65,24 @@
                 android:contentDescription="@string/remote_qr_desc"
                 android:visibility="gone" />
 
-            <LinearLayout
+            <Button
+                android:id="@+id/server_switch"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingVertical="4dp">
+                android:minHeight="48dp"
+                android:text="@string/server_switch" />
 
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/server_switch"
-                        android:textAppearance="?attr/textAppearanceTitleSmall" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_server_background_hint"
-                        android:textAppearance="?attr/textAppearanceBodySmall"
-                        android:textColor="?android:attr/textColorSecondary" />
-                </LinearLayout>
-
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/server_switch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-            </LinearLayout>
-
-            <CheckBox
+            <Button
                 android:id="@+id/check_server_autostart"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:minHeight="48dp"
+                android:gravity="start|center_vertical"
+                android:paddingHorizontal="16dp"
                 android:text="@string/settings_server_autostart" />
 
             <TextView
@@ -113,6 +93,9 @@
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
 
             <EditText
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:minHeight="48dp"
                 android:id="@+id/input_pin"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -120,16 +103,26 @@
                 android:inputType="numberPassword"
                 android:maxLength="10" />
 
-            <CheckBox
+            <Button
                 android:id="@+id/check_pin_enforced"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:minHeight="48dp"
+                android:gravity="start|center_vertical"
+                android:paddingHorizontal="16dp"
                 android:text="@string/settings_pin_enforced" />
 
-            <CheckBox
+            <Button
                 android:id="@+id/check_fs_full_access"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:minHeight="48dp"
+                android:gravity="start|center_vertical"
+                android:paddingHorizontal="16dp"
                 android:text="@string/settings_fs_full_access" />
 
             <TextView
@@ -140,6 +133,9 @@
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
 
             <EditText
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:minHeight="48dp"
                 android:id="@+id/input_port"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -164,41 +160,70 @@
                 android:textSize="14sp"
                 android:textStyle="bold" />
 
-            <CheckBox
+            <Button
                 android:id="@+id/check_background"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="6dp"
+                android:minHeight="48dp"
+                android:gravity="start|center_vertical"
+                android:paddingHorizontal="16dp"
                 android:text="@string/settings_background" />
 
-            <CheckBox
+            <Button
                 android:id="@+id/check_autostart"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:minHeight="48dp"
+                android:gravity="start|center_vertical"
+                android:paddingHorizontal="16dp"
                 android:text="@string/settings_autostart" />
 
-            <CheckBox
+            <Button
                 android:id="@+id/check_auto_sort"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:minHeight="48dp"
+                android:gravity="start|center_vertical"
+                android:paddingHorizontal="16dp"
                 android:text="@string/settings_auto_sort" />
 
-            <CheckBox
+            <Button
                 android:id="@+id/check_small_first"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:minHeight="48dp"
+                android:gravity="start|center_vertical"
+                android:paddingHorizontal="16dp"
                 android:text="@string/settings_small_first" />
 
-            <CheckBox
+            <Button
                 android:id="@+id/check_battery"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:minHeight="48dp"
+                android:gravity="start|center_vertical"
+                android:paddingHorizontal="16dp"
                 android:text="@string/settings_battery" />
 
-            <CheckBox
+            <Button
                 android:id="@+id/check_delete_partial"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:minHeight="48dp"
+                android:gravity="start|center_vertical"
+                android:paddingHorizontal="16dp"
                 android:text="@string/settings_delete_partial_on_cancel" />
 
             <TextView
@@ -310,6 +335,9 @@
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
 
             <EditText
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:minHeight="48dp"
                 android:id="@+id/input_gallery_image"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -327,6 +355,9 @@
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
 
             <EditText
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:minHeight="48dp"
                 android:id="@+id/input_gallery_video"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

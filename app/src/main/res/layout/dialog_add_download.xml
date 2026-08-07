@@ -7,6 +7,9 @@
     android:paddingTop="24dp">
 
     <EditText
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:minHeight="48dp"
         android:id="@+id/input_url"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -42,6 +45,9 @@
         android:visibility="gone" />
 
     <EditText
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:minHeight="48dp"
         android:id="@+id/input_recent_search"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -78,6 +84,9 @@
         android:visibility="gone" />
 
     <EditText
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:minHeight="48dp"
         android:id="@+id/input_name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -85,6 +94,9 @@
         android:hint="@string/name_hint_optional" />
 
     <EditText
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:minHeight="48dp"
         android:id="@+id/input_username"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -92,6 +104,9 @@
         android:hint="@string/username_hint_optional" />
 
     <EditText
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:minHeight="48dp"
         android:id="@+id/input_password"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -100,6 +115,9 @@
         android:inputType="textPassword" />
 
     <EditText
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:minHeight="48dp"
         android:id="@+id/input_headers"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -110,6 +128,9 @@
         android:maxLines="4" />
 
     <EditText
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:minHeight="48dp"
         android:id="@+id/input_checksum"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -117,6 +138,9 @@
         android:hint="@string/checksum_hint_optional" />
 
     <EditText
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:minHeight="48dp"
         android:id="@+id/input_mirrors"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

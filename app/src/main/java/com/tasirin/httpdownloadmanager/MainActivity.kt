@@ -648,6 +648,8 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
 
     private fun showRenameDialog(item: DownloadItem) {
         val input = EditText(this)
+        input.isFocusable = true
+        input.isFocusableInTouchMode = true
         input.setText(item.fileName)
         input.setSelection(input.text.length)
         MaterialAlertDialogBuilder(this)

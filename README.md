@@ -1,176 +1,150 @@
+<p align="center">
+  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="Download Manager" width="96"><br>
+  <b>Download Manager — Android</b><br>
+  Download manager + remote control web lengkap, nyaman dipakai di TV box & HP.
+</p>
+
 # Download Manager (Android)
 
-Aplikasi download manager + remote control untuk **Android 5.0 (API 21) ke atas**, dibangun dengan Kotlin + Jetpack.
+**Satu aplikasi untuk semua kebutuhan file di perangkat Android:** unduh cepat, kelola dari browser lewat jaringan Wi-Fi, jelajah file, mainkan galeri ala YouTube, dan pantau semuanya secara realtime — cocok dipakai di HP maupun TV box (Android 5.0+ / API 21+).
 
-## Fitur
+Dibangun dengan **Kotlin + Jetpack**, tanpa iklan, tanpa akun. Kode terbuka di GitHub dan setiap pembaruan otomatis di-build menjadi APK siap pasang.
 
-- Tambah download via URL (nama file opsional, checksum MD5/SHA1/SHA256 opsional)
-- **Info file otomatis sebelum download mulai**: HEAD ke server → nama asli, ukuran & tipe file ditampilkan di dialog tambah; peringatan merah bila ukuran file melebihi penyimpanan tersisa
-- Progress per file (persentase, ukuran, kecepatan KB/s–MB/s, ETA) + grafik kecepatan real-time
-- **Kecepatan & ETA stabil** (rata-rata bergerak — tidak melompat-lompat saat kecepatan sesaat naik/turun)
-- Jeda, lanjutkan (resume dengan HTTP Range), batalkan, hapus, ulangi gagal
-- Unduhan paralel dengan antrean (jumlah maks. bisa diatur), **multi-segmen** untuk file besar yang mendukung Range
-- **Antrean pintar**: unduh file kecil lebih dulu (opsional, di pengaturan) selain prioritas manual
-- **Batas kecepatan & prioritas per-download** (dialog tambah / long-press item)
-- Daftar download tersimpan otomatis (bertahan setelah app ditutup), filter & urutkan daftar
-- Foreground service: tetap berjalan saat app ditutup; retry otomatis (jeda bertahap); **auto-start saat boot**
-- **Lanjut otomatis saat koneksi pulih**: download yang terputus karena jaringan hilang dijeda otomatis, lalu dilanjutkan sendiri begitu internet kembali (Android 5–6 via broadcast, Android 7+ via NetworkCallback)
-- Notifikasi foreground progress
-- **Share URL** langsung dari aplikasi lain (Share → Download Manager)
-- Auth HTTP Basic + custom header (Referer, Cookie, dll.), tempel banyak URL sekaligus, riwayat URL
-- Buka file selesai dengan aplikasi lain, buka folder, ubah nama / pindahkan file (long-press)
-- Nama file otomatis mengikuti server (Content-Disposition/Content-Type) atau pola "unduhan_tanggal_waktu"
-- **Nama duplikat di folder tujuan otomatis diganti** saat download selesai: `nama (1).ext`, `nama (2).ext`, dst. (berlaku untuk semua lokasi simpan: Downloads, folder kustom, MediaStore, penyimpanan internal)
-- Pindahkan otomatis ke subfolder Video/Foto setelah selesai (pengaturan)
-- Splash screen modern + adaptive icon (fallback PNG untuk Android 5–7)
-- **Tema ikuti sistem** (otomatis / terang / gelap), bahasa Indonesia/Inggris (ikut sistem)
+## ✨ Kenapa aplikasi ini?
 
-## Remote (HTTP) & Halaman Web
+| | |
+|---|---|
+| 🚀 **Download Manager lengkap** | multi-segmen, resume dengan Range, antrean pintar, batas kecepatan, auto-retry |
+| 📡 **Remote web realtime (SSE)** | kontrol dari browser perangkat lain, update langsung tanpa refresh manual |
+| 🖥️ **Player video ala YouTube** | seekbar merah, double-tap ±10 detik, gesture volume/kecerahan, auto-next |
+| 🗂️ **File manager remote** | jelajah, upload, hapus massal, ZIP folder, pratinjau media langsung |
+| 🖼️ **Galeri media device** | thumbnail 16:9, durasi asli, filter foto/video, folder foto & video terpisah |
+| 📶 **Siap untuk jaringan pelan** | timeout connect/read bisa diatur, mirror otomatis, polling adaptif |
+| 🔋 **Siap untuk TV box** | dukungan D-pad/remote, server jalan di background, auto-start saat boot |
 
-Server remote bawaan untuk mengontrol dari browser di perangkat lain dalam satu jaringan Wi-Fi, berjalan **penuh di latar belakang** (foreground service) dan bisa **auto-start saat boot** — diatur di menu **⋮ → Pengaturan**.
+## 🚀 Unduh
 
-1. Buka **⋮ → Remote (HTTP)** lalu **Mulai server** (atau biarkan menyala otomatis)
-2. Scan **QR code** di dialog tersebut, atau ketik alamat `http://<ip-ponsel>:<port>/` di browser perangkat lain
-3. Masukkan **PIN** jika sudah diatur di halaman login
+APK terbaru selalu tersedia di **GitHub Releases** — setiap push ke `main` langsung di-build dan rilis diperbarui otomatis:
+
+**[⬇️ Unduh APK terbaru](https://github.com/tasirin1/httpdownloadmanager-/releases/latest)**
+
+Pasang di HP / TV box (Android 5.0+), beri izin Penyimpanan saat diminta, selesai.
+
+---
+
+## 📥 Fitur Download
+
+- Tambah via URL dengan **info file otomatis sebelum mulai**: nama asli, ukuran & tipe dari server; peringatan merah bila ukuran melebihi penyimpanan tersisa
+- **Progress realtime**: persentase, ukuran, kecepatan KB/s–MB/s, **ETA stabil** (rata-rata bergerak, tidak melompat-lompat) + grafik kecepatan
+- **Multi-segmen** untuk file besar yang mendukung Range, unduhan paralel dengan antrean (jumlah maks. bisa diatur)
+- **Antrean pintar**: file kecil didahulukan (opsional) + prioritas manual per download
+- Jeda, lanjutkan (resume HTTP Range), batalkan, hapus, ulangi gagal — semua tersimpan otomatis
+- **Foreground service**: download lanjut walau app ditutup, retry otomatis dengan jeda bertahap, **auto-start saat boot**
+- **Lanjut otomatis saat koneksi pulih**: download yang terputus karena jaringan hilang dilanjutkan sendiri (Android 5–6 via broadcast, 7+ via NetworkCallback)
+- **Batas kecepatan & prioritas per-download**, auth HTTP Basic + header custom (Referer, Cookie, dll.)
+- Tempel banyak URL sekaligus, riwayat URL, **Share dari aplikasi lain** langsung ke dialog tambah
+- Checksum opsional (MD5/SHA1/SHA256), nama duplikat otomatis `nama (1).ext`
+- **HLS / m3u8**: deteksi otomatis dan pilih kualitas (variant) sebelum unduh
+- **Pantau pembaruan**: item download bisa dipantau berkala — periksa versi baru di URL yang sama dan unduh otomatis
+- **Auto-sort lengkap** setelah selesai: `Videos/`, `Photos/`, `Music/`, `Documents/`, `APK/` (pengaturan)
+- **Fallback cerdas saat Range ditolak**: server yang tidak mendukung Range otomatis diunduh sekali jalan (single-stream), tanpa gagal total
+- **Mirror otomatis** untuk server yang lambat/gagal, URL gagal di-blacklist agar tidak dicoba ulang tanpa henti
+- Tema ikuti sistem (otomatis / terang / gelap), bahasa Indonesia/Inggris (ikut sistem)
+
+## 📡 Remote Web Realtime
+
+Server remote bawaan berjalan **penuh di latar belakang** dan bisa **auto-start saat boot** — semua diatur di **⋮ → Pengaturan**.
+
+1. Di Pengaturan, mulai server (atau biarkan menyala otomatis saat boot)
+2. Scan **QR code**, atau buka `http://<ip-device>:<port>/` di browser perangkat lain
+3. Masukkan **PIN** jika diatur
 
 Fitur halaman remote:
 
-- **Tampilan mobile**: tombol FAB "+" untuk tambah download, menu aksi item ala bottom-sheet (anti salah pencet), topbar lebih ringkas
-- **Update real-time (SSE)**: halaman remote tidak lagi polling tiap 1,5 detik — progress & status datang langsung dari device lewat event stream; fallback polling otomatis jika jaringan memblokir streaming
-- Manajemen download: tambah URL, pantau progress, jeda/lanjut/batalkan/hapus, filter & urutkan
-- **Item aktif otomatis di urutan atas** + **total kecepatan live di bar atas** (jumlah download aktif)
-- Di layar HP, tombol aksi item dipadatkan ke menu **"⋯"**; hapus item & bersihkan daftar kini memakai dialog konfirmasi
-- **Filter Semua/Aktif/Selesai/Gagal menempel (sticky)** saat scroll, **skeleton loading** saat memuat data, dan **empty state** yang lebih informatif di daftar, galeri, dan file manager
-- **Indikator koneksi**: "diperbarui X dtk lalu" + tombol refresh di status card; titik status berkedip merah saat koneksi ke server putus
-- **Animasi halus** saat pindah tab & item baru muncul, **favicon + theme-color** di browser
-- **Upload file ke device** dari browser: banyak file sekaligus, dipecah per potongan 2 MB dengan retry otomatis (koneksi putus tidak mulai dari nol), upload folder utuh + drag & drop, nama duplikat otomatis (`nama (1).ext`), konfirmasi sebelum halaman ditutup saat upload berjalan
-- **File manager remote**: jelajah folder, buat folder, rename, pindah, hapus (massal), download folder sebagai ZIP
-  - Folder menampilkan info isinya: jumlah item + total ukuran
-  - **Breadcrumb tap-able** untuk naik level cepat, **menu aksi "⋯"** (bottom-sheet di HP), dialog custom untuk rename/pindah/hapus, **long-press** untuk pilih massal, dan **ketuk file media langsung pratinjau**
-- **Galeri remote ala YouTube**: thumbnail 16:9, badge **durasi video asli** (di-cache di device), load bertahap saat scroll
-- **Player video ala YouTube**: seekbar merah + buffered, waktu, mute, fullscreen otomatis landscape, tap untuk pause/resume, double-tap ±10 detik, gesture geser untuk kecerahan/volume, lanjut dari posisi terakhir, dan **saran video** lain di bawah player
-- **Kecepatan putar video 0.5×–2×** di player remote
-- **Bagikan file via tautan sementara**: file selesai bisa dibagikan lewat tautan tanpa PIN (berlaku 24 jam) + QR code dari halaman remote
-- **Streaming** (putar/pratinjau) atau **download** file yang sudah selesai — dukungan HTTP Range untuk video/audio
-- Status baterai & penyimpanan device, pilihan port server, server background + auto-start
-- **Auto-lock**: halaman remote meminta PIN lagi setelah 10 menit tanpa aktivitas
+- **Realtime via SSE**: progress & status datang langsung dari device tanpa refresh manual; fallback polling otomatis bila jaringan memblokir streaming
+- **Polling adaptif**: 2 detik saat ada aktivitas, 10 detik saat idle — hemat baterai
+- **Item aktif otomatis di urutan atas** + total kecepatan live di bar atas
+- **Tampilan mobile**: FAB "+", menu aksi ala bottom-sheet, filter sticky, skeleton loading, empty state informatif
+- **Indikator koneksi**: "diperbarui X dtk lalu", titik status berkedip merah saat koneksi putus, refresh otomatis saat tab kembali fokus
+- **Upload file & folder** dari browser: chunk 2 MB dengan retry (putus tidak mulai dari nol), drag & drop, nama duplikat otomatis, konfirmasi sebelum tab ditutup
+- **File manager remote**: jelajah, buat folder, rename, pindah, hapus massal, **download folder sebagai ZIP**, breadcrumb, pratinjau media langsung
+- **Galeri remote ala YouTube**: thumbnail 16:9, badge durasi asli (cache di device), load bertahap, **filter Semua/Foto/Video**
+- **Player video ala YouTube**: seekbar merah + buffered, double-tap ±10 detik, gesture kecerahan/volume, kecepatan putar 0.5×–2×, lanjut dari posisi terakhir, **saran video** di bawah player, **AUTO (auto-next)** menyala otomatis
+- **Bagikan file via tautan sementara** (berlaku 24 jam, tanpa PIN) + QR code
+- **Streaming** file selesai (HTTP Range untuk video/audio) atau download langsung
+- Status baterai & penyimpanan, pilihan port, server background + auto-start
+- **Auto-lock**: halaman remote minta PIN lagi setelah 10 menit tanpa aktivitas
 
-## Penyimpanan
+## 🗂️ Penyimpanan
 
-Default file disimpan ke **Folder Downloads**. Izin penyimpanan mengikuti pola aplikasi Vaultwarden Host: `WRITE_EXTERNAL_STORAGE` penuh + `requestLegacyExternalStorage` + target SDK 28, jadi folder Downloads publik bisa diakses langsung di Android 5–11. Di Android 12+ tetap memakai MediaStore/SAF otomatis.
+Default file disimpan ke **Folder Downloads**. Izin memakai pola `WRITE_EXTERNAL_STORAGE` penuh + `requestLegacyExternalStorage` (target SDK 28), jadi folder publik bisa diakses langsung di Android 5–11; Android 12+ otomatis memakai MediaStore.
 
-Selain picker sistem (SAF), tersedia **folder teks**: ketik path mentah seperti `/storage/emulated/0/<folder>` (pola Vaultwarden Host). Folder otomatis dibuat kalau belum ada, jadi path folder buatan Total Commander dll. bisa langsung dipakai di Android 5–11.
+- **Input path teks**: ketik path mentah seperti `/storage/emulated/0/Download` — folder otomatis dibuat kalau belum ada
+- **Folder tambahan (mount)**: ketuk **+** untuk menambah path lain (mis. `/sdcard/Movies`) agar ikut tampil di file manager — cocok untuk folder buatan Total Commander, folder SD card, dll.
+- Pilihan tersimpan otomatis dan persisten (bertahan setelah restart)
 
-Untuk memilih lokasi lain (misalnya folder di SD card):
+## 🖼️ Galeri
 
-1. Ketuk menu **⋮ → Penyimpanan**
-2. Pilih **Pilih folder…** dan tentukan folder tujuan di sistem (atau isi folder teks)
-3. Pilihan tersimpan otomatis; setiap download berikutnya masuk ke folder itu
-4. Untuk kembali ke default, buka **Penyimpanan** lagi lalu tekan **Pakai default**
+- **Folder foto & video diatur terpisah** di Pengaturan: tentukan folder galeri foto dan folder galeri video masing-masing (mis. video saja di `/sdcard/Movies/Files`, foto dibiarkan scan semua)
+- Kosongkan untuk scan seluruh storage; path `/sdcard/...` otomatis dikenali sebagai `/storage/emulated/0/...`
+- Tampilkan durasi video, thumbnail cepat, putar langsung, hapus file
 
-Izin akses folder bersifat persisten (bertahan setelah aplikasi ditutup/di-restart).
-
-## Pengaturan
+## ⚙️ Pengaturan
 
 Menu **⋮ → Pengaturan**:
 
-- Lanjutkan download yang terputus otomatis (latar belakang)
-- Mulai otomatis saat perangkat boot
-- Unduhan bersamaan (1–5) — sisanya antre; jumlah segmen multi-download
-- Batas kecepatan (Tanpa batas / 128 KB/s … 5 MB/s)
-- Percobaan ulang saat gagal (0–5)
-- Unduh file kecil lebih dulu (antrean pintar)
-- Jalankan server remote di latar belakang + auto start server saat boot
+- **Unduhan**: resume otomatis, auto-start saat boot, unduhan bersamaan (1–5), jumlah segmen, batas kecepatan, percobaan ulang (0–5), unduh file kecil dulu, **timeout connect (5–60 dtk) & read (10–120 dtk)** untuk jaringan lambat/WISP
+- **Server**: port, PIN, QR code, background + auto-start saat boot
+- **Penyimpanan**: folder tujuan + folder tambahan
+- **Galeri**: folder foto & video terpisah
+- **Pembersihan**: hapus log/download yang sudah selesai
+- **Log Server realtime**: log aktivitas seluruh sistem (request HTTP, download, galeri, kesalahan) bisa di-cari, di-sorot, dan **diekspor ke file TXT** — mudah untuk lapor bug
 
-Catatan: beberapa vendor (MIUI, dll.) punya pembatasan baterai ketat — aktifkan *auto-start* di pengaturan sistem agar service tidak dimatikan. Download yang Anda jeda manual tidak dilanjutkan otomatis.
+Catatan: beberapa vendor (MIUI, dll.) punya pembatasan baterai ketat — aktifkan *auto-start* di pengaturan sistem agar service tidak dimatikan.
 
-## Pintasan
+## 🛠️ Build
 
-- **Share dari aplikasi lain**: pilih "Share" pada link lalu pilih **Download Manager** — URL langsung terbuka di dialog tambah
-
-## Unduh APK
-
-APK terbaru selalu tersedia di **GitHub Releases** (tidak perlu buka menu Actions):
-
-- https://github.com/tasirin1/httpdownloadmanager-/releases/latest
-
-Setiap push ke `main` langsung di-build otomatis dan rilis diperbarui. Pasang APK di HP (Android 5.0+), beri izin Penyimpanan saat diminta.
-
-## Persyaratan
-
-- Android 5.0+ (minSdk 21), target SDK 28
-- Java 17 dan Android SDK untuk build lokal
-
-## Build Lokal
+### Lokal
 
 ```bash
 ./gradlew assembleDebug
 # Hasil: app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Build release (perlu keystore, lihat bagian signing):
+### Otomatis (GitHub Actions)
 
-```bash
-./gradlew assembleRelease \
-  -PstoreFile=keystore.jks \
-  -PstorePassword=password \
-  -PkeyAlias=alias \
-  -PkeyPassword=password
-```
+Workflow `.github/workflows/build.yml` berjalan otomatis setiap push ke `main` (atau manual via **Actions → Build APK → Run workflow**). Hasilnya otomatis jadi release baru. Untuk release yang ditandatangani, isi secrets `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` di pengaturan repo.
 
-## Build Otomatis di GitHub Actions
+**Persyaratan**: Android 5.0+ (minSdk 21), Java 17 + Android SDK.
 
-Workflow `.github/workflows/build.yml` berjalan otomatis setiap push ke `main` (atau PR / manual via **Actions → Build APK → Run workflow**).
-
-1. Buka tab **Actions** di repositori ini
-2. Pilih workflow **Build APK**
-3. Setelah selesai, buka run tersebut → bagian **Artifacts** → unduh `app-debug.apk` (dan `app-release.apk` jika signing diatur)
-
-### Signing release (opsional)
-
-Agar workflow menghasilkan APK release yang ditandatangani, tambahkan **repository secrets** di `Settings → Secrets and variables → Actions`:
-
-| Secret | Isi |
-|---|---|
-| `KEYSTORE_BASE64` | `base64` dari file `keystore.jks` |
-| `KEYSTORE_PASSWORD` | Password keystore |
-| `KEY_ALIAS` | Alias kunci |
-| `KEY_PASSWORD` | Password kunci |
-
-Buat keystore lalu encode:
-
-```bash
-keytool -genkeypair -v -keystore keystore.jks -alias release \
-  -keyalg RSA -keysize 2048 -validity 10000
-base64 -w0 keystore.jks > keystore.b64   # isi ke secret KEYSTORE_BASE64
-```
-
-Jika secret tidak diisi, workflow tetap menghasilkan `app-debug.apk`.
-
-## Struktur Project
+## 📁 Struktur Project
 
 ```
 app/src/main/java/com/tasirin/httpdownloadmanager/
-├── MainActivity.kt          # UI utama + dialog tambah URL + dialog About
-├── GalleryActivity.kt       # Galeri perangkat (foto/video lokal)
-├── App.kt                   # Application (inisialisasi engine)
+├── MainActivity.kt            # UI utama + dialog tambah URL + dialog About
+├── GalleryActivity.kt         # Galeri perangkat (foto/video lokal)
+├── SettingsActivity.kt        # Pengaturan lengkap (server, penyimpanan, galeri, log)
+├── LogActivity.kt             # Log server realtime + ekspor TXT
+├── App.kt                     # Application (inisialisasi engine)
 ├── data/
-│   ├── DownloadItem.kt      # Model + state download
-│   └── DownloadRepository.kt# Persistensi daftar (SharedPreferences)
+│   ├── DownloadItem.kt        # Model + state download
+│   └── DownloadRepository.kt  # Persistensi daftar (SharedPreferences)
 ├── download/
-│   ├── DownloadEngine.kt    # Logika unduh, resume (Range), multi-segmen, jeda, batal
-│   └── DownloadService.kt   # Foreground service + notifikasi
-├── receiver/BootReceiver.kt # Mulai otomatis saat boot (download & server)
-├── remote/HttpControlServer.kt # HTTP server remote (download, file manager, galeri, durasi video)
-├── ui/DownloadAdapter.kt    # RecyclerView adapter
+│   ├── DownloadEngine.kt      # Unduh, resume (Range), multi-segmen, HLS probe, monitor, jeda/batal
+│   └── DownloadService.kt     # Foreground service + notifikasi
+├── receiver/BootReceiver.kt   # Auto-start saat boot (download & server)
+├── remote/HttpControlServer.kt# Server HTTP remote (download, file manager, galeri, SSE)
+├── ui/DownloadAdapter.kt      # RecyclerView adapter
+├── widget/SpeedChartView.kt   # Grafik kecepatan realtime
 └── util/
-    ├── FileSaver.kt         # Simpan file (MediaStore / folder Downloads)
-    ├── MediaLibrary.kt      # Scan media device + thumbnail
-    ├── MimeTypes.kt         # Deteksi MIME
-    ├── StoragePrefs.kt      # Preferensi penyimpanan
-    └── NotificationHelper.kt# Notifikasi progress
+    ├── FileSaver.kt           # Simpan file (MediaStore / folder, auto-sort)
+    ├── MediaLibrary.kt        # Scan media device + thumbnail
+    ├── MimeTypes.kt           # Deteksi MIME
+    ├── StoragePrefs.kt        # Preferensi penyimpanan + folder tambahan
+    ├── NotificationHelper.kt  # Notifikasi progress
+    ├── Crypto.kt / Formats.kt / FileNames.kt / TlsCompat.kt  # Pendukung
 ```
 
-## Lisensi
+## 📄 Lisensi
 
 MIT — lihat [LICENSE](LICENSE).

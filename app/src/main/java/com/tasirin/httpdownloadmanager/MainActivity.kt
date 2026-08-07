@@ -594,8 +594,12 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setContentView(view)
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        val maxWidth = (640 * resources.displayMetrics.density).toInt()
-        dialog.window?.setLayout(maxWidth, WindowManager.LayoutParams.WRAP_CONTENT)
+        // Lebar dialog ramah layar: maks 560dp, tapi jangan sampai penuh layar
+        // (HP density tinggi) — sisakan margin 48dp tiap sisi.
+        val density = resources.displayMetrics.density
+        val screenW = resources.displayMetrics.widthPixels
+        val width = minOf((560 * density).toInt(), screenW - (48 * density).toInt())
+        dialog.window?.setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT)
         dialog.show()
         view.findViewById<Button>(R.id.btn_about_ok).setOnClickListener { dialog.dismiss() }
     }

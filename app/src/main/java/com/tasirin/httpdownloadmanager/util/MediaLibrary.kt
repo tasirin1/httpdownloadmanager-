@@ -211,14 +211,26 @@ object MediaLibrary {
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI to false,
                 MediaStore.Video.Media.EXTERNAL_CONTENT_URI to true
             )
-            val projection = arrayOf(
-                MediaStore.MediaColumns._ID,
-                MediaStore.MediaColumns.DISPLAY_NAME,
-                MediaStore.MediaColumns.SIZE,
-                MediaStore.MediaColumns.DATE_MODIFIED,
-                MediaStore.MediaColumns.DATA,
-                MediaStore.MediaColumns.RELATIVE_PATH
-            )
+            // RELATIVE_PATH baru ada di Android 10+; di bawah itu query dengan
+            // kolom ini akan error dan seluruh scan gagal (galeri jadi kosong).
+            val projection = if (Build.VERSION.SDK_INT >= 29) {
+                arrayOf(
+                    MediaStore.MediaColumns._ID,
+                    MediaStore.MediaColumns.DISPLAY_NAME,
+                    MediaStore.MediaColumns.SIZE,
+                    MediaStore.MediaColumns.DATE_MODIFIED,
+                    MediaStore.MediaColumns.DATA,
+                    MediaStore.MediaColumns.RELATIVE_PATH
+                )
+            } else {
+                arrayOf(
+                    MediaStore.MediaColumns._ID,
+                    MediaStore.MediaColumns.DISPLAY_NAME,
+                    MediaStore.MediaColumns.SIZE,
+                    MediaStore.MediaColumns.DATE_MODIFIED,
+                    MediaStore.MediaColumns.DATA
+                )
+            }
             for ((collection, isVideo) in collections) {
                 runCatching {
                     resolver.query(

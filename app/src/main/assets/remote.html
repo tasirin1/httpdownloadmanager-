@@ -2755,11 +2755,12 @@ function rebuildList(items) {
   const idsChanged = idListSig !== lastIdListSig;
   const firstRender = lastIdListSig === '';
   lastIdListSig = idListSig;
-  const STATE_ORDER = {DOWNLOADING:0, PENDING:1, PAUSED:2, FAILED:3, COMPLETED:4, CANCELLED:5};
+  // Default urutan: paling baru di atas (addedAt DESC). Item yang sedang
+  // aktif (DOWNLOADING/PENDING) tetap di-pin paling atas biar gampang dipantau.
   items = items.slice().sort(function (a, b) {
-    const da = STATE_ORDER[a.state] != null ? STATE_ORDER[a.state] : 6;
-    const db = STATE_ORDER[b.state] != null ? STATE_ORDER[b.state] : 6;
-    const d = da - db;
+    const actA = a.state === 'DOWNLOADING' || a.state === 'PENDING' ? 0 : 1;
+    const actB = b.state === 'DOWNLOADING' || b.state === 'PENDING' ? 0 : 1;
+    const d = actA - actB;
     return d !== 0 ? d : ((b.addedAt || 0) - (a.addedAt || 0));
   });
   renderSpeedTotal(items);

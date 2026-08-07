@@ -1659,7 +1659,10 @@ function uploadFiles(files, path, statusEl, progressBox, progressText, progressP
         if (doneNow > bestDone) bestDone = doneNow;
         const pct = totalBytes > 0 ? Math.round(bestDone * 100 / totalBytes) : 0;
         progressBar.style.width = pct + '%';
-        progressPct.textContent = pct + '% \u00b7 ' + fmtSpeed(speed);
+        const etaSec = speed > 0 && totalBytes > bestDone
+          ? Math.round((totalBytes - bestDone) / speed) : 0;
+        progressPct.textContent = pct + '% \u00b7 ' + fmtSpeed(speed) +
+          (etaSec > 0 ? ' \u00b7 sisa ~' + fmtEta(etaSec) : '');
       };
       xhr.onload = function () {
         let ok = false;
@@ -2930,6 +2933,12 @@ function startPolling() {
   connectEvents();
   pollTimer = setTimeout(pollTick, anyActiveTransfer() ? POLL_FAST_MS : POLL_IDLE_MS);
 }
+
+// Tab kembali terlihat (habis tidur/minimize): segarkan segera tanpa nunggu
+// interval polling berikutnya.
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'visible') pollSnapshot();
+});
 
 if (typeof EventSource !== 'undefined') {
   startPolling();

@@ -20,6 +20,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.ScrollView
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -581,12 +582,17 @@ class MainActivity : AppCompatActivity(), DownloadAdapter.Listener {
         }.getOrNull()
         val version = info?.versionName ?: "1.0"
         val build = info?.versionCode ?: 0
+        // Konten di-scroll agar muat di layar TV/remote (teks profil panjang).
+        val content = TextView(this).apply {
+            text = getString(R.string.about_version, version) + " (build $build)\n\n" +
+                getString(R.string.about_profile)
+            setTextIsSelectable(true)
+            setPadding(64, 32, 64, 32)
+        }
+        val scroll = ScrollView(this).apply { addView(content) }
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.about_title)
-            .setMessage(
-                getString(R.string.about_version, version) + " (build $build)\n\n" +
-                    getString(R.string.about_profile)
-            )
+            .setView(scroll)
             .setPositiveButton(R.string.ok, null)
             .show()
     }

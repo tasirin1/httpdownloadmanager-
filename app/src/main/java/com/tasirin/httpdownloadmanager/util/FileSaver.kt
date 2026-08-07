@@ -509,11 +509,23 @@ class FileSaver(context: Context) {
         }.getOrDefault(result)
     }
 
+    private val AUDIO_EXTS = setOf(
+        "mp3", "m4a", "aac", "wav", "ogg", "flac", "opus", "wma", "mid"
+    )
+    private val DOC_EXTS = setOf(
+        "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "md",
+        "csv", "json", "epub", "rtf"
+    )
+
     private fun subfolderFor(fileName: String): String? {
-        val kind = MediaLibrary.mediaKind(fileName) ?: return null
-        return when (kind) {
-            "video" -> "Videos"
-            "image" -> "Photos"
+        val ext = fileName.substringAfterLast('.', "").lowercase()
+        val kind = MediaLibrary.mediaKind(fileName)
+        return when {
+            kind == "video" -> "Videos"
+            kind == "image" -> "Photos"
+            ext in AUDIO_EXTS -> "Music"
+            ext in DOC_EXTS -> "Documents"
+            ext == "apk" -> "APK"
             else -> null
         }
     }

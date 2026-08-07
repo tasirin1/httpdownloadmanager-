@@ -1378,40 +1378,30 @@ class HttpControlServer(private val context: Context) : NanoHTTPD(StoragePrefs.s
                     .put("kind", "dir")
             )
         }
-        add("Folder aplikasi", FS_PREFIX + File(context.filesDir, "downloads").absolutePath)
+        // Root file manager hanya menampilkan folder yang diatur di Pengaturan:
+        // folder tujuan (Folder teks) + folder tambahan. Folder aplikasi dan
+        // folder standar device tidak lagi ditampilkan biar bersih.
+        var any = false
         StoragePrefs.getTextFolder(context)?.let { tf ->
-            if (File(tf).isDirectory) add("Folder teks", FS_PREFIX + tf)
+            val f = File(tf)
+            if (f.isDirectory) {
+                add(f.name, FS_PREFIX + f.absolutePath)
+                any = true
+            }
         }
         StoragePrefs.getExtraFolders(context).forEach { path ->
             val f = File(path)
-            if (f.isDirectory) add(f.name, FS_PREFIX + f.absolutePath)
-        }
-        // Folder standar device via path langsung: API < 29 punya izin penuh,
-        // API 29+ wajib "Akses semua file" diaktifkan (Penyimpanan utama).
-        if (Build.VERSION.SDK_INT < 29 || StoragePrefs.isFsFullAccessEnabled(context)) {
-            listOf(
-                "Download" to Environment.DIRECTORY_DOWNLOADS,
-                "Pictures" to Environment.DIRECTORY_PICTURES,
-                "Movies" to Environment.DIRECTORY_MOVIES,
-                "DCIM" to Environment.DIRECTORY_DCIM
-            ).forEach { (label, dirType) ->
-                Environment.getExternalStoragePublicDirectory(dirType)?.let { d ->
-                    if (d.isDirectory) add("Folder $label", FS_PREFIX + d.absolutePath)
-                }
+            if (f.isDirectory) {
+                add(f.name, FS_PREFIX + f.absolutePath)
+                any = true
             }
         }
-        // Akses penuh ke penyimpanan utama adalah opsi keamanan (default mati).
-        if (StoragePrefs.isFsFullAccessEnabled(context)) {
-            val primary = File("/storage/emulated/0")
-            if (primary.isDirectory && primary.listFiles() != null) {
-                add("Penyimpanan utama", FS_PREFIX + primary.absolutePath)
+        // Fallback kalau belum ada folder diatur: tampilkan Folder Download
+        // bawaan supaya file manager tidak kosong.
+        if (!any) {
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)?.let { d ->
+                if (d.isDirectory) add("Folder Download", FS_PREFIX + d.absolutePath)
             }
-        }
-        if (Build.VERSION.SDK_INT >= 29) {
-            add("MediaStore Download", MS_PREFIX + "Download")
-            add("MediaStore Pictures", MS_PREFIX + "Pictures")
-            add("MediaStore Movies", MS_PREFIX + "Movies")
-            add("MediaStore DCIM (Kamera)", MS_PREFIX + "DCIM")
         }
         return jsonResponse(JSONObject().put("items", items))
     }

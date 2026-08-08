@@ -662,11 +662,6 @@ function renderStatus(st) {
   if (!el) return;
   const parts = [];
   parts.push('<span class="st-item"><span class="dot"></span><b>Device terhubung</b></span>');
-  if (st.batteryPercent >= 0) {
-    parts.push('<span class="st-item">Baterai <b>' + st.batteryPercent + '%</b>' + (st.batteryCharging ? ' (mengisi)' : '') + '</span>');
-  } else {
-    parts.push('<span class="st-item">Baterai <b>?</b></span>');
-  }
   if (typeof st.storageFree === 'number') {
     parts.push('<span class="st-item">Sisa <b>' + fmt(st.storageFree) + '</b></span>');
   }
